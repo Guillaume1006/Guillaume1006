@@ -19,3 +19,10 @@ Le micro n'est autorisé par Chrome que sur une page **HTTPS** (ou `localhost`).
 
 - L'écoute continue exige que Chrome reste ouvert, écran allumé (la page demande de garder l'écran actif). Pour une écoute en arrière-plan, il faudra une appli Android native.
 - La clé API est dans le navigateur : à réserver à un usage perso.
+
+## Nothing Phone (4a)
+
+- Ouvre l'adresse dans Chrome, puis menu ⋮ → *Installer l'application* : Jarvis s'ouvre en plein écran et en paysage, sans barre d'adresse.
+- Réglages → Batterie → Jarvis/Chrome : choisis *Sans restriction* pour éviter que Nothing OS endorme l'appli.
+- Branche le téléphone sur le secteur dans sa coque : l'écran reste allumé en permanence.
+- Autorise le micro pour Chrome quand il le demande.
