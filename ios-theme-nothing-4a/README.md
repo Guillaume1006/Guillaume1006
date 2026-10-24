@@ -17,10 +17,17 @@ Réglages recommandés :
 - Animations : « Ressort » / rapides
 - Dossiers : fond translucide, aperçu en grille 3×3
 
-## 3. Pack d'icônes
-Au choix sur le Play Store : **iOS 17 Icon Pack**, **One UI → iOS**, **Delta Icon Pack**, **Whicons**.
-Lawnchair/Nova → Réglages → Pack d'icônes → sélectionner.
-Pour les icônes manquantes, activez « Icônes adaptatives » ou « Forme : squircle ».
+## 3. Pack d'icônes (APK fourni : `iOS-Icons.apk`)
+30 icônes style iOS (squircle, dégradés) : Téléphone, Messages, Chrome, Réglages, Appareil photo, Play Store, YouTube, Gmail, Maps, Photos, Agenda, Horloge, Calculatrice, Contacts, Fichiers, WhatsApp, Instagram, Spotify, Telegram, Drive, Google, Netflix, TikTok, X, Facebook, Messenger, Discord, Snapchat, Notes, Météo.
+Les autres apps reçoivent un fond clair arrondi (style iOS) autour de leur icône.
+
+Installation :
+1. Copiez `iOS-Icons.apk` sur le téléphone et ouvrez-le (autorisez « installer des apps inconnues » pour votre gestionnaire de fichiers).
+2. Dans Lawnchair/Nova : Réglages → Pack d'icônes → **iOS Icons**.
+3. Une icône ne s'applique pas ? Appui long sur l'app → Modifier → choisissez-la dans le pack.
+
+Reconstruire / ajouter des icônes : éditez `iconpack/make_icons.py` (une entrée dans `ICONS` = un dessin + les noms de composants Android), puis lancez `iconpack/build.sh`.
+Limite : les noms d'activités Nothing OS (Appareil photo, Notes, Météo) sont des estimations ; si l'icône ne s'applique pas, assignez-la à la main (étape 3).
 
 ## 4. Widgets
 - **KWGT** + pack de presets iOS (horloge, météo, batterie, calendrier).
@@ -34,5 +41,3 @@ Pour les icônes manquantes, activez « Icônes adaptatives » ou « Forme : squ
 - **Geste** : Réglages → Système → Navigation → Gestes (barre en bas, comme iOS).
 - **Mode sombre** : cohérent avec `ios-noir` ou `ios-clair` selon le mode.
 
-## 6. Pour aller plus loin
-Voulez-vous un vrai APK (icon pack personnalisé, preset KWGT) ? Ça demande plus de travail (créer ~100 icônes) ; dites-le-moi et je peux générer le projet Android.
