@@ -1,0 +1,29 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "mon assistant",
+      "intents": [
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        {
+          "name": "ChatIntent",
+          "slots": [{ "name": "query", "type": "AMAZON.SearchQuery" }],
+          "samples": [
+            "demande {query}",
+            "dis moi {query}",
+            "dis-moi {query}",
+            "explique moi {query}",
+            "je voudrais savoir {query}",
+            "je veux savoir {query}",
+            "raconte moi {query}",
+            "cherche {query}",
+            "question {query}"
+          ]
+        }
+      ],
+      "types": []
+    }
+  }
+}
