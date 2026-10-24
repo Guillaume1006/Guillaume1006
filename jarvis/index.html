@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>Jarvis</title>
+<style>
+  :root { --eye: #36e0ff; --bg: #000; --fg: #bfefff; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font-family: system-ui, sans-serif; overflow: hidden; user-select: none; }
+  #face { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #caption { position: fixed; left: 0; right: 0; bottom: 4%; text-align: center;
+    padding: 0 6%; font-size: clamp(14px, 3.2vmin, 26px); opacity: .75; min-height: 2.4em; }
+  #gear { position: fixed; top: 10px; right: 10px; font-size: 26px; opacity: .25; background: none;
+    border: 0; color: var(--fg); padding: 8px; }
+  #start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.85); font-size: 6vmin; color: var(--eye); z-index: 5; }
+  #settings { position: fixed; inset: 0; background: #0b0f14; z-index: 10; overflow: auto;
+    padding: 16px; display: none; }
+  #settings.open { display: block; }
+  #settings h2 { margin-top: 0; color: var(--eye); }
+  #settings label { display: block; margin: 12px 0 4px; font-size: 14px; opacity: .85; }
+  #settings input, #settings select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #234;
+    background: #05080b; color: #fff; font-size: 16px; }
+  #settings small { opacity: .55; display: block; margin-top: 3px; }
+  #settings button { margin: 18px 8px 0 0; padding: 12px 20px; border-radius: 8px; border: 0;
+    background: var(--eye); color: #000; font-size: 16px; font-weight: 600; }
+  #settings button.sec { background: #234; color: #fff; }
+</style>
+</head>
+<body>
+<svg id="face" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <g filter="url(#glow)" fill="var(--eye)" stroke="var(--eye)">
+    <rect id="eyeL" x="170" y="120" width="220" height="220" rx="60" stroke="none"/>
+    <rect id="eyeR" x="610" y="120" width="220" height="220" rx="60" stroke="none"/>
+    <path id="mouth" d="" fill="none" stroke-width="14" stroke-linecap="round"/>
+  </g>
+  <g id="lids" fill="var(--bg)">
+    <rect id="lidL" x="150" y="100" width="260" height="0"/>
+    <rect id="lidR" x="590" y="100" width="260" height="0"/>
+  </g>
+</svg>
+<div id="caption"></div>
+<button id="gear" aria-label="Réglages">⚙</button>
+<div id="start">Touche l'écran pour réveiller Jarvis</div>
+
+<div id="settings">
+  <h2>Réglages de Jarvis</h2>
+  <label>Clé API Anthropic</label>
+  <input id="s_key" type="password" placeholder="sk-ant-...">
+  <small>Stockée uniquement dans ce téléphone (localStorage).</small>
+  <label>Modèle</label>
+  <input id="s_model" placeholder="claude-sonnet-5-5">
+  <label>Mot de réveil</label>
+  <input id="s_wake" placeholder="jarvis">
+  <label>Ville par défaut (météo)</label>
+  <input id="s_city" placeholder="Paris">
+  <label>Home Assistant - URL</label>
+  <input id="s_ha_url" placeholder="https://xxxx.ui.nabu.casa  ou  http://192.168.1.20:8123">
+  <label>Home Assistant - jeton d'accès longue durée</label>
+  <input id="s_ha_token" type="password">
+  <small>Profil HA → Sécurité → Jetons d'accès longue durée.</small>
+  <label>Personnalité</label>
+  <input id="s_persona" placeholder="Assistant poli, spirituel, très concis, appelle l'utilisateur « Monsieur »">
+  <button id="save">Enregistrer</button><button class="sec" id="close">Fermer</button>
+</div>
+
+<script>
+"use strict";
+/* ---------- Réglages ---------- */
+const DEFAULTS = { key: "", model: "claude-sonnet-5-5", wake: "jarvis", city: "Paris",
+  ha_url: "", ha_token: "", persona: "Tu es Jarvis, un assistant de maison poli, spirituel et très concis. Tu t'adresses à l'utilisateur par « Monsieur »." };
+const cfg = Object.assign({}, DEFAULTS);
+try { Object.assign(cfg, JSON.parse(localStorage.getItem("jarvis_cfg") || "{}")); } catch (e) {}
+const $ = id => document.getElementById(id);
+const fields = ["key","model","wake","city","ha_url","ha_token","persona"];
+function loadForm() { fields.forEach(f => $("s_" + f).value = cfg[f] || ""); }
+$("save").onclick = () => {
+  fields.forEach(f => cfg[f] = $("s_" + f).value.trim() || (f === "key" || f.startsWith("ha_") ? "" : DEFAULTS[f]));
+  try { localStorage.setItem("jarvis_cfg", JSON.stringify(cfg)); } catch (e) {}
+  $("settings").classList.remove("open"); say("Réglages enregistrés.");
+};
+$("close").onclick = () => $("settings").classList.remove("open");
+$("gear").onclick = () => { loadForm(); $("settings").classList.add("open"); };
+
+/* ---------- Visage ---------- */
+let state = "idle";            // idle | listening | thinking | speaking
+const eyeL = $("eyeL"), eyeR = $("eyeR"), lidL = $("lidL"), lidR = $("lidR"), mouth = $("mouth");
+let look = { x: 0, y: 0, tx: 0, ty: 0 }, blink = 0, nextBlink = 2, nextLook = 1, t0 = performance.now(), speakAmp = 0;
+function setState(s) { state = s; }
+function frame(now) {
+  const t = (now - t0) / 1000, dt = 1 / 60;
+  nextLook -= dt; if (nextLook < 0) { look.tx = (Math.random() - .5) * 50; look.ty = (Math.random() - .5) * 30; nextLook = 1 + Math.random() * 3; }
+  if (state === "thinking") { look.tx = Math.sin(t * 3) * 50; look.ty = -25; }
+  if (state === "listening") { look.tx *= .9; look.ty = 0; }
+  look.x += (look.tx - look.x) * .1; look.y += (look.ty - look.y) * .1;
+  nextBlink -= dt; if (nextBlink < 0) { blink = 1; nextBlink = 2 + Math.random() * 4; }
+  blink = Math.max(0, blink - dt * 6);
+  const lid = Math.sin(blink * Math.PI) * 125 + (state === "idle" ? 30 : 0);
+  const h = state === "listening" ? 250 : 220, w = 220;
+  [[eyeL,170,lidL],[eyeR,610,lidR]].forEach(([e,x,l]) => {
+    e.setAttribute("x", x + look.x - (w-220)/2); e.setAttribute("y", 120 + look.y - (h-220)/2);
+    e.setAttribute("width", w); e.setAttribute("height", h);
+    l.setAttribute("height", lid * 1.9);
+  });
+  speakAmp += ((state === "speaking" ? (0.4 + 0.6 * Math.abs(Math.sin(t * 11) * Math.sin(t * 5.3))) : 0) - speakAmp) * .3;
+  const open = speakAmp * 70, smile = state === "idle" ? 14 : 4;
+  mouth.setAttribute("d", `M 380 470 Q 500 ${470 + smile + open * 2} 620 470` + (open > 4 ? ` Q 500 ${470 - open * 0.3} 380 470 Z` : ""));
+  mouth.setAttribute("fill", open > 4 ? "var(--eye)" : "none");
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+const caption = t => $("caption").textContent = t;
+
+/* ---------- Voix : synthèse ---------- */
+let frVoice = null;
+function pickVoice() {
+  const v = speechSynthesis.getVoices();
+  frVoice = v.find(x => /fr[-_]FR/i.test(x.lang) && /google|network/i.test(x.name)) || v.find(x => /^fr/i.test(x.lang)) || null;
+}
+speechSynthesis.onvoiceschanged = pickVoice; pickVoice();
+function say(text) {
+  return new Promise(res => {
+    caption(text); stopListening();
+    const u = new SpeechSynthesisUtterance(text.replace(/[*_#`]/g, ""));
+    u.lang = "fr-FR"; if (frVoice) u.voice = frVoice; u.rate = 1.05;
+    u.onstart = () => setState("speaking");
+    u.onend = u.onerror = () => { setState("idle"); res(); };
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  });
+}
+
+/* ---------- Voix : reconnaissance ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, wanted = false, awakeUntil = 0, busy = false;
+function startListening() {
+  if (!SR) { caption("Reconnaissance vocale indisponible : utilise Chrome."); return; }
+  wanted = true; if (rec) return;
+  rec = new SR(); rec.lang = "fr-FR"; rec.continuous = true; rec.interimResults = false;
+  rec.onresult = e => {
+    const txt = e.results[e.results.length - 1][0].transcript.trim();
+    if (txt) onHeard(txt);
+  };
+  rec.onend = () => { rec = null; if (wanted && !busy) setTimeout(startListening, 250); };
+  rec.onerror = () => {};
+  try { rec.start(); if (state === "idle") caption(`Dis « ${cfg.wake} »…`); } catch (e) { rec = null; }
+}
+function stopListening() { wanted = false; if (rec) { try { rec.abort(); } catch (e) {} rec = null; } }
+function onHeard(txt) {
+  const w = cfg.wake.toLowerCase(), low = txt.toLowerCase();
+  let cmd = null;
+  if (low.includes(w)) cmd = txt.slice(low.indexOf(w) + w.length).replace(/^[\s,.!?]+/, "");
+  else if (Date.now() < awakeUntil) cmd = txt;
+  if (cmd === null) return;
+  if (!cmd) { setState("listening"); caption("Je vous écoute…"); awakeUntil = Date.now() + 8000; return; }
+  handle(cmd);
+}
+async function handle(cmd) {
+  if (busy) return; busy = true; stopListening();
+  caption("« " + cmd + " »"); setState("thinking");
+  let answer;
+  try { answer = await think(cmd); } catch (e) { console.error(e); answer = "Désolé, j'ai rencontré une erreur : " + e.message; }
+  await say(answer);
+  awakeUntil = Date.now() + 8000; busy = false; startListening();
+}
+$("start").onclick = async () => {
+  $("start").remove();
+  await say("Systèmes en ligne. Je vous écoute.");
+  if (!cfg.key) { await say("Ajoutez votre clé API dans les réglages pour m'activer pleinement."); }
+  startListening();
+};
+document.addEventListener("click", e => { if (e.target.closest("#gear,#settings,#start")) return;
+  awakeUntil = Date.now() + 8000; setState("listening"); caption("Je vous écoute…"); startListening(); });
+
+/* ---------- Outils : météo ---------- */
+const WMO = {0:"ciel dégagé",1:"plutôt dégagé",2:"partiellement nuageux",3:"couvert",45:"brouillard",48:"brouillard givrant",51:"bruine légère",53:"bruine",55:"bruine forte",61:"pluie légère",63:"pluie",65:"pluie forte",71:"neige légère",73:"neige",75:"neige forte",80:"averses",81:"averses",82:"fortes averses",95:"orage",96:"orage avec grêle",99:"orage violent"};
+async function getWeather({ city }) {
+  city = city || cfg.city;
+  const g = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?count=1&language=fr&name=${encodeURIComponent(city)}`)).json();
+  if (!g.results) return { error: "Ville introuvable : " + city };
+  const { latitude, longitude, name } = g.results[0];
+  const w = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=3`)).json();
+  const c = w.current, d = w.daily;
+  return { ville: name, maintenant: { temp_c: c.temperature_2m, ressenti_c: c.apparent_temperature, ciel: WMO[c.weather_code] || "inconnu", vent_kmh: c.wind_speed_10m },
+    prochains_jours: d.time.map((day, i) => ({ jour: day, ciel: WMO[d.weather_code[i]] || "inconnu", min: d.temperature_2m_min[i], max: d.temperature_2m_max[i], proba_pluie_pct: d.precipitation_probability_max[i] })) };
+}
+
+/* ---------- Outils : domotique (Home Assistant) ---------- */
+async function ha(path, opts = {}) {
+  if (!cfg.ha_url || !cfg.ha_token) throw new Error("Home Assistant n'est pas configuré dans les réglages.");
+  const r = await fetch(cfg.ha_url.replace(/\/$/, "") + "/api/" + path, { ...opts,
+    headers: { Authorization: "Bearer " + cfg.ha_token, "Content-Type": "application/json" } });
+  if (!r.ok) throw new Error("Home Assistant a répondu " + r.status);
+  return r.json();
+}
+async function haList({ domain }) {
+  const all = await ha("states");
+  return all.filter(s => !domain || s.entity_id.startsWith(domain + ".")).slice(0, 80)
+    .map(s => ({ entity_id: s.entity_id, nom: s.attributes.friendly_name, etat: s.state }));
+}
+async function haCall({ domain, service, entity_id, data }) {
+  await ha(`services/${domain}/${service}`, { method: "POST", body: JSON.stringify({ entity_id, ...(data || {}) }) });
+  return { ok: true };
+}
+
+/* ---------- Outils : minuteur ---------- */
+function setTimer({ seconds, label }) {
+  setTimeout(() => say(`Monsieur, le minuteur ${label || ""} est terminé.`), seconds * 1000);
+  return { ok: true, secondes: seconds };
+}
+
+const TOOLS = [
+  { name: "get_weather", description: "Météo actuelle et prévisions sur 3 jours pour une ville.",
+    input_schema: { type: "object", properties: { city: { type: "string", description: "Ville ; omis = ville par défaut" } } } },
+  { name: "ha_list_entities", description: "Liste les appareils Home Assistant (lumières, prises, volets...) avec leur état. À appeler avant ha_call_service pour trouver le bon entity_id.",
+    input_schema: { type: "object", properties: { domain: { type: "string", description: "light, switch, cover, climate, media_player..." } } } },
+  { name: "ha_call_service", description: "Commande un appareil Home Assistant, ex. domain=light service=turn_on.",
+    input_schema: { type: "object", properties: { domain: { type: "string" }, service: { type: "string" }, entity_id: { type: "string" }, data: { type: "object" } }, required: ["domain", "service", "entity_id"] } },
+  { name: "set_timer", description: "Lance un minuteur.",
+    input_schema: { type: "object", properties: { seconds: { type: "number" }, label: { type: "string" } }, required: ["seconds"] } },
+];
+const IMPL = { get_weather: getWeather, ha_list_entities: haList, ha_call_service: haCall, set_timer: setTimer };
+
+/* ---------- Cerveau : Claude ---------- */
+let history = [];
+async function think(userText) {
+  if (!cfg.key) return "Il me manque la clé API. Ouvrez les réglages, Monsieur.";
+  history.push({ role: "user", content: userText });
+  history = history.slice(-20);
+  const system = `${cfg.persona}\nTes réponses sont lues à voix haute : 1 à 3 phrases courtes, en français, sans markdown ni listes.\nNous sommes le ${new Date().toLocaleString("fr-FR")}. Ville par défaut : ${cfg.city}.`;
+  for (let i = 0; i < 6; i++) {
+    const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": cfg.key, "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: cfg.model, max_tokens: 400, system, tools: TOOLS, messages: history }) });
+    if (!r.ok) throw new Error("API " + r.status + " " + (await r.text()).slice(0, 120));
+    const msg = await r.json();
+    history.push({ role: "assistant", content: msg.content });
+    const calls = msg.content.filter(b => b.type === "tool_use");
+    if (!calls.length) return msg.content.filter(b => b.type === "text").map(b => b.text).join(" ").trim() || "C'est fait.";
+    const results = [];
+    for (const c of calls) {
+      let out; try { out = await IMPL[c.name](c.input || {}); } catch (e) { out = { error: e.message }; }
+      results.push({ type: "tool_result", tool_use_id: c.id, content: JSON.stringify(out) });
+    }
+    history.push({ role: "user", content: results });
+  }
+  return "Je n'ai pas réussi à terminer cette demande.";
+}
+
+if ("wakeLock" in navigator) document.addEventListener("click", () => navigator.wakeLock.request("screen").catch(() => {}), { once: true });
+</script>
+</body>
+</html>
