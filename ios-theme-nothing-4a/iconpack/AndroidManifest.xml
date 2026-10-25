@@ -34,6 +34,13 @@
                 <action android:name="com.anddoes.launcher.THEME" />
             </intent-filter>
             <intent-filter>
+                <action android:name="com.gau.go.launcherex.theme" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.fede.launcher.THEME_ICONPACK" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="ginlemon.smartlauncher.THEMES" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>

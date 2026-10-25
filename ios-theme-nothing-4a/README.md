@@ -29,6 +29,9 @@ Installation :
 Reconstruire / ajouter des icônes : éditez `iconpack/make_icons.py` (une entrée dans `ICONS` = un dessin + les noms de composants Android), puis lancez `iconpack/build.sh`.
 Limite : les noms d'activités Nothing OS (Appareil photo, Notes, Météo) sont des estimations ; si l'icône ne s'applique pas, assignez-la à la main (étape 3).
 
+### Avec le launcher Nothing d'origine
+Le Nothing Launcher accepte les packs d'icônes tiers. Le pack déclare tous les formats standard (ADW, Nova, Apex, Go), il devrait donc apparaître tout seul : Réglages → Fond d'écran et style → **Pack d'icônes** (le nom du menu varie selon la version de Nothing OS), puis sélectionnez *iOS Icons*. Si le menu n'existe pas sur votre version, installez Lawnchair ou Nova.
+
 ## 4. Widgets
 - **KWGT** + pack de presets iOS (horloge, météo, batterie, calendrier).
 - Ou **Widgetsmith**-like : « iOS 17 Widgets ».
