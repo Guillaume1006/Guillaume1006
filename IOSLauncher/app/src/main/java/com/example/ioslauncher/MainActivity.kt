@@ -1,11 +1,20 @@
 package com.example.ioslauncher
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Outline
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -17,19 +26,21 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewOutlineProvider
 import android.view.WindowManager
-import android.window.OnBackInvokedDispatcher
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.window.OnBackInvokedDispatcher
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import java.util.concurrent.Executors
 
-class App(val label: String, val icon: Drawable, val intent: Intent, val pkg: String)
+/** Icône déjà rasterisée à la taille finale : aucun travail de dessin coûteux pendant le défilement. */
+class App(val label: String, val icon: Bitmap, val intent: Intent, val pkg: String)
 
 class MainActivity : Activity() {
 
@@ -37,11 +48,19 @@ class MainActivity : Activity() {
     private lateinit var dots: LinearLayout
     private lateinit var dock: LinearLayout
     private var allApps: List<App> = emptyList()
+    private var dockApps: List<App> = emptyList()
     private var pages: List<List<App>> = emptyList()
     private val cols = 4
     private var rows = 6
 
+    private val worker = Executors.newSingleThreadExecutor()
+    private val iconCache = HashMap<String, Bitmap>()
+    private val packageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) = loadApps()
+    }
+
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private val iconPx by lazy { dp(ICON_DP) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,7 +102,7 @@ class MainActivity : Activity() {
         root.addView(dots, LinearLayout.LayoutParams(-1, dp(20)))
 
         val search = TextView(this).apply {
-            text = "\uD83D\uDD0D  Rechercher"
+            text = "🔍  Rechercher"
             setTextColor(Color.WHITE); textSize = 13f
             gravity = Gravity.CENTER
             setPadding(dp(28), dp(8), dp(28), dp(8))
@@ -114,51 +133,106 @@ class MainActivity : Activity() {
                 pager.currentItem = 0
             }
         }
+
+        // Rechargement uniquement quand une app est installée / mise à jour / supprimée
+        val f = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        ContextCompat.registerReceiver(this, packageReceiver, f, ContextCompat.RECEIVER_NOT_EXPORTED)
+        loadApps()
     }
 
-    override fun onResume() {
-        super.onResume()
-        loadApps(); buildDock(); refreshPages()
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(packageReceiver)
+        worker.shutdown()
     }
 
     @Deprecated("Launcher: retour = première page (Android < 13)")
     override fun onBackPressed() { pager.currentItem = 0 }
 
-    /** Adapte le nombre de lignes à la hauteur réelle de l'écran (6,78" du Phone (4a)). */
+    /** Adapte le nombre de lignes à la hauteur réelle de l'écran. */
     private fun refreshPages() {
         val avail = pager.height - dp(16)
-        if (avail > 0) rows = (avail / dp(104)).coerceIn(3, 10)
+        val newRows = if (avail > 0) (avail / dp(ROW_DP)).coerceIn(3, 10) else rows
+        if (newRows == rows && pages.isNotEmpty()) return
+        rows = newRows
         pages = allApps.chunked(cols * rows)
         pager.adapter?.notifyDataSetChanged()
         updateDots(pager.currentItem.coerceAtMost((pages.size - 1).coerceAtLeast(0)))
     }
 
+    /** Charge apps + icônes hors du thread UI, avec cache des icônes déjà rasterisées. */
     private fun loadApps() {
-        val q = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        allApps = packageManager.queryIntentActivities(q, 0)
-            .filter { it.activityInfo.packageName != packageName }
-            .map {
-                val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                    .setClassName(it.activityInfo.packageName, it.activityInfo.name)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                App(it.loadLabel(packageManager).toString(), it.loadIcon(packageManager), i, it.activityInfo.packageName)
-            }.sortedBy { it.label.lowercase() }
+        worker.execute {
+            val pm = packageManager
+            val q = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            val list = pm.queryIntentActivities(q, 0)
+                .filter { it.activityInfo.packageName != packageName }
+                .map {
+                    val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                        .setClassName(it.activityInfo.packageName, it.activityInfo.name)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    val key = it.activityInfo.packageName + "/" + it.activityInfo.name
+                    val icon = iconCache.getOrPut(key) { render(it.loadIcon(pm)) }
+                    App(it.loadLabel(pm).toString(), icon, i, it.activityInfo.packageName)
+                }.sortedBy { it.label.lowercase() }
+
+            val dockIntents = listOf(
+                Intent(Intent.ACTION_DIAL),
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING),
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER),
+                Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+            )
+            val dockList = dockIntents.mapNotNull { i ->
+                val r = pm.resolveActivity(i, PackageManager.MATCH_DEFAULT_ONLY) ?: return@mapNotNull null
+                if (r.activityInfo.packageName == "android") return@mapNotNull null
+                val key = "dock/" + r.activityInfo.packageName + "/" + r.activityInfo.name
+                val icon = iconCache.getOrPut(key) { render(r.loadIcon(pm)) }
+                App("", icon, i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), r.activityInfo.packageName)
+            }
+            runOnUiThread {
+                if (isDestroyed) return@runOnUiThread
+                allApps = list; dockApps = dockList
+                buildDock()
+                rows = -1 // force le recalcul
+                refreshPages()
+            }
+        }
+    }
+
+    /**
+     * Rasterise l'icône à la taille finale avec le même masque arrondi pour toutes les apps
+     * (icônes adaptatives ET anciennes icônes), afin d'obtenir un rendu homogène.
+     */
+    private fun render(d: Drawable): Bitmap {
+        val s = iconPx
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        if (d is AdaptiveIconDrawable) {
+            val o = (s * 0.25f).toInt() // les calques font 108dp pour 72dp visibles
+            d.background?.let { it.setBounds(-o, -o, s + o, s + o); it.draw(c) }
+            d.foreground?.let { it.setBounds(-o, -o, s + o, s + o); it.draw(c) }
+        } else {
+            c.drawColor(0xFFF2F2F7.toInt())
+            val pad = (s * 0.12f).toInt()
+            d.setBounds(pad, pad, s - pad, s - pad); d.draw(c)
+        }
+        // Masque arrondi : drawBitmap couvre tout le carré, donc DST_IN efface bien les coins
+        val r = s * 0.225f
+        val mask = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        Canvas(mask).drawRoundRect(RectF(0f, 0f, s.toFloat(), s.toFloat()), r, r, Paint(Paint.ANTI_ALIAS_FLAG))
+        c.drawBitmap(mask, 0f, 0f, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) })
+        mask.recycle()
+        return bmp
     }
 
     private fun buildDock() {
         dock.removeAllViews()
-        val intents = listOf(
-            Intent(Intent.ACTION_DIAL),
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_MESSAGING),
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER),
-            Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
-        )
-        for (i in intents) {
-            val r = packageManager.resolveActivity(i, PackageManager.MATCH_DEFAULT_ONLY) ?: continue
-            if (r.activityInfo.packageName == "android") continue
-            val app = App("", r.loadIcon(packageManager), i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), r.activityInfo.packageName)
-            dock.addView(cell(app, false), LinearLayout.LayoutParams(0, -2, 1f))
-        }
+        for (app in dockApps) dock.addView(cell(app, false), LinearLayout.LayoutParams(dp(72), -2))
     }
 
     private fun updateDots(sel: Int) {
@@ -188,27 +262,19 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(0, dp(6), 0, dp(6))
         }
-        val iv = ImageView(this).apply {
-            setImageDrawable(app.icon.constantState?.newDrawable()?.mutate() ?: app.icon)
-            clipToOutline = true
-            outlineProvider = object : ViewOutlineProvider() {
-                override fun getOutline(v: View, o: Outline) {
-                    o.setRoundRect(0, 0, v.width, v.height, v.width * 0.225f)
-                }
-            }
-        }
-        c.addView(iv, LinearLayout.LayoutParams(dp(60), dp(60)))
+        val iv = ImageView(this).apply { setImageBitmap(app.icon) }
+        c.addView(iv, LinearLayout.LayoutParams(iconPx, iconPx))
         if (label) {
             c.addView(TextView(this).apply {
-                text = app.label; setTextColor(Color.WHITE); textSize = 11f
+                text = app.label; setTextColor(Color.WHITE); textSize = 10f
                 maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
                 gravity = Gravity.CENTER; typeface = Typeface.DEFAULT_BOLD
                 setShadowLayer(4f, 0f, 1f, 0x99000000.toInt())
-            }, LinearLayout.LayoutParams(dp(68), -2).apply { topMargin = dp(4) })
+            }, LinearLayout.LayoutParams(dp(68), -2).apply { topMargin = dp(3) })
         }
         c.setOnTouchListener { v, e ->
             when (e.action) {
-                MotionEvent.ACTION_DOWN -> v.animate().scaleX(0.88f).scaleY(0.88f).setDuration(80).start()
+                MotionEvent.ACTION_DOWN -> v.animate().scaleX(0.9f).scaleY(0.9f).setDuration(80).start()
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> v.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
             }
             false
@@ -240,8 +306,13 @@ class MainActivity : Activity() {
                     val a = row.getOrNull(k)
                     r.addView(if (a != null) cell(a, true) else View(page.context), LinearLayout.LayoutParams(0, -2, 1f))
                 }
-                page.addView(r, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+                page.addView(r, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
             }
         }
+    }
+
+    private companion object {
+        const val ICON_DP = 48
+        const val ROW_DP = 92 // 6+48+3+~13+6 (cellule) + 12 (marge)
     }
 }
