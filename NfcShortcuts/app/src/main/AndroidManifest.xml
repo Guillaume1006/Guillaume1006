@@ -26,5 +26,6 @@
                 <data android:scheme="nfcshortcut" android:host="run" />
             </intent-filter>
         </activity>
+        <activity android:name=".EditorActivity" android:exported="false" />
     </application>
 </manifest>

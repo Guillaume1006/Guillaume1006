@@ -11,35 +11,46 @@ import java.net.URL
 import kotlin.concurrent.thread
 
 object Runner {
-    /** Exécute les actions dans l'ordre. Appels web en arrière-plan, liens ouverts via Intent. */
+    /** Exécute les étapes dans l'ordre, en arrière-plan. Une étape en erreur n'arrête pas les suivantes. */
     fun run(context: Context, shortcut: Shortcut) {
         val app = context.applicationContext
         val main = Handler(Looper.getMainLooper())
         thread {
             var ok = 0
-            var failed = 0
-            for (action in shortcut.actions) {
-                val line = action.trim()
-                if (line.isEmpty()) continue
+            val errors = mutableListOf<String>()
+            for (step in shortcut.steps) {
                 try {
-                    if (line.startsWith("http://") || line.startsWith("https://")) {
-                        val conn = URL(line).openConnection() as HttpURLConnection
-                        conn.connectTimeout = 8000
-                        conn.readTimeout = 8000
-                        val code = conn.responseCode
-                        conn.disconnect()
-                        if (code in 200..299) ok++ else failed++
-                    } else {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(line)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        main.post { app.startActivity(intent) }
-                        ok++
+                    when (step.type) {
+                        StepType.ALEXA, StepType.WEB -> {
+                            val conn = URL(step.value.trim()).openConnection() as HttpURLConnection
+                            conn.connectTimeout = 8000
+                            conn.readTimeout = 8000
+                            val code = conn.responseCode
+                            conn.disconnect()
+                            if (code in 200..299) ok++ else errors += "${step.describe()} (HTTP $code)"
+                        }
+                        StepType.OPEN -> {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(step.value.trim()))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            main.post { app.startActivity(intent) }
+                            ok++
+                        }
+                        StepType.WAIT -> {
+                            Thread.sleep((step.value.trim().toDoubleOrNull() ?: 0.0).times(1000).toLong())
+                            ok++
+                        }
+                        StepType.MESSAGE -> {
+                            main.post { Toast.makeText(app, step.value, Toast.LENGTH_SHORT).show() }
+                            ok++
+                        }
                     }
                 } catch (e: Exception) {
-                    failed++
+                    errors += step.describe()
                 }
             }
             main.post {
-                val msg = if (failed == 0) "${shortcut.name} : OK ($ok)" else "${shortcut.name} : $ok OK, $failed en erreur"
+                val msg = if (errors.isEmpty()) "${shortcut.name} : OK ($ok)"
+                else "${shortcut.name} : $ok OK, erreur sur : ${errors.joinToString(", ")}"
                 Toast.makeText(app, msg, Toast.LENGTH_LONG).show()
             }
         }

@@ -11,10 +11,8 @@ import android.nfc.tech.Ndef
 import android.nfc.tech.NdefFormatable
 import android.os.Bundle
 import android.provider.Settings
-import android.text.InputType
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
@@ -45,7 +43,7 @@ class MainActivity : Activity() {
         }
         val add = Button(this).apply {
             text = "+ Nouveau raccourci"
-            setOnClickListener { editDialog(null) }
+            setOnClickListener { openEditor(null) }
         }
         hint = TextView(this).apply {
             text = "Aucun raccourci. Créez-en un, puis écrivez-le sur un tag NFC."
@@ -87,7 +85,7 @@ class MainActivity : Activity() {
         shortcuts = store.all().sortedBy { it.name.lowercase() }
         listView.adapter = ArrayAdapter(
             this, android.R.layout.simple_list_item_1,
-            shortcuts.map { "${it.name}  (${it.actions.size} action${if (it.actions.size > 1) "s" else ""})" },
+            shortcuts.map { "${it.name}  (${it.steps.size} étape${if (it.steps.size > 1) "s" else ""})" },
         )
         hint.visibility = if (shortcuts.isEmpty()) TextView.VISIBLE else TextView.GONE
     }
@@ -99,7 +97,7 @@ class MainActivity : Activity() {
                 when (which) {
                     0 -> Runner.run(this, s)
                     1 -> startWriting(s)
-                    2 -> editDialog(s)
+                    2 -> openEditor(s.id)
                     3 -> AlertDialog.Builder(this)
                         .setMessage("Supprimer « ${s.name} » ?")
                         .setPositiveButton("Supprimer") { _, _ -> store.delete(s.id); refresh() }
@@ -110,39 +108,13 @@ class MainActivity : Activity() {
             .show()
     }
 
-    private fun editDialog(existing: Shortcut?) {
-        val pad = (16 * resources.displayMetrics.density).toInt()
-        val name = EditText(this).apply {
-            hint = "Nom (ex : Départ maison)"
-            setText(existing?.name ?: "")
-        }
-        val actions = EditText(this).apply {
-            hint = "Une action par ligne :\nhttps://api.voicemonkey.io/trigger?... \nhttps://home.exemple/webhook/xyz\nhttps://...  ou  un lien d'appli"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 4
-            setText(existing?.actions?.joinToString("\n") ?: "")
-        }
-        val form = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad, pad, 0)
-            addView(name)
-            addView(actions)
-        }
-        AlertDialog.Builder(this)
-            .setTitle(if (existing == null) "Nouveau raccourci" else "Modifier")
-            .setView(form)
-            .setPositiveButton("Enregistrer") { _, _ ->
-                val n = name.text.toString().trim()
-                val lines = actions.text.toString().lines().map { it.trim() }.filter { it.isNotEmpty() }
-                if (n.isEmpty() || lines.isEmpty()) {
-                    Toast.makeText(this, "Nom et au moins une action requis", Toast.LENGTH_LONG).show()
-                } else {
-                    store.save(Shortcut(existing?.id ?: java.util.UUID.randomUUID().toString(), n, lines))
-                    refresh()
-                }
-            }
-            .setNegativeButton("Annuler", null)
-            .show()
+    private fun openEditor(id: String?) {
+        startActivity(Intent(this, EditorActivity::class.java).apply { id?.let { putExtra("id", it) } })
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::listView.isInitialized) refresh()
     }
 
     private fun startWriting(s: Shortcut) {
