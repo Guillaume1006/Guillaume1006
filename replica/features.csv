@@ -1,0 +1,17 @@
+feature,area,priority,original,clone,notes
+Audio Settings screen listing sound profiles,sound profiles,must,yes,no,UNVERIFIED: source 1 and 3
+Profile ON (balanced default),sound profiles,must,yes,no,UNVERIFIED: source 1
+Profile OFF (flat unaltered sound),sound profiles,must,yes,no,UNVERIFIED: source 1
+Profile Bass Boost,sound profiles,must,yes,no,UNVERIFIED: source 1 and 2
+Profile Vocal,sound profiles,should,yes,no,UNVERIFIED: source 1 and 2
+Profile High Volume,sound profiles,should,yes,no,UNVERIFIED: source 1
+Selected profile persists and is restored on reconnect,sound profiles,should,unknown,no,GUESS: not in any source
+Automatic volume by ambient noise (AGC),volume,could,yes,no,UNVERIFIED: source 1; processed on the headset
+Audio Mixing settings (music vs intercom levels),mixing,could,yes,no,UNVERIFIED: source 4 release notes; no detail seen
+Adjustable multi-band equalizer,equalizer,could,unknown,no,NOT FOUND in public sources; the user says it exists; confirm in the own account before building
+JBL profile activation by QR code on the info card,sound profiles,skip,yes,skip,tied to the JBL 45mm hardware kit and a Cardo/JBL licence
+Profile DSP applied inside the headset,sound profiles,skip,yes,skip,runs on the device chip; a clone only sends a setting
+Pairing and Bluetooth link to Cardo units,device,skip,yes,skip,proprietary Bluetooth protocol; private API is out of scope
+Dynamic Mesh Communication (DMC) intercom,intercom,skip,yes,skip,hardware network; out of the slice
+Firmware update,device,skip,yes,skip,Cardo's signed firmware; out of the slice
+FM radio and call control,device,skip,yes,skip,out of the slice
