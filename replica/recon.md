@@ -78,7 +78,7 @@ Relationships: GUESS: Device 1-1 DeviceSettings, DeviceSettings n-1 SoundProfile
 
 ## Feature matrix
 
-See `features.csv`. Must: 8, should: 4, could: 3, skip: 6. Rows are
+See `features.csv`. Must: 9, should: 4, could: 3, skip: 6. Rows are
 unverified, except the S02 rows, which come from the user's screenshot.
 
 ## Out of scope (cannot or should not be cloned)
@@ -93,8 +93,9 @@ unverified, except the S02 rows, which come from the user's screenshot.
 
 Screens 2, flows 2, entities 4 (2 guesses). Hard parts: anything touching the
 headset (no public protocol); real-time audio processing on the phone if the
-equalizer is standalone. Size: S as a phone-side 5-band equalizer app in the
-style of S02; not sizeable as a Cardo-compatible clone until the protocol
+equalizer is standalone. Size: the UI is S, but equalizing all of the phone's audio
+(user decision) is the hard part and is unproven: M at best, after a
+feasibility spike (see architecture.md); not sizeable as a Cardo-compatible clone until the protocol
 question is answered.
 
 ## Open questions for the user

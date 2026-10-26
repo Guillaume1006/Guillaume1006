@@ -1,9 +1,10 @@
 # Architecture: standalone 5-band equalizer (a rebuild of the sound settings of Cardo Connect)
 
-Based on a **partial, unverified** recon (`recon.md`). Scope decision from the
+Based on a **partial, unverified** recon (`recon.md`). Scope decisions from the
 user: a standalone phone-side equalizer in the style of screen S02, not an
 app that talks to Cardo headsets (no public protocol, private API out of
-scope). Target: a product to sell (assumed, still unconfirmed).
+scope); and it must equalize all of the phone's audio, not only its own
+playback. Target: a product to sell (assumed, still unconfirmed).
 
 ## Stack
 
@@ -11,7 +12,8 @@ scope). Target: a product to sell (assumed, still unconfirmed).
 | --- | --- | --- |
 | mobile | Kotlin, Jetpack Compose, native Android | the app is a thin UI over Android audio effects; the user asked for Android; Expo would add a bridge for no gain |
 | audio engine | `android.media.audiofx.DynamicsProcessing` (API 28+), with `LoudnessEnhancer` for the High Volume profile | DynamicsProcessing lets us set our own band frequencies (100, 300, 1k, 3k, 10k Hz). The classic `Equalizer` class exposes the device's own fixed bands, which will not match S02 |
-| playback target | a session id we control, with the app's own player (Media3 ExoPlayer) in the first version | effects on the global session (id 0) are deprecated and unreliable on recent Android; this is the biggest risk below |
+| playback target | **all audio on the phone** (user decision). Three official routes, chosen by a spike on real devices (milestone 0): A) effect on the global output mix (session 0); B) effect attached per audio session, learned from the `OPEN_AUDIO_EFFECT_CONTROL_SESSION` broadcasts that players send; C) capture other apps' audio with `AudioPlaybackCapture` (API 29+, needs `MediaProjection`), then re-play it through our own equalized player | no route is known to work everywhere (see the first risk below); a foreground service keeps the effect alive |
+| foreground service | Android foreground service with a persistent notification | the effect or the capture must survive the app being closed |
 | database | Room (SQLite), on device | one user, no sync needed; presets and settings only |
 | settings | same Room tables (`app_settings`) | no second store |
 | web / server | none | no flow needs one |
@@ -59,12 +61,23 @@ playback starts).
 
 ## The parts that bite
 
-- **Where the effect is attached (biggest risk).** An equalizer only changes
-  sound that goes through an audio session it is attached to. Effects on the
-  global output (session 0) are deprecated and not honoured on many recent
-  devices, and other apps' audio is not ours to process. First version: the
-  app plays audio itself through ExoPlayer and attaches the effect to that
-  session. A system-wide equalizer is a different, riskier product.
+- **Equalizing everything (biggest risk, now the core of the product).** An
+  effect only changes sound that goes through the session it is attached to.
+  From general knowledge of Android, to be confirmed by the spike, not checked
+  here: effects on the global mix (route A) are deprecated and ignored on
+  many recent phones; per-session attach (route B) only reaches apps that
+  broadcast their session; capture (route C) adds latency, needs a visible
+  screen-capture consent, and apps can opt out of being captured (protected
+  or DRM audio comes back silent). Calls and some system sounds are likely
+  out of reach on every route. Expect "most music and video apps", not
+  "everything", and say so in the store listing. If no route works on the
+  phones that matter, the product does not exist as imagined: find out in
+  milestone 0, before any screen is built.
+- **Play policy.** Foreground service type, screen-capture consent text and
+  the audio-effect permission (`MODIFY_AUDIO_SETTINGS`) must be declared and
+  justified at Play review. A capture-based app gets extra scrutiny.
+- **Battery and latency.** Route C re-renders all audio: measure battery use
+  and delay (video lip-sync) on a mid-range phone.
 - **Band frequencies.** Only `DynamicsProcessing` takes custom cutoffs. It
   needs Android 9 (API 28) or newer. The minSdk follows from that.
 - **Device differences.** Some phones and Bluetooth routes ignore or alter
@@ -84,10 +97,14 @@ playback starts).
 
 ## Build order
 
+0. **Spike, no UI.** One screen with a single toggle and a fixed +8 dB bass
+   boost, tried on routes A, B and C, on at least three phones (different
+   makers, Android 12 to 15) and one Bluetooth headset, with a music app, a
+   video app and a streaming app. Output: a table of route x device x app
+   showing what is heard. Go or no-go on the product, and the route to build.
 1. **Vertical slice.** S02 with the 5 bars, chevrons and number readout;
-   tables `eq_current` and `app_settings`; `EqualizerEngine.setBandGain`;
-   one hard-coded test track playing through ExoPlayer. Proves the audio
-   path on a real device before anything else.
+   tables `eq_current` and `app_settings`; `EqualizerEngine.setBandGain`
+   on the route the spike chose, for a music app you already have installed.
 2. **Must-haves** (8): S01 profile list; profiles On, Off, Bass Boost;
    -8..+8 range, chevrons, numeric readout, 5 bands; tables `eq_presets`,
    `eq_preset_bands`; `ProfileRepository.list/select`.
@@ -100,7 +117,7 @@ playback starts).
 
 ## Open questions
 
-- Is the first version allowed to play audio itself (own player), or must it
-  equalize other apps' sound? That decides the whole audio design.
+- Answered: the app must equalize all audio (not its own player). Which
+  phones and Android versions must it work on? That sets the spike's targets.
 - Confirm that S02 comes from Cardo Connect, and send S01 (profile list).
 - Confirm the target ("a product to sell") and the minimum Android version.
