@@ -31,7 +31,7 @@ app itself is free.)
 | ID | screen | route / how to reach | purpose | key components | states seen |
 | --- | --- | --- | --- | --- | --- |
 | S01 | Audio Settings | app, then Audio Settings (source 1) | choose a sound profile | profile list, selected marker | none seen |
-| S02 | Equalizer | GUESS: not found in any source | adjust bands | unknown | none seen |
+| S02 | Equalizer | unknown; reference screenshot supplied by the user (`screens/S02-equalizer-reference.png`) | adjust 5 frequency bands | 5 vertical bars labelled 100Hz, 300Hz, 1kHz, 3kHz, 10kHz; scale 8 / 0 / -8 on each; up and down chevrons above and below each bar; gain number centred in each bar | default (all 0); focus (100Hz label bold, its chevrons teal) |
 
 Screens that certainly exist but were not studied: device list and pairing,
 Quick Access home, settings. Out of the slice.
@@ -43,6 +43,11 @@ F01 Pick a sound profile      UNVERIFIED
     S01 Audio Settings -> tap a profile
     happy path clicks: unknown (likely 2 to 3)
     edge: no headset connected, headset without JBL kit, disconnect mid-change
+
+F02 Tune the equalizer         SEEN on S02 only; the route to it is unknown
+    S02 Equalizer -> tap up or down chevron on a band (1 step per tap)
+    happy path clicks: unknown (one per step of gain)
+    edge: -8 and +8 limits, focus moving between bands, reset to 0
 ```
 
 ## Components
@@ -50,6 +55,9 @@ F01 Pick a sound profile      UNVERIFIED
 | component | variants | states | used on |
 | --- | --- | --- | --- |
 | Profile list row | 5 profiles (ON, OFF, Bass Boost, High Volume, Vocal) | selected, unselected; others unknown | S01 |
+| EQ band | 1 of 5 (100Hz, 300Hz, 1kHz, 3kHz, 10kHz) | value 0, focused (bold label, teal chevrons); non-zero not seen | S02 |
+| Chevron button | up, down | default, focused (teal); pressed and limit-disabled not seen | S02 |
+| Gain scale | labels 8, 0, -8 at the left of each bar | static | S02 |
 
 ## Inferred data model
 
@@ -60,17 +68,18 @@ SoundProfile  id (on | off | bass_boost | high_volume | vocal), label
 DeviceSettings  device_id, selected_profile
               evidence: none; the setting is applied on the headset
               confidence: guess
-EqPreset      bands[], gains[]
-              evidence: none
-              confidence: guess
+EqSetting     gains[5] (int, -8..8) for 100, 300, 1000, 3000, 10000 Hz
+              evidence: S02 screenshot (labels, scale, values)
+              confidence: medium for shape; guess for how it is stored or sent
+EqPreset      name, EqSetting; evidence: none; confidence: guess
 ```
 
 Relationships: GUESS: Device 1-1 DeviceSettings, DeviceSettings n-1 SoundProfile.
 
 ## Feature matrix
 
-See `features.csv`. Must: 4, should: 3, could: 3, skip: 6. Rows are
-unverified.
+See `features.csv`. Must: 8, should: 4, could: 3, skip: 6. Rows are
+unverified, except the S02 rows, which come from the user's screenshot.
 
 ## Out of scope (cannot or should not be cloned)
 
@@ -82,13 +91,16 @@ unverified.
 
 ## Size
 
-Screens 2 (1 unconfirmed), flows 1, entities 3 (2 guesses). Hard parts:
-anything touching the headset (no public protocol); an equalizer that is not
-confirmed to exist. Size: S as a phone-side equalizer app; not sizeable as a
-Cardo-compatible clone until the protocol question is answered.
+Screens 2, flows 2, entities 4 (2 guesses). Hard parts: anything touching the
+headset (no public protocol); real-time audio processing on the phone if the
+equalizer is standalone. Size: S as a phone-side 5-band equalizer app in the
+style of S02; not sizeable as a Cardo-compatible clone until the protocol
+question is answered.
 
 ## Open questions for the user
 
-1. Does the equalizer exist in your Cardo Connect? Screenshot S01 and S02.
-2. Is the goal a Cardo-compatible app or a standalone equalizer for the phone?
-3. Confirm the target ("a product to sell").
+1. Is S02 from Cardo Connect, or another app or device? The look (dark
+   grey, vertical bars, chevrons) is not confirmed as Cardo's.
+2. Send a screenshot of S01 (the profile list) and how S02 is opened.
+3. Is the goal a Cardo-compatible app or a standalone equalizer for the phone?
+4. Confirm the target ("a product to sell").
