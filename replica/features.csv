@@ -1,19 +1,19 @@
 feature,area,priority,original,clone,notes
-Audio Settings screen listing sound profiles,sound profiles,must,yes,no,UNVERIFIED: source 1 and 3
-Profile ON (balanced default),sound profiles,must,yes,no,UNVERIFIED: source 1
-Profile OFF (flat unaltered sound),sound profiles,must,yes,no,UNVERIFIED: source 1
-Profile Bass Boost,sound profiles,must,yes,no,UNVERIFIED: source 1 and 2
-Profile Vocal,sound profiles,should,yes,no,UNVERIFIED: source 1 and 2
-Profile High Volume,sound profiles,should,yes,no,UNVERIFIED: source 1
-Selected profile persists and is restored on reconnect,sound profiles,should,unknown,no,GUESS: not in any source
+Audio Settings screen listing sound profiles,sound profiles,must,yes,partial,"UNVERIFIED: source 1 and 3; S01 source written, app module not compiled"
+Profile ON (balanced default),sound profiles,must,yes,partial,UNVERIFIED: source 1; logic tested in core (13 tests); UI not compiled
+Profile OFF (flat unaltered sound),sound profiles,must,yes,partial,UNVERIFIED: source 1; bypass logic tested in core; UI not compiled
+Profile Bass Boost,sound profiles,must,yes,partial,UNVERIFIED: source 1 and 2; gains are ours; logic tested; UI not compiled
+Profile Vocal,sound profiles,should,yes,partial,UNVERIFIED: source 1 and 2; gains are ours; logic tested; UI not compiled
+Profile High Volume,sound profiles,should,yes,partial,"UNVERIFIED: source 1; loudness stage in engine, never run"
+Selected profile persists and is restored on reconnect,sound profiles,should,unknown,partial,GUESS: not in any source; restore tested on the in-memory store only; Room comes with replica-backend
 Automatic volume by ambient noise (AGC),volume,could,yes,no,UNVERIFIED: source 1; processed on the headset
 Audio Mixing settings (music vs intercom levels),mixing,could,yes,no,UNVERIFIED: source 4 release notes; no detail seen
-Equalizer with 5 bands (100Hz 300Hz 1kHz 3kHz 10kHz),equalizer,must,unknown,no,SEEN on the user's screenshot S02; not found in public sources; screen origin not confirmed as Cardo
-Equalize the audio of other apps on the phone,equalizer,must,unknown,no,user decision; feasibility unproven: see architecture.md milestone 0
-Gain range -8 to +8 per band in whole steps,equalizer,must,unknown,no,SEEN on S02 (scale labels 8 0 -8)
-Up and down chevron buttons to change a band,equalizer,must,unknown,no,SEEN on S02; no slider drag seen
-Numeric gain readout in each band,equalizer,must,unknown,no,SEEN on S02 (0 in every bar)
-Reset all bands to flat (0),equalizer,should,unknown,no,GUESS: not on the screenshot
+Equalizer with 5 bands (100Hz 300Hz 1kHz 3kHz 10kHz),equalizer,must,unknown,partial,"SEEN on the user's screenshot S02; not found in public sources; screen origin not confirmed as Cardo; S02 source written, not compiled, no screenshot"
+Equalize the audio of other apps on the phone,equalizer,must,unknown,no,"user decision; feasibility unproven: see architecture.md milestone 0; route A engine written, never run: still needs the milestone 0 spike"
+Gain range -8 to +8 per band in whole steps,equalizer,must,unknown,partial,SEEN on S02 (scale labels 8 0 -8); limits at -8 and +8 tested in core
+Up and down chevron buttons to change a band,equalizer,must,unknown,partial,SEEN on S02; no slider drag seen; disabled at the limits tested in core; UI not compiled
+Numeric gain readout in each band,equalizer,must,unknown,partial,"SEEN on S02 (0 in every bar); S02 source written, not compiled"
+Reset all bands to flat (0),equalizer,should,unknown,partial,GUESS: not on the screenshot; tested in core; UI not compiled
 Save a custom equalizer setting as a preset,equalizer,could,unknown,no,GUESS: not on the screenshot
 JBL profile activation by QR code on the info card,sound profiles,skip,yes,skip,tied to the JBL 45mm hardware kit and a Cardo/JBL licence
 Profile DSP applied inside the headset,sound profiles,skip,yes,skip,runs on the device chip; a clone only sends a setting

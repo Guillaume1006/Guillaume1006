@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Band Tuner</string>
+    <string name="tab_tune">Tune</string>
+    <string name="tab_profiles">Profiles</string>
+    <string name="equalizer_switch">Equalizer</string>
+    <string name="reset">Reset to flat</string>
+    <string name="engine_unavailable">No sound route on this phone: %1$s</string>
+</resources>
