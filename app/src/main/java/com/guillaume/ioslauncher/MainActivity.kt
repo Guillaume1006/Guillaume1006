@@ -9,12 +9,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Outline
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -29,6 +35,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -67,6 +74,15 @@ class MainActivity : Activity() {
     private var apps = emptyList<App>()
     private val pages = ArrayList<View>()
 
+    private lateinit var statusBar: LinearLayout
+    private lateinit var batteryText: TextView
+    private lateinit var batteryView: BatteryView
+    private lateinit var wifiView: WifiView
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = updateBattery(intent)
+    }
+
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = reload()
     }
@@ -77,6 +93,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.setDecorFitsSystemWindows(false)
         buildUi()
+        hideSystemStatusBar()
 
         detector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float): Boolean {
@@ -102,9 +119,51 @@ class MainActivity : Activity() {
             registerReceiver(packageReceiver, filter)
         }
         reload()
+
+        val batteryFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val sticky = if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(batteryReceiver, batteryFilter, Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(batteryReceiver, batteryFilter)
+        }
+        sticky?.let { updateBattery(it) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateWifi()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemStatusBar()
+    }
+
+    private fun hideSystemStatusBar() {
+        window.insetsController?.let {
+            it.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            it.hide(WindowInsets.Type.statusBars())
+        }
+    }
+
+    private fun updateBattery(intent: Intent) {
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
+        val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        val pct = level * 100 / scale
+        batteryText.text = "$pct%"
+        batteryView.set(pct, charging)
+    }
+
+    private fun updateWifi() {
+        val cm = getSystemService(ConnectivityManager::class.java)
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+        wifiView.visibility = if (caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) View.VISIBLE else View.GONE
     }
 
     override fun onDestroy() {
+        unregisterReceiver(batteryReceiver)
         unregisterReceiver(packageReceiver)
         super.onDestroy()
     }
@@ -138,8 +197,30 @@ class MainActivity : Activity() {
             background = rounded(0x59FFFFFF, 32)
         }
 
+        statusBar = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(30), 0, dp(30), 0)
+        }
+        statusBar.addView(TextClock(this).apply {
+            format24Hour = "HH:mm"
+            format12Hour = "h:mm"
+            setTextColor(Color.WHITE)
+            textSize = 15f
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+        }, LinearLayout.LayoutParams(0, wrap, 1f))
+        wifiView = WifiView(this)
+        batteryText = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 12f
+        }
+        batteryView = BatteryView(this)
+        statusBar.addView(wifiView, LinearLayout.LayoutParams(dp(18), dp(14)).apply { rightMargin = dp(8) })
+        statusBar.addView(batteryText, LinearLayout.LayoutParams(wrap, wrap).apply { rightMargin = dp(5) })
+        statusBar.addView(batteryView, LinearLayout.LayoutParams(dp(27), dp(13)))
+
         val main = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            addView(statusBar, LinearLayout.LayoutParams(match, dp(36)))
             addView(pager, LinearLayout.LayoutParams(match, 0, 1f))
             addView(dots, LinearLayout.LayoutParams(match, dp(24)))
             addView(dock, LinearLayout.LayoutParams(match, dp(88)).apply {
@@ -178,9 +259,11 @@ class MainActivity : Activity() {
         root.addView(search, FrameLayout.LayoutParams(match, match))
 
         root.setOnApplyWindowInsetsListener { _, insets ->
-            val bars = insets.getInsets(WindowInsets.Type.systemBars())
-            main.setPadding(0, bars.top, 0, bars.bottom)
-            search.setPadding(dp(16), bars.top + dp(16), dp(16), bars.bottom + dp(16))
+            val top = insets.getInsetsIgnoringVisibility(WindowInsets.Type.statusBars()).top
+            val bottom = insets.getInsets(WindowInsets.Type.navigationBars()).bottom
+            statusBar.layoutParams = statusBar.layoutParams.apply { height = top }
+            main.setPadding(0, 0, 0, bottom)
+            search.setPadding(dp(16), top + dp(16), dp(16), bottom + dp(16))
             insets
         }
 
@@ -517,5 +600,61 @@ class MainActivity : Activity() {
             }
             searchResults.addView(row, LinearLayout.LayoutParams(match, wrap))
         }
+    }
+}
+
+private class BatteryView(context: Context) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var level = 100
+    private var charging = false
+
+    fun set(level: Int, charging: Boolean) {
+        this.level = level
+        this.charging = charging
+        invalidate()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val d = resources.displayMetrics.density
+        val nub = 2f * d
+        val body = RectF(d, d, width - nub - d, height - d)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = d
+        paint.color = 0x99FFFFFF.toInt()
+        canvas.drawRoundRect(body, 3.5f * d, 3.5f * d, paint)
+
+        paint.style = Paint.Style.FILL
+        canvas.drawRoundRect(RectF(width - nub - d, height * 0.35f, width.toFloat() - d * 0.5f, height * 0.65f), d, d, paint)
+
+        paint.color = when {
+            charging -> 0xFF34C759.toInt()
+            level <= 20 -> 0xFFFF3B30.toInt()
+            else -> Color.WHITE
+        }
+        val inner = RectF(body.left + 2 * d, body.top + 2 * d, body.right - 2 * d, body.bottom - 2 * d)
+        inner.right = inner.left + inner.width() * level / 100f
+        canvas.drawRoundRect(inner, 2 * d, 2 * d, paint)
+    }
+}
+
+private class WifiView(context: Context) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val d = resources.displayMetrics.density
+        val cx = width / 2f
+        val cy = height - 1.5f * d
+        paint.strokeWidth = 1.8f * d
+        for (r in listOf(5f, 9f, 13f)) {
+            val rr = r * d
+            canvas.drawArc(RectF(cx - rr, cy - rr, cx + rr, cy + rr), -135f, 90f, false, paint)
+        }
+        paint.style = Paint.Style.FILL
+        canvas.drawCircle(cx, cy, 1.4f * d, paint)
+        paint.style = Paint.Style.STROKE
     }
 }
