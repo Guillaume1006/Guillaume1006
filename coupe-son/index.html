@@ -289,6 +289,7 @@ kbd { font-family: var(--font-mono); font-size: 11px; background: var(--surface-
       <div style="min-width:0"><div class="name" id="resName"></div><div class="meta" id="resMeta"></div></div>
       <div class="acts">
         <button id="btnResPlay" type="button">Écouter</button>
+        <button id="btnShare" type="button" hidden>Partager</button>
         <button id="btnSave" class="primary" type="button">Enregistrer</button>
       </div>
     </div>
@@ -793,8 +794,26 @@ kbd { font-family: var(--font-mono); font-size: 11px; background: var(--surface-
     } catch (err) { toast(err.message || "L'export a échoué."); }
     finally { btn.disabled = false; setTimeout(() => { $("prog").hidden = true; }, 500); }
   }
+  // Application Android : le WebView ne sait pas télécharger un blob, on passe par le pont natif.
+  async function saveToAndroid(r) {
+    const buf = new Uint8Array(await r.blob.arrayBuffer()), CH = 3 * 262144;
+    AndroidBridge.begin(r.name, r.blob.type || "audio/mpeg");
+    for (let i = 0; i < buf.length; i += CH) {
+      const sub = buf.subarray(i, i + CH); let bin = "";
+      for (let k = 0; k < sub.length; k += 8192) bin += String.fromCharCode.apply(null, sub.subarray(k, k + 8192));
+      AndroidBridge.chunk(btoa(bin));
+      await new Promise((res) => setTimeout(res));
+    }
+    return AndroidBridge.finish();
+  }
   async function saveResult() {
     const r = S.result; if (!r) return;
+    if (window.AndroidBridge) {
+      const res = await saveToAndroid(r);
+      r.saved = !res.startsWith("ERREUR");
+      toast(r.saved ? "Enregistré dans " + res : "L'enregistrement a échoué. " + res);
+      return;
+    }
     let dl = null;
     try { dl = window.claude && claude.use ? await claude.use("downloads") : null; } catch {}
     if (dl) {
@@ -912,6 +931,14 @@ kbd { font-family: var(--font-mono); font-size: 11px; background: var(--surface-
   $("btnPreview").addEventListener("click", playPreview);
   $("btnResPlay").addEventListener("click", () => { if (S.play && S.play.kind === "result") stopPlay(); else if (S.result) startPlay(0, null, "result", S.result.buf, false); });
   $("btnSave").addEventListener("click", saveResult);
+  if (window.AndroidBridge) {
+    $("btnShare").hidden = false;
+    $("btnShare").addEventListener("click", async () => {
+      const r = S.result; if (!r) return;
+      if (!r.saved) { const res = await saveToAndroid(r); r.saved = !res.startsWith("ERREUR"); if (!r.saved) { toast(res); return; } }
+      AndroidBridge.share();
+    });
+  }
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("input[type='text'],input[type='number'],select,textarea")) return;
     if (e.code === "Space" && !e.target.closest("button")) { e.preventDefault(); togglePlay(); }
