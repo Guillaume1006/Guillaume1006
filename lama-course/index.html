@@ -13,9 +13,9 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 const W = 540, H = 960, MAX_LEVEL = 40;
 const PX = 270, PY = 845;                       // pivot du canon
 const FONT = "'Trebuchet MS',Verdana,sans-serif";
-const LANES = 6, LANE_Y0 = 222, LANE_H = 40;    // couloirs de course en haut du stand
+const LANES = 5, LANE_Y0 = 228, LANE_H = 48;    // couloirs de course en haut du stand
 const START_X = 146, FINISH_X = 402;            // départ et arrivée (centre du lama)
-const ME = 5;                                   // ton lama : couloir du bas
+const ME = 4;                                   // ton lama : couloir du bas
 const RAIL_Y = 676;                             // rail du récipient
 const hitsFor = l => Math.round(10 + 14 * (l - 1) / 39);   // tirs réussis pour finir la course
 const raceTime = l => 34 - 12 * (l - 1) / 39;              // durée de course du meilleur adversaire (s)
@@ -34,7 +34,6 @@ const RACERS = [
   { col: '#ffc933', dark: '#a87400', fur: ['#e6c094', '#a87a4c'], hat: ['#7a4cc2', '#2fb7a6', '#ffc933'] },
   { col: '#7a4cc2', dark: '#432280', fur: ['#f6efe8', '#c4b4a4'], hat: ['#ffc933', '#e3222f', '#7a4cc2'] },
   { col: '#ff8a2a', dark: '#b2500c', fur: ['#cfa070', '#8a5e3a'], hat: ['#2fb7a6', '#ffc933', '#e3222f'] },
-  { col: '#3a8ae0', dark: '#164f98', fur: ['#ece0d0', '#b4a084'], hat: ['#e3222f', '#7ad0ff', '#ffc933'] },
   { col: '#ff5a9a', dark: '#b8225e', fur: ['#fffaf4', '#e0cab0'], hat: ['#ff5a9a', '#ffc933', '#7a4cc2'] }
 ];
 
@@ -220,16 +219,17 @@ function drawBack() {
     const ly = LANE_Y0 + i * LANE_H, me = i === ME, c = RACERS[i];
     ctx.fillStyle = vgrad(ly, ly + LANE_H, me ? [[0, '#ffd6e2'], [1, '#f2a6c0']] : i % 2 ? [[0, '#f6cf8a'], [1, '#e2a860']] : [[0, '#f0c27a'], [1, '#d89a50']]); ctx.fillRect(tx0 + 4, ly, tx1 - tx0 - 8, LANE_H);
     seed = 100 + i;
-    for (let j = 0; j < 70; j++) { ctx.fillStyle = rnd() < .5 ? 'rgba(120,60,20,.18)' : 'rgba(255,240,200,.35)'; circ(tx0 + 4 + rnd() * (tx1 - tx0 - 8), ly + 4 + rnd() * 30, .5 + rnd() * 1.1); }
+    for (let j = 0; j < 84; j++) { ctx.fillStyle = rnd() < .5 ? 'rgba(120,60,20,.18)' : 'rgba(255,240,200,.35)'; circ(tx0 + 4 + rnd() * (tx1 - tx0 - 8), ly + 4 + rnd() * (LANE_H - 10), .5 + rnd() * 1.1); }
     ctx.fillStyle = vgrad(ly, ly + 9, [[0, 'rgba(60,20,0,.4)'], [1, 'rgba(60,20,0,0)']]); ctx.fillRect(tx0 + 4, ly, tx1 - tx0 - 8, 9);
     // rainure où glisse le lama
-    ctx.fillStyle = 'rgba(60,24,6,.75)'; rr(START_X - 18, ly + 32, FINISH_X - START_X + 34, 4, 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,230,180,.5)'; ctx.fillRect(START_X - 16, ly + 36, FINISH_X - START_X + 30, 1);
+    ctx.fillStyle = 'rgba(60,24,6,.75)'; rr(START_X - 18, ly + LANE_H - 8, FINISH_X - START_X + 34, 4, 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,180,.5)'; ctx.fillRect(START_X - 16, ly + LANE_H - 4, FINISH_X - START_X + 30, 1);
     ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(tx0 + 4, ly + LANE_H - 1, tx1 - tx0 - 8, 1);
     // plaque du couloir
-    ctx.fillStyle = vgrad(ly + 7, ly + 31, [[0, c.col], [1, c.dark]]); rr(tx0 + 6, ly + 8, 24, 22, 4); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; rr(tx0 + 6.5, ly + 8.5, 23, 21, 3.5); ctx.stroke();
-    if (me) text('TOI', tx0 + 18, ly + 19.5, 9, '#fff', 'center', c.dark); else text(String(i + 1), tx0 + 18, ly + 19.5, 14, '#fff', 'center', c.dark);
+    const pl = ly + LANE_H / 2 - 13;
+    ctx.fillStyle = vgrad(pl, pl + 26, [[0, c.col], [1, c.dark]]); rr(tx0 + 6, pl, 26, 26, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1; rr(tx0 + 6.5, pl + .5, 25, 25, 3.5); ctx.stroke();
+    if (me) text('TOI', tx0 + 19, pl + 13.5, 10, '#fff', 'center', c.dark); else text(String(i + 1), tx0 + 19, pl + 13.5, 16, '#fff', 'center', c.dark);
   }
   // ligne de départ, damier d'arrivée et drapeau
   ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(START_X - 3, LANE_Y0, 2, LANES * LANE_H);
@@ -400,11 +400,11 @@ function buildRacers() {
     c.legFar = sprite(() => racerLeg(c, true), -7, -2, 14, 35);
   });
 }
-const laneGround = i => LANE_Y0 + i * LANE_H + 34;
+const laneGround = i => LANE_Y0 + i * LANE_H + LANE_H - 6;
 const racerX = r => START_X + Math.min(1, r.p) * (FINISH_X - START_X);
 function racerLegAt(s, x, y, a) { ctx.save(); ctx.translate(x, y); ctx.rotate(a); put(s); ctx.restore(); }
 function drawRacer(r) {
-  const c = RACERS[r.i], s = .55 + r.i * .012, x = racerX(r), y = laneGround(r.i);
+  const c = RACERS[r.i], s = .66 + r.i * .014, x = racerX(r), y = laneGround(r.i);
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   if (r.i === ME) { ctx.fillStyle = rg(0, -2, 2, 0, -2, 36, [[0, `rgba(255,70,140,${.45 + .15 * Math.sin(time * 5)})`], [1, 'rgba(255,70,140,0)']]); ell(0, -2, 36, 10); }
   softShadow(0, 0, 24, 4, .4);
@@ -415,7 +415,7 @@ function drawRacer(r) {
   ctx.save(); ctx.translate(14, -45 + bob); ctx.rotate(.14 * r.run + Math.sin(ph) * .07 * r.run + Math.sin(time * 1.5 + r.i * 2) * .04 * (1 - r.run)); put(c.head); ctx.restore();
   ctx.restore();
   if (r.rank) {   // médaille d'arrivée
-    const mc = [['#fff3a0', '#e0a800'], ['#ffffff', '#a8aab8'], ['#ffd2a0', '#b8682a']][r.rank - 1] || ['#e8e0f0', '#8a8098'], my = y - 40;
+    const mc = [['#fff3a0', '#e0a800'], ['#ffffff', '#a8aab8'], ['#ffd2a0', '#b8682a']][r.rank - 1] || ['#e8e0f0', '#8a8098'], my = y - 46;
     ctx.fillStyle = rg(x - 2, my - 2, .5, x, my, 8, [[0, mc[0]], [1, mc[1]]]); circ(x - 6, my, 7);
     ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x - 6, my, 7, 0, 6.283); ctx.stroke();
     text(String(r.rank), x - 6, my + .5, 10, '#5a3a10', 'center', 'rgba(255,255,255,.8)');
@@ -484,7 +484,7 @@ level = loadSaved();
 
 function resetRace() {
   hits = 0; winner = -1; finishers = 0;
-  const best = Math.floor(Math.random() * 5);
+  const best = Math.floor(Math.random() * (LANES - 1));
   racers = RACERS.map((c, i) => ({ i, p: 0, v: 0, vt: 0, k: i === best ? 1 : .8 + .17 * Math.random(), next: 0, phase: Math.random() * 6, run: 0, rank: 0 }));
   Object.assign(jar, { x: 270, v: 0, vt: 0, next: 0, fill: 0, slosh: 0, sv: 0, splash: 0 });
 }
@@ -1230,7 +1230,7 @@ function drawHUD() {
   ctx.fillStyle = lg(0, 22, 0, 84, [[0, 'rgba(90,40,18,.92)'], [1, 'rgba(46,18,8,.92)']]); rr(14, 22, W - 28, 62, 16); ctx.fill();
   ctx.strokeStyle = lg(0, 22, 0, 84, [[0, '#ffe08a'], [1, '#b8802a']]); ctx.lineWidth = 2.5; rr(14, 22, W - 28, 62, 16); ctx.stroke();
   text('NIVEAU ' + level, 30, 42, 20, '#ffe066', 'left');
-  const rk = myRank(); text((rk === 1 ? '1er' : rk + 'e') + ' / 6', W / 2, 42, 22, rk === 1 ? '#9affb8' : '#fff');
+  const rk = myRank(); text((rk === 1 ? '1er' : rk + 'e') + ' / ' + LANES, W / 2, 42, 22, rk === 1 ? '#9affb8' : '#fff');
   const n = hitsFor(level); text(hits + ' / ' + n, W - 30, 42, 22, '#7ff0ff', 'right');
   ctx.font = `bold 22px ${FONT}`; const dx = W - 38 - ctx.measureText(hits + ' / ' + n).width;   // goutte d'eau
   ctx.fillStyle = rg(dx - 1.5, 41, .5, dx, 42, 8, [[0, '#e8fbff'], [.4, '#5ac8ff'], [1, '#1a6ad0']]);
