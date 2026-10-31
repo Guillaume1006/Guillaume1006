@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b10">
+<title>Onde — Radios de France</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1>Onde<span>.</span></h1>
+    <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="q" type="search" placeholder="Rechercher une radio, un genre…" autocomplete="off"></div>
+    <nav class="chips" id="genres"></nav>
+  </header>
+
+  <main id="view"></main>
+
+  <div id="mini" class="mini hidden">
+    <button class="mini-info" id="openFull">
+      <div class="logo" id="miniLogo"></div>
+      <div class="txt"><b id="miniName">—</b><small id="miniSub">—</small></div>
+    </button>
+    <button class="icon" id="miniPlay" aria-label="Lecture/Pause"></button>
+  </div>
+
+  <nav class="tabs">
+    <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg>Accueil</button>
+    <button data-tab="fav"><svg viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.800-8 11-8 11z"/></svg>Favoris</button>
+    <button data-tab="all"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Toutes</button>
+  </nav>
+
+  <section id="full" class="full hidden" aria-modal="true">
+    <button class="icon close" id="closeFull" aria-label="Réduire"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="art" id="fullLogo"></div>
+    <h2 id="fullName">—</h2>
+    <p id="fullSub">—</p>
+    <div class="viz" id="viz"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="ctrl">
+      <button class="icon" id="prev" aria-label="Précédente"><svg viewBox="0 0 24 24"><path d="M6 5v14M19 5 9 12l10 7z"/></svg></button>
+      <button class="play" id="fullPlay" aria-label="Lecture/Pause"></button>
+      <button class="icon" id="next" aria-label="Suivante"><svg viewBox="0 0 24 24"><path d="M18 5v14M5 5l10 7-10 7z"/></svg></button>
+    </div>
+    <div class="row">
+      <button class="icon" id="favBtn" aria-label="Favori"><svg viewBox="0 0 24 24"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.800-8 11-8 11z"/></svg></button>
+      <input id="vol" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+      <button class="icon" id="sleepBtn" aria-label="Minuteur"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg><em id="sleepLbl"></em></button>
+    </div>
+  </section>
+</div>
+<audio id="audio" preload="none"></audio>
+<script src="stations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
