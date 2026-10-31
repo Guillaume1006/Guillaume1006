@@ -470,7 +470,7 @@ function drawJar() {
 // ---------- mini-jeux : chacun fait avancer ton lama ----------
 const MODES = {
   jar: { name: 'Le bocal', hint: 'Remplis-le pour faire courir ton lama !', k: 1.15 },
-  balloons: { name: 'Les ballons', hint: "Arrose les ballons jusqu'à ce qu'ils éclatent !", k: 1.25 },
+  balloons: { name: 'Les ballons', hint: 'Fais éclater les ballons, même tout en haut !', k: 1 },
   flowers: { name: 'Les cactus assoiffés', hint: 'Arrose vite le cactus qui a soif !', k: 1.2 },
   candles: { name: "Le gâteau d'anniversaire", hint: 'Éteins les bougies du gâteau !', k: 1.1 },
   wheel: { name: 'Le moulin à eau', hint: "Fais tourner le moulin sans t'arrêter !", k: 1.1 }
@@ -480,7 +480,7 @@ const modeFor = l => MODE_ORDER[(l - 1) % MODE_ORDER.length];
 const modeName = (m, l) => m === 'jar' ? jarFor(l).name.replace(/^./, c => c.toUpperCase()) : MODES[m].name;
 let mode = 'jar', prog = 0;
 const diff = () => (level - 1) / (MAX_LEVEL - 1);   // difficulté de 0 à 1
-const unitsFor = () => Math.round(mode === 'flowers' ? 8 + 5 * diff() : mode === 'balloons' ? 10 + 4 * diff() : 10 + 5 * diff());
+const unitsFor = () => Math.round(mode === 'flowers' ? 8 + 5 * diff() : mode === 'balloons' ? 10 + 8 * diff() : 10 + 5 * diff());
 const cartR = () => mode === 'jar' ? jarFor(level).r : mode === 'candles' ? 40 : 36;   // demi-largeur de ce que porte le chariot
 const onCart = () => mode === 'jar' || mode === 'candles' || mode === 'wheel';
 const POT_X = [150, 230, 310, 390], POT_Y = RAIL_Y + 1, CAKE_TOP = RAIL_Y - 60, WHEEL_R = 30, WHEEL_Y = RAIL_Y - 48;
@@ -495,7 +495,7 @@ function modeReset() {
   wheel = { a: 0, w: 0, tick: 0 };
 }
 function modeAimY(fy) {   // hauteur où arrive le jet : libre pour les ballons, sinon sur la cible
-  if (mode === 'balloons') return Math.max(490, Math.min(682, fy));
+  if (mode === 'balloons') return Math.max(170, Math.min(682, fy));
   if (mode === 'flowers') return POT_Y - 40;
   if (mode === 'candles') return CAKE_TOP - 16;
   if (mode === 'wheel') return WHEEL_Y - 24;
@@ -530,7 +530,7 @@ function modeLand(d) {   // vrai si l'eau touche la cible du mini-jeu
   if (mode === 'balloons') {
     for (const b of balloons) {
       const r = b.r * (1 + .35 * b.w / b.need);
-      if (b.popped || Math.hypot(x - b.x, (y - b.y) / 1.15) > r + 3) continue;
+      if (b.popped || Math.hypot(x - b.x, (y - b.y) / 1.15) > r + 5) continue;
       b.w++; b.hitT = time;
       if (Math.random() < .3) parts.push({ x, y, vx: (Math.random() - .5) * 90, vy: -40 - Math.random() * 60, life: .3, max: .3, r: 1 + Math.random() * 1.5 });
       if (b.w >= b.need) popBalloon(b);
@@ -558,13 +558,14 @@ function modeLand(d) {   // vrai si l'eau touche la cible du mini-jeu
 function modeUpdate(dt) {
   const playing = state === 'play', dd = diff();
   if (mode === 'balloons') {
-    if (playing && time > nextBalloon && balloons.filter(b => !b.popped).length < 6) {
+    if (playing && time > nextBalloon && balloons.filter(b => !b.popped).length < 7) {
       nextBalloon = time + .55 + Math.random() * (.8 - .3 * dd);
       const gold = Math.random() < .12;
-      balloons.push({ x: 140 + Math.random() * 260, y: 712, vy: -(26 + Math.random() * 18 + 28 * dd), r: 17 - 3 * dd, w: 0, need: Math.round(9 + 3 * dd), col: gold ? ['#ffe066', '#b88a00'] : BALLOON_COLS[Math.floor(Math.random() * BALLOON_COLS.length)], gold, ph: Math.random() * 6, hitT: -9, popped: false });
+      balloons.push({ x: 140 + Math.random() * 260, y: 712, vy: -(26 + Math.random() * 18 + 44 * dd), r: 17 - 4 * dd, w: 0, need: Math.round(9 + 6 * dd), col: gold ? ['#ffe066', '#b88a00'] : BALLOON_COLS[Math.floor(Math.random() * BALLOON_COLS.length)], gold, ph: Math.random() * 6, hitT: -9, popped: false });
     }
-    for (const b of balloons) { const slow = time - b.hitT < .15 ? .35 : 1; b.y += b.vy * dt * slow; b.x += Math.sin(time * 1.6 + b.ph) * 12 * dt; }
-    balloons = balloons.filter(b => !b.popped && b.y > 440);
+    for (const b of balloons) { const slow = time - b.hitT < .2 ? .2 : 1;   // un ballon arrosé s'arrête presque
+      b.y += b.vy * dt * slow; b.x += Math.sin(time * 1.6 + b.ph) * 12 * dt; }
+    balloons = balloons.filter(b => !b.popped && b.y > 150);
   } else if (mode === 'flowers') {
     const maxT = 1 + (dd > .35) + (dd > .7);
     if (playing && time > nextThirst && pots.filter(p => p.st === 'thirsty').length < maxT) {
@@ -601,9 +602,10 @@ function drawCart(x, R) {
   ctx.fillStyle = 'rgba(255,230,170,.6)'; ctx.fillRect(x - R - 7, by - .5, 2 * R + 14, 1.2);
 }
 function drawBalloons() {
-  ctx.save(); ctx.beginPath(); ctx.rect(104, 478, 332, RAIL_Y + 16 - 478); ctx.clip();   // ils sortent de derrière le panneau du bas
+  ctx.save(); ctx.beginPath(); ctx.rect(104, 140, 332, RAIL_Y + 16 - 140); ctx.clip();   // ils sortent de derrière le panneau du bas et montent jusque sous le toit
   for (const b of balloons) {
     const k = b.w / b.need, r = b.r * (1 + .35 * k), ry = r * 1.15, x = b.x + Math.sin(time * 34) * k * 1.2, y = b.y;
+    ctx.globalAlpha = Math.min(1, (y - 150) / 40);   // s'efface en arrivant sous le toit
     ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(x, y + ry + 3);
     for (let j = 1; j <= 7; j++) ctx.lineTo(x + Math.sin(time * 3 + b.ph + j) * 2.5, y + ry + 3 + j * 5); ctx.stroke();
     ctx.fillStyle = b.col[1]; ctx.beginPath(); ctx.moveTo(x, y + ry - 1); ctx.lineTo(x - 3.2, y + ry + 4); ctx.lineTo(x + 3.2, y + ry + 4); ctx.fill();
@@ -612,7 +614,7 @@ function drawBalloons() {
     if (b.gold) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const tw = .5 + .5 * Math.sin(time * 8 + b.ph); ctx.strokeStyle = `rgba(255,255,220,${tw})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + r * .3 - 5, y - 2); ctx.lineTo(x + r * .3 + 5, y - 2); ctx.moveTo(x + r * .3, y - 7); ctx.lineTo(x + r * .3, y + 3); ctx.stroke(); ctx.restore(); }
     if (k > 0) { ctx.strokeStyle = `rgba(255,255,255,${.5 * k})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, r + 2, ry + 2, 0, 0, 6.283); ctx.stroke(); }
   }
-  ctx.restore();
+  ctx.globalAlpha = 1; ctx.restore();
 }
 function drawPots() {
   const dd = diff();
@@ -756,7 +758,8 @@ const cannonRot = () => Math.max(-.6, Math.min(.6, aim + Math.PI / 2));
 const lean = () => cannonRot() * .35;
 // point du canon (repère tourné du fût) vers les coordonnées du jeu
 const cannonPt = (lx, ly) => { const r = cannonRot(), c = Math.cos(r), s = Math.sin(r); return [PX + .8 * (lx * c - ly * s), PY + .8 * (recoil * .4 + lx * s + ly * c)]; };
-const mouth = () => cannonPt(0, -126);
+const cannonPitch = () => Math.max(0, Math.min(1, (640 - aimY) / 440));   // 0 : vise en bas, 1 : vise tout en haut
+const mouth = () => cannonPt(0, -126 - 30 * cannonPitch());
 const GRIP_X = 58, GRIP_Y = -8;
 
 // ---------- jet d'eau continu ----------
@@ -770,7 +773,7 @@ function sprayUpdate(dt) {
   aim = Math.atan2(ty - PY, aimX - PX);
   if (spraying && canSpray()) {
     emitAcc += dt * RATE;
-    while (emitAcc >= 1) { emitAcc--; const [mx, my] = mouth(); drops.push({ x0: mx, y0: my, x1: aimX + (Math.random() - .5) * 3, y1: ty, t: 0, dur: .42, id: streamId, born: time, x: mx, y: my }); }
+    while (emitAcc >= 1) { emitAcc--; const [mx, my] = mouth(); drops.push({ x0: mx, y0: my, x1: aimX + (Math.random() - .5) * 3, y1: ty, t: 0, dur: .25 + Math.hypot(aimX - mx, ty - my) / 1800, id: streamId, born: time, x: mx, y: my }); }
     recoil = 2.5 + Math.random() * 1.5;
     if (drops.length && Math.random() < dt * 30) { const d = drops[Math.floor(Math.random() * drops.length)]; parts.push({ x: d.x, y: d.y, vx: (Math.random() - .5) * 60, vy: (Math.random() - .5) * 60, life: .3, max: .3, r: 1 + Math.random() * 1.5 }); }
   } else emitAcc = 0;
@@ -923,7 +926,8 @@ function drawCannon() {
   ctx.fillStyle = 'rgba(255,255,255,.4)'; rr(PX - 48, PY + 11, 96, 3, 1.5); ctx.fill();
   for (const bx of [-30, 30]) { ctx.fillStyle = rg(PX + bx - 1, PY + 31, .3, PX + bx, PY + 32, 4, [[0, '#fff'], [1, '#6a6a7a']]); circ(PX + bx, PY + 32, 3.5); }
   ctx.save(); ctx.translate(PX, PY + recoil * .4); ctx.rotate(cannonRot());
-  ctx.save(); ctx.translate(0, -34); ctx.rotate(-Math.PI / 2);
+  const pitch = cannonPitch();
+  ctx.save(); ctx.scale(1, 1 + .3 * pitch); ctx.translate(0, -34); ctx.rotate(-Math.PI / 2);   // le fût se lève (vu de dos, il paraît plus long)
   // fût en porcelaine brillante
   ctx.fillStyle = vgrad(-24, 24, [[0, '#ffffff'], [.2, '#f6f2ee'], [.65, '#d6d0cc'], [1, '#8c8686']]); rr(-48, -24, 96, 48, 18); ctx.fill();
   ctx.fillStyle = lg(0, 0, 0, 0, [[0, '#fff'], [1, '#fff']]); ctx.fillStyle = 'rgba(255,255,255,.75)'; rr(-38, -20, 76, 5, 2.5); ctx.fill();
@@ -941,7 +945,7 @@ function drawCannon() {
     ctx.fillStyle = 'rgba(255,255,255,.4)'; rr(k * GRIP_X - 3.5, GRIP_Y - 12, 2.2, 24, 1.1); ctx.fill();
   }
   // tête de lama de dos, regard vers les cibles
-  ctx.save(); ctx.translate(0, -108); llamaHeadBack(0, 0, 1.4);
+  ctx.save(); ctx.translate(0, -108 - 30 * pitch); llamaHeadBack(0, 0, 1.4);
   [[-24, -2, '#ffc933'], [-26, 8, '#2fb7a6'], [24, -2, '#ffc933'], [26, 8, '#2fb7a6']].forEach(([x, y, c]) => { ctx.fillStyle = rg(x - 1, y - 1, .3, x, y, 3.8, [[0, '#fff'], [.35, c], [1, 'rgba(0,0,0,.6)']]); circ(x, y, 3.6); });
   ctx.restore();
   ctx.restore();
