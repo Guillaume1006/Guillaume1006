@@ -1037,28 +1037,11 @@ function drawScreen(sc, i) {
     ctx.strokeStyle = `rgba(255,255,255,${tw * .9})`; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(x - l, y); ctx.lineTo(x + l, y); ctx.moveTo(x, y - l); ctx.lineTo(x, y + l); ctx.stroke();
   }
   ctx.restore();
-  // compte à rebours de la course (3, 2, 1, PARTEZ !), sinon mot en néon
-  const go = state === 'play' && time - goT < 1.4, cd = state === 'count' ? Math.ceil(countT) : go ? 0 : -1;
-  const k = cd > 0 ? countT % 1 || 1 : go ? 1 - (time - goT) / 1.4 : 0;   // 1 au début de chaque seconde, puis 0
+  // compte à rebours de la course : gros chiffres qui clignotent, puis « PARTEZ ! » en zoom avant
+  const go = state === 'play' && time - goT < 1.5, cd = state === 'count' ? Math.ceil(countT) : go ? 0 : -1;
+  const k = cd > 0 ? countT % 1 || 1 : 0;   // 1 au début de chaque seconde, puis 0
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-  if (cd > 0) {
-    const col = ['', '#ffe14a', '#ffa03a', '#ff4a5a'][cd], cy = 76;
-    ctx.fillStyle = 'rgba(8,0,16,.6)'; circ(w / 2, cy, 29);
-    ctx.lineCap = 'round'; ctx.lineWidth = 4;
-    ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.beginPath(); ctx.arc(w / 2, cy, 27, 0, 6.283); ctx.stroke();
-    ctx.strokeStyle = col; ctx.beginPath(); ctx.arc(w / 2, cy, 27, -Math.PI / 2, -Math.PI / 2 + 6.283 * k); ctx.stroke();
-    ctx.font = `bold ${Math.round(38 + 16 * k * k * k)}px ${FONT}`;
-    ctx.strokeStyle = col; ctx.globalAlpha = .35; for (const lw of [10, 6]) { ctx.lineWidth = lw; ctx.strokeText(String(cd), w / 2, cy + 2); }
-    ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.fillText(String(cd), w / 2, cy + 2);
-  } else if (go) {
-    const cy = 76;
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(w / 2, cy); ctx.rotate(time * 2);
-    for (let j = 0; j < 10; j++) { ctx.rotate(.628); ctx.fillStyle = `rgba(90,255,150,${.3 * k})`; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(70, -6); ctx.lineTo(70, 6); ctx.fill(); }
-    ctx.restore();
-    ctx.font = `bold 20px ${FONT}`; const fs = Math.min(20, 20 * (w - 8) / ctx.measureText('PARTEZ !').width) * (1 + .25 * k);
-    ctx.font = `bold ${fs.toFixed(1)}px ${FONT}`; ctx.strokeStyle = '#0a4a2a'; ctx.lineWidth = 4; ctx.strokeText('PARTEZ !', w / 2, cy);
-    ctx.fillStyle = '#9affb8'; ctx.fillText('PARTEZ !', w / 2, cy);
-  } else {
+  if (cd < 0) {   // mot en néon qui change toutes les deux mesures
     const word = ['DISCO', 'DANSE !', 'LAMA !', 'YOUPI !'][(Math.floor(beat / 8) + i) % 4];
     ctx.font = `bold 11px ${FONT}`; ctx.strokeStyle = `hsla(${(hue + 160) % 360},100%,60%,${.25 + .2 * Math.pow(1 - ph, 2)})`;
     for (const lw of [7, 4]) { ctx.lineWidth = lw; ctx.strokeText(word, w / 2, 54); }
@@ -1070,8 +1053,51 @@ function drawScreen(sc, i) {
   else if (go) P = pose(3, beat * 2);
   else P = dancerPose(i, beat);
   ctx.save(); ctx.translate(w / 2, h - 24); ctx.scale(.62, .62); drawDancer(DANCERS[i], P); ctx.restore();
-  // flash sur le temps fort (ou à chaque seconde du compte à rebours)
-  ctx.fillStyle = cd > 0 ? `rgba(255,240,220,${.3 * Math.pow(k, 4)})` : `rgba(255,240,255,${.12 * Math.pow(1 - ph, 4)})`; ctx.fillRect(0, 0, w, h);
+  const cy = 106;
+  if (cd > 0) {
+    const col = ['', '#ffe14a', '#ffa03a', '#ff4a5a'][cd], on = k > .33;
+    ctx.font = `bold 120px ${FONT}`;
+    if (on) {   // allumé pendant les deux premiers tiers de chaque seconde
+      const sc = 1 + .4 * Math.pow(Math.max(0, (k - .85) / .15), 2);   // arrive un peu plus gros puis se pose
+      ctx.fillStyle = 'rgba(10,0,20,.5)'; ctx.fillRect(0, 0, w, h);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = rg(w / 2, cy, 5, w / 2, cy, 95, [[0, col + '99'], [1, col + '00']]); ctx.fillRect(0, 0, w, h); ctx.restore();
+      ctx.save(); ctx.translate(w / 2, cy + 4); ctx.scale(sc, sc);
+      ctx.strokeStyle = col; ctx.globalAlpha = .45; for (const lw of [18, 10]) { ctx.lineWidth = lw; ctx.strokeText(String(cd), 0, 0); }
+      ctx.globalAlpha = 1; ctx.strokeStyle = '#2a0610'; ctx.lineWidth = 5; ctx.strokeText(String(cd), 0, 0);
+      ctx.fillStyle = lg(0, -45, 0, 45, [[0, '#ffffff'], [.55, '#ffffff'], [1, col]]); ctx.fillText(String(cd), 0, 0);
+      ctx.restore();
+    } else {    // éteint : on devine le chiffre comme une enseigne lumineuse coupée
+      ctx.fillStyle = 'rgba(10,0,20,.3)'; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = col; ctx.globalAlpha = .22; ctx.lineWidth = 2; ctx.strokeText(String(cd), w / 2, cy + 4); ctx.globalAlpha = 1;
+    }
+  } else if (go) {
+    const t = time - goT, fade = 1 - t / 1.5;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';   // traits de vitesse qui jaillissent du centre
+    for (let j = 0; j < 26; j++) {
+      const a = j * 2.39996, d = (t * 2.4 + j * .137) % 1, r0 = 6 + d * d * 150, len = 8 + d * 46;
+      ctx.strokeStyle = j % 3 ? `rgba(255,255,255,${.7 * d * fade})` : `rgba(90,255,150,${.8 * d * fade})`; ctx.lineWidth = .8 + d * 2.2;
+      ctx.beginPath(); ctx.moveTo(w / 2 + Math.cos(a) * r0, cy + Math.sin(a) * r0); ctx.lineTo(w / 2 + Math.cos(a) * (r0 + len), cy + Math.sin(a) * (r0 + len)); ctx.stroke();
+    }
+    ctx.restore();
+    // « PARTEZ ! » arrive du fond, se pose, puis fonce vers nous et sort de l'écran
+    let sc, al = 1;
+    if (t < .45) { const u = 1 - t / .45; sc = .08 + .92 * (1 - u * u); }
+    else if (t < .9) sc = 1 + .07 * Math.sin((t - .45) * 26) * (1 - (t - .45) / .45);
+    else { const u = (t - .9) / .6; sc = 1 + 6 * u * u; al = 1 - u; }
+    ctx.font = `bold 20px ${FONT}`; const fs = 20 * (w - 6) / ctx.measureText('PARTEZ !').width;
+    ctx.font = `bold ${fs.toFixed(1)}px ${FONT}`;
+    for (let n = 4; n >= 0; n--) {   // traînée du zoom
+      const sn = sc * (1 - n * .09 * Math.min(1, t * 3)), an = al * (n ? .18 : 1);
+      if (sn <= 0) continue;
+      ctx.save(); ctx.translate(w / 2, cy); ctx.scale(sn, sn); ctx.globalAlpha = an;
+      if (!n) { ctx.strokeStyle = 'rgba(90,255,150,.5)'; ctx.lineWidth = 8; ctx.strokeText('PARTEZ !', 0, 0); ctx.strokeStyle = '#0a4a2a'; ctx.lineWidth = 4; ctx.strokeText('PARTEZ !', 0, 0); }
+      ctx.fillStyle = n ? '#5aff96' : '#d8ffe6'; ctx.fillText('PARTEZ !', 0, 0); ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // flash sur le temps fort (ou quand le chiffre s'allume)
+  ctx.fillStyle = cd > 0 ? `rgba(255,240,220,${.35 * Math.pow(Math.max(0, (k - .7) / .3), 3)})` : go ? `rgba(220,255,230,${.4 * Math.pow(Math.max(0, 1 - (time - goT) / .3), 2)})` : `rgba(255,240,255,${.12 * Math.pow(1 - ph, 4)})`; ctx.fillRect(0, 0, w, h);
   put(glassS);
   ctx.restore();
   // halo coloré de l'écran sur le mur
