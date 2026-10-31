@@ -10,7 +10,7 @@ canvas{display:block;width:100vw;height:100vh;touch-action:none}
 <script>
 "use strict";
 // ---------- constantes ----------
-const W = 540, H = 960, MAX_LEVEL = 40;
+const W = 540, H = 960, MAX_LEVEL = 60;
 const PX = 270, PY = 845;                       // pivot du canon
 const FONT = "'Trebuchet MS',Verdana,sans-serif";
 const LANES = 5, LANE_Y0 = 228, LANE_H = 48;    // couloirs de course en haut du stand
@@ -18,18 +18,18 @@ const START_X = 146, FINISH_X = 402;            // départ et arrivée (centre d
 const ME = 4;                                   // ton lama : couloir du bas
 const RAIL_Y = 676;                             // rail du récipient
 const RATE = 50;                                          // gouttes du jet d'eau par seconde
-const fillSecs = l => 6 + 4 * (l - 1) / 39;               // secondes de jet parfait pour remplir le récipient
-const raceTime = l => 26 - 10 * (l - 1) / 39;             // durée de course du meilleur adversaire (s)
-const jarSpeed = l => 45 + 4 * (l - 1);                   // vitesse max du récipient (elle augmente aussi pendant la course)
+const fillSecs = l => 6 + 4 * (l - 1) / (MAX_LEVEL - 1);     // secondes de jet parfait pour remplir le récipient
+const raceTime = l => 26 - 9 * (l - 1) / (MAX_LEVEL - 1);    // durée de course du meilleur adversaire (s)
+const jarSpeed = l => 45 + 100 * (l - 1) / (MAX_LEVEL - 1);  // vitesse max du chariot (elle augmente aussi pendant la course)
 // récipients en verre : profil (hauteur relative, demi-largeur), hauteur, ouverture
 const JARS = [
   { name: 'le grand bocal', h: 62, p: [[0, 28], [.08, 33], [.45, 38], [.82, 36], [.9, 32], [1, 32]] },
   { name: 'le pot', h: 68, p: [[0, 22], [.1, 28], [.5, 31], [.8, 24], [.9, 25], [1, 25]] },
   { name: 'le vase', h: 76, p: [[0, 16], [.12, 24], [.42, 30], [.74, 17], [.9, 17], [1, 19]] },
-  { name: 'la bouteille', h: 86, p: [[0, 22], [.1, 25], [.55, 25], [.7, 15], [.8, 12], [1, 12]] }
+  { name: 'la bouteille', h: 86, p: [[0, 22], [.1, 25], [.55, 25], [.7, 17], [.8, 15], [1, 15]] }
 ];
 JARS.forEach(j => { j.m = j.p[j.p.length - 1][1]; j.r = Math.max(...j.p.map(q => q[1])); });
-const jarFor = l => JARS[Math.min(3, Math.floor((l - 1) / 10))];
+const jarFor = l => JARS[Math.min(3, Math.floor((l - 1) / 15))];
 const RACERS = [
   { col: '#2fb7a6', dark: '#11705f', fur: ['#fff8ee', '#d6c0a2'], hat: ['#e3222f', '#ffc933', '#2fb7a6'] },
   { col: '#ffc933', dark: '#a87400', fur: ['#e6c094', '#a87a4c'], hat: ['#7a4cc2', '#2fb7a6', '#ffc933'] },
@@ -438,15 +438,7 @@ function jarPath(J, inset) {
 const jarMouthY = () => RAIL_Y - 8 - jarFor(level).h;
 function drawJar() {
   const J = jarFor(level), x = jar.x, by = RAIL_Y - 8, R = J.r;
-  softShadow(x, RAIL_Y + 13, R + 14, 5, .45);
-  for (const k of [-1, 1]) {   // roues
-    const wx = x + k * (R + 1), wy = RAIL_Y + 2;
-    ctx.fillStyle = rg(wx - 1, wy - 1, .5, wx, wy, 7, [[0, '#5a4a44'], [1, '#1a1210']]); circ(wx, wy, 6.5);
-    ctx.fillStyle = rg(wx - .5, wy - .5, .2, wx, wy, 3.5, [[0, '#ffe680'], [1, '#b8860a']]); circ(wx, wy, 3.4);
-    ctx.strokeStyle = '#8a6a10'; ctx.lineWidth = .9; const a = jar.x / 6.5; ctx.beginPath(); for (let j = 0; j < 3; j++) { const b = a + j * 2.094; ctx.moveTo(wx - Math.cos(b) * 3.2, wy - Math.sin(b) * 3.2); ctx.lineTo(wx + Math.cos(b) * 3.2, wy + Math.sin(b) * 3.2); } ctx.stroke();
-  }
-  ctx.fillStyle = vgrad(by - 1, by + 7, [[0, '#f0b050'], [.4, '#c87a2a'], [1, '#6a3a14']]); rr(x - R - 9, by - 1, 2 * R + 18, 8, 3); ctx.fill();
-  ctx.fillStyle = 'rgba(255,230,170,.6)'; ctx.fillRect(x - R - 7, by - .5, 2 * R + 14, 1.2);
+  drawCart(x, R);
   ctx.save(); ctx.translate(x, by);
   jarPath(J, 0); ctx.fillStyle = 'rgba(200,236,255,.18)'; ctx.fill();
   // eau qui ballotte
@@ -475,17 +467,264 @@ function drawJar() {
   ctx.restore();
 }
 
+// ---------- mini-jeux : chacun fait avancer ton lama ----------
+const MODES = {
+  jar: { name: 'Le bocal', hint: 'Remplis-le pour faire courir ton lama !', k: 1.15 },
+  balloons: { name: 'Les ballons', hint: "Arrose les ballons jusqu'à ce qu'ils éclatent !", k: 1.25 },
+  flowers: { name: 'Les cactus assoiffés', hint: 'Arrose vite le cactus qui a soif !', k: 1.2 },
+  candles: { name: "Le gâteau d'anniversaire", hint: 'Éteins les bougies du gâteau !', k: 1.1 },
+  wheel: { name: 'Le moulin à eau', hint: "Fais tourner le moulin sans t'arrêter !", k: 1.1 }
+};
+const MODE_ORDER = ['jar', 'balloons', 'flowers', 'candles', 'wheel'];
+const modeFor = l => MODE_ORDER[(l - 1) % MODE_ORDER.length];
+const modeName = (m, l) => m === 'jar' ? jarFor(l).name.replace(/^./, c => c.toUpperCase()) : MODES[m].name;
+let mode = 'jar', prog = 0;
+const diff = () => (level - 1) / (MAX_LEVEL - 1);   // difficulté de 0 à 1
+const unitsFor = () => Math.round(mode === 'flowers' ? 8 + 5 * diff() : mode === 'balloons' ? 10 + 4 * diff() : 10 + 5 * diff());
+const cartR = () => mode === 'jar' ? jarFor(level).r : mode === 'candles' ? 40 : 36;   // demi-largeur de ce que porte le chariot
+const onCart = () => mode === 'jar' || mode === 'candles' || mode === 'wheel';
+const POT_X = [150, 230, 310, 390], POT_Y = RAIL_Y + 1, CAKE_TOP = RAIL_Y - 60, WHEEL_R = 30, WHEEL_Y = RAIL_Y - 48;
+const BALLOON_COLS = [['#ff4d6d', '#a8102c'], ['#4dd2ff', '#0e6a9a'], ['#7dff9a', '#1a8a3a'], ['#b48aff', '#5a2aa8'], ['#ff9a3c', '#a84a00']];
+let balloons = [], nextBalloon = 0, pots = [], nextThirst = 0, candles = [], wheel = { a: 0, w: 0, tick: 0 };
+
+function modeReset() {
+  mode = modeFor(level); prog = 0;
+  balloons = []; nextBalloon = 0;
+  pots = POT_X.map(x => ({ x, st: 'ok', t: -9, w: 0, until: 0 })); nextThirst = 0;
+  candles = [-22, -11, 0, 11, 22].map(dx => ({ dx, lit: true, w: 0, at: 0, smoke: -9 }));
+  wheel = { a: 0, w: 0, tick: 0 };
+}
+function modeAimY(fy) {   // hauteur où arrive le jet : libre pour les ballons, sinon sur la cible
+  if (mode === 'balloons') return Math.max(490, Math.min(682, fy));
+  if (mode === 'flowers') return POT_Y - 40;
+  if (mode === 'candles') return CAKE_TOP - 16;
+  if (mode === 'wheel') return WHEEL_Y - 24;
+  return jarMouthY();
+}
+function addUnit(n, x, y, label) {
+  if (state !== 'play' || racers[ME].rank) return;
+  prog = Math.min(1, prog + n / unitsFor());
+  pops.push({ x, y, t: 0, s: label, col: '#7ff0ff' });
+  tone(660, 1320, .1, 'triangle', .14); try { navigator.vibrate && navigator.vibrate(15); } catch (e) { }
+  if (prog >= 1) finish(racers[ME]);
+}
+function popBalloon(b) {
+  b.popped = true;
+  for (let i = 0; i < 10; i++) { confettiPiece(b.x, b.y, (Math.random() - .5) * 260, -60 - Math.random() * 200); confetti[confetti.length - 1].col = Math.random() < .7 ? b.col[0] : '#ffffff'; }
+  tone(900, 160, .09, 'square', .14);
+  addUnit(b.gold ? 2 : 1, b.x, b.y - 22, b.gold ? 'Doré ! +2' : 'Pop !');
+}
+function modeLand(d) {   // vrai si l'eau touche la cible du mini-jeu
+  const x = d.x1, y = d.y1, playing = state === 'play' && !racers[ME].rank;
+  if (mode === 'jar') {
+    if (Math.abs(x - jar.x) > jarFor(level).m - 1) return false;
+    jar.splash = Math.min(1, jar.splash + .12); jar.sv += (x - jar.x) * .004;
+    if (Math.random() < .35) parts.push({ x, y: y - 2, vx: (Math.random() - .5) * 80, vy: -60 - Math.random() * 90, life: .35, max: .35, r: 1 + Math.random() * 1.8 });
+    if (playing) {
+      prog = Math.min(1, prog + 1 / (fillSecs(level) * RATE));
+      if (time - lastGlug > .13) { lastGlug = time; tone(260 + prog * 520, 420 + prog * 700, .07, 'sine', .07); }
+      if (prog >= 1) finish(racers[ME]);
+    }
+    return true;
+  }
+  if (mode === 'balloons') {
+    for (const b of balloons) {
+      const r = b.r * (1 + .35 * b.w / b.need);
+      if (b.popped || Math.hypot(x - b.x, (y - b.y) / 1.15) > r + 3) continue;
+      b.w++; b.hitT = time;
+      if (Math.random() < .3) parts.push({ x, y, vx: (Math.random() - .5) * 90, vy: -40 - Math.random() * 60, life: .3, max: .3, r: 1 + Math.random() * 1.5 });
+      if (b.w >= b.need) popBalloon(b);
+      return true;
+    }
+    return false;
+  }
+  if (mode === 'flowers') {
+    const p = pots.find(p => Math.abs(x - p.x) < 17);
+    if (!p) return false;
+    if (Math.random() < .25) parts.push({ x, y, vx: (Math.random() - .5) * 70, vy: -30 - Math.random() * 50, life: .3, max: .3, r: 1 + Math.random() * 1.5 });
+    if (p.st === 'thirsty' && ++p.w >= 12) { p.st = 'bloom'; p.t = time; addUnit(1, p.x, POT_Y - 96, 'Merci !'); }
+    return true;
+  }
+  if (mode === 'candles') {
+    const c = candles.find(c => c.lit && Math.abs(x - (jar.x + c.dx)) < 5.5);
+    if (c && ++c.w >= 6) { c.lit = false; c.w = 0; c.smoke = time; c.at = time + 2.6 - 1.2 * diff(); tone(500, 200, .12, 'triangle', .1); addUnit(1, jar.x + c.dx, CAKE_TOP - 40, 'Pfff !'); }
+    return !!c || Math.abs(x - jar.x) < 38;
+  }
+  if (Math.abs(x - jar.x) > WHEEL_R * .95) return false;   // moulin
+  wheel.w = Math.min(1.6, wheel.w + 1.3 / RATE);
+  if (Math.random() < .4) parts.push({ x, y, vx: (x > jar.x ? 1 : -1) * (60 + Math.random() * 80), vy: -40 - Math.random() * 60, life: .35, max: .35, r: 1 + Math.random() * 1.8 });
+  return true;
+}
+function modeUpdate(dt) {
+  const playing = state === 'play', dd = diff();
+  if (mode === 'balloons') {
+    if (playing && time > nextBalloon && balloons.filter(b => !b.popped).length < 6) {
+      nextBalloon = time + .55 + Math.random() * (.8 - .3 * dd);
+      const gold = Math.random() < .12;
+      balloons.push({ x: 140 + Math.random() * 260, y: 712, vy: -(26 + Math.random() * 18 + 28 * dd), r: 17 - 3 * dd, w: 0, need: Math.round(9 + 3 * dd), col: gold ? ['#ffe066', '#b88a00'] : BALLOON_COLS[Math.floor(Math.random() * BALLOON_COLS.length)], gold, ph: Math.random() * 6, hitT: -9, popped: false });
+    }
+    for (const b of balloons) { const slow = time - b.hitT < .15 ? .35 : 1; b.y += b.vy * dt * slow; b.x += Math.sin(time * 1.6 + b.ph) * 12 * dt; }
+    balloons = balloons.filter(b => !b.popped && b.y > 440);
+  } else if (mode === 'flowers') {
+    const maxT = 1 + (dd > .35) + (dd > .7);
+    if (playing && time > nextThirst && pots.filter(p => p.st === 'thirsty').length < maxT) {
+      const free = pots.filter(p => p.st === 'ok');
+      if (free.length) { const p = free[Math.floor(Math.random() * free.length)]; p.st = 'thirsty'; p.w = 0; p.t = time; p.until = time + 3.4 - 1.6 * dd; tone(320, 250, .12, 'triangle', .08); }
+      nextThirst = time + .5 + Math.random() * (1.2 - .5 * dd);
+    }
+    for (const p of pots) {
+      if (p.st === 'thirsty' && time > p.until) { p.st = 'ok'; p.t = time; if (playing) pops.push({ x: p.x, y: POT_Y - 96, t: 0, s: 'Trop tard…', col: '#ffb070' }); }
+      if (p.st === 'bloom' && time - p.t > 1.1) { p.st = 'ok'; p.t = time; }
+    }
+  } else if (mode === 'candles') {
+    for (const c of candles) { if (!c.lit && time > c.at) { c.lit = true; c.w = 0; } if (c.lit) c.w = Math.max(0, c.w - dt * 4); }
+  } else if (mode === 'wheel') {
+    wheel.w *= Math.exp(-1.1 * dt); wheel.a += wheel.w * 7 * dt;
+    const tick = Math.floor(wheel.a / (Math.PI / 4));
+    if (tick !== wheel.tick && time - lastGlug > .06) { lastGlug = time; tone(1400, 1100, .03, 'square', .03); } wheel.tick = tick;
+    if (wheel.w > .35 && Math.random() < dt * 20 * wheel.w) { const a = wheel.a + Math.random() * 6.283; parts.push({ x: jar.x + Math.cos(a) * WHEEL_R, y: WHEEL_Y + Math.sin(a) * WHEEL_R, vx: -Math.sin(a) * 120 * wheel.w, vy: Math.cos(a) * 120 * wheel.w, life: .35, max: .35, r: 1 + Math.random() * 1.5 }); }
+    if (playing && !racers[ME].rank) { prog = Math.min(1, prog + wheel.w / (fillSecs(level) * 1.25) * dt); if (prog >= 1) finish(racers[ME]); }
+  }
+}
+
+// ---------- dessin des mini-jeux ----------
+function drawCart(x, R) {
+  softShadow(x, RAIL_Y + 13, R + 14, 5, .45);
+  for (const k of [-1, 1]) {   // roues
+    const wx = x + k * (R + 1), wy = RAIL_Y + 2;
+    ctx.fillStyle = rg(wx - 1, wy - 1, .5, wx, wy, 7, [[0, '#5a4a44'], [1, '#1a1210']]); circ(wx, wy, 6.5);
+    ctx.fillStyle = rg(wx - .5, wy - .5, .2, wx, wy, 3.5, [[0, '#ffe680'], [1, '#b8860a']]); circ(wx, wy, 3.4);
+    ctx.strokeStyle = '#8a6a10'; ctx.lineWidth = .9; const a = x / 6.5; ctx.beginPath(); for (let j = 0; j < 3; j++) { const b = a + j * 2.094; ctx.moveTo(wx - Math.cos(b) * 3.2, wy - Math.sin(b) * 3.2); ctx.lineTo(wx + Math.cos(b) * 3.2, wy + Math.sin(b) * 3.2); } ctx.stroke();
+  }
+  const by = RAIL_Y - 8;
+  ctx.fillStyle = vgrad(by - 1, by + 7, [[0, '#f0b050'], [.4, '#c87a2a'], [1, '#6a3a14']]); rr(x - R - 9, by - 1, 2 * R + 18, 8, 3); ctx.fill();
+  ctx.fillStyle = 'rgba(255,230,170,.6)'; ctx.fillRect(x - R - 7, by - .5, 2 * R + 14, 1.2);
+}
+function drawBalloons() {
+  ctx.save(); ctx.beginPath(); ctx.rect(104, 478, 332, RAIL_Y + 16 - 478); ctx.clip();   // ils sortent de derrière le panneau du bas
+  for (const b of balloons) {
+    const k = b.w / b.need, r = b.r * (1 + .35 * k), ry = r * 1.15, x = b.x + Math.sin(time * 34) * k * 1.2, y = b.y;
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(x, y + ry + 3);
+    for (let j = 1; j <= 7; j++) ctx.lineTo(x + Math.sin(time * 3 + b.ph + j) * 2.5, y + ry + 3 + j * 5); ctx.stroke();
+    ctx.fillStyle = b.col[1]; ctx.beginPath(); ctx.moveTo(x, y + ry - 1); ctx.lineTo(x - 3.2, y + ry + 4); ctx.lineTo(x + 3.2, y + ry + 4); ctx.fill();
+    ctx.fillStyle = rg(x - r * .35, y - ry * .4, 1, x, y, ry * 1.15, [[0, '#ffffff'], [.22, b.col[0]], [1, b.col[1]]]); ell(x, y, r, ry);
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ell(x - r * .38, y - ry * .45, r * .17, ry * .28, -.45);
+    if (b.gold) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const tw = .5 + .5 * Math.sin(time * 8 + b.ph); ctx.strokeStyle = `rgba(255,255,220,${tw})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + r * .3 - 5, y - 2); ctx.lineTo(x + r * .3 + 5, y - 2); ctx.moveTo(x + r * .3, y - 7); ctx.lineTo(x + r * .3, y + 3); ctx.stroke(); ctx.restore(); }
+    if (k > 0) { ctx.strokeStyle = `rgba(255,255,255,${.5 * k})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, r + 2, ry + 2, 0, 0, 6.283); ctx.stroke(); }
+  }
+  ctx.restore();
+}
+function drawPots() {
+  const dd = diff();
+  for (const p of pots) {
+    const x = p.x, by = POT_Y, th = p.st === 'thirsty', bl = p.st === 'bloom', since = time - p.t;
+    softShadow(x, by + 3, 20, 4, .4);
+    // cactus : il s'affaisse quand il a soif, se redresse en buvant
+    ctx.save(); ctx.translate(x, by - 21);
+    const droop = th ? Math.min(1, since * 2) * (1 - p.w / 12) : 0, bounce = bl ? Math.sin(since * 14) * Math.exp(-since * 4) * .18 : 0;
+    ctx.rotate((x < 270 ? -1 : 1) * droop * .32 + bounce); ctx.scale(1, 1 - droop * .12);
+    const col = th ? '#9aa64a' : '#40a058', dark = th ? '#62702a' : '#1f6a38';
+    const body = () => { rr(-8, -34, 16, 36, 8); ctx.fill(); rr(-17, -26, 8, 14, 4); ctx.fill(); rr(-15, -16, 9, 6, 3); ctx.fill(); rr(9, -30, 8, 14, 4); ctx.fill(); rr(6, -20, 9, 6, 3); ctx.fill(); };
+    ctx.fillStyle = col; body();
+    ctx.fillStyle = lg(-17, 0, 17, 0, [[0, 'rgba(0,0,0,.25)'], [.45, 'rgba(255,255,255,.18)'], [1, 'rgba(0,0,0,.3)']]); body();
+    ctx.fillStyle = 'rgba(255,255,240,.8)'; for (const [sx, sy] of [[-4, -28], [4, -22], [-5, -12], [3, -6], [-13, -22], [13, -25]]) circ(sx, sy, .6);
+    ctx.fillStyle = '#1a1208'; ctx.strokeStyle = '#1a1208'; ctx.lineWidth = .9; ctx.lineCap = 'round';
+    if (th) { for (const k of [-1, 1]) { ctx.beginPath(); ctx.moveTo(k * 4.5 - 2, -21); ctx.lineTo(k * 4.5 + 2, -20.3); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(-3, -14); ctx.quadraticCurveTo(0, -16.5, 3, -14); ctx.stroke(); }
+    else if (bl) { for (const k of [-1, 1]) { ctx.beginPath(); ctx.arc(k * 4.5, -20, 1.8, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); } ctx.beginPath(); ctx.arc(0, -16, 3, .2, Math.PI - .2); ctx.stroke(); }
+    else { circ(-4.5, -21, 1.2); circ(4.5, -21, 1.2); ctx.beginPath(); ctx.arc(0, -16.5, 2.2, .3, Math.PI - .3); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,120,140,.45)'; ell(-6.5, -17, 1.8, 1.1); ell(6.5, -17, 1.8, 1.1);
+    if (bl) {   // fleur qui s'ouvre
+      const e = Math.min(1, since * 5);
+      for (let j = 0; j < 6; j++) { const a = j * 1.047 + since; ctx.fillStyle = j % 2 ? '#ff7ab0' : '#ff9ac4'; ell(Math.cos(a) * 4.5 * e, -36 + Math.sin(a) * 4.5 * e, 3.6 * e, 2.4 * e, a); }
+      ctx.fillStyle = '#ffd23a'; circ(0, -36, 2.4 * e);
+    } else { ctx.fillStyle = th ? '#b07a8a' : '#ff8ab4'; ell(0, -35.5, 2.6, 3.2); }
+    ctx.restore();
+    // pot en terre cuite
+    ctx.fillStyle = lg(x - 15, 0, x + 15, 0, [[0, '#9a4624'], [.4, '#e0844a'], [1, '#7a3218']]);
+    ctx.beginPath(); ctx.moveTo(x - 14, by - 22); ctx.lineTo(x + 14, by - 22); ctx.lineTo(x + 11, by); ctx.lineTo(x - 11, by); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = vgrad(by - 27, by - 21, [[0, '#f0a060'], [1, '#b85a2a']]); rr(x - 16, by - 27, 32, 6, 2); ctx.fill();
+    ctx.strokeStyle = '#2fb7a6'; ctx.lineWidth = 1.4; ctx.beginPath(); for (let j = 0; j <= 6; j++) { const xx = x - 12 + j * 4; j ? ctx.lineTo(xx, by - 13 + (j % 2 ? -3 : 0)) : ctx.moveTo(xx, by - 13); } ctx.stroke();
+    if (th) {   // bulle : il a soif ! (le cercle indique le temps qui reste, la goutte se remplit)
+      const left = Math.max(0, (p.until - time) / (3.4 - 1.6 * dd)), bx = x, byy = by - 84 + Math.sin(time * 5) * 2;
+      ctx.fillStyle = 'rgba(255,255,255,.95)'; circ(bx, byy, 12); ctx.beginPath(); ctx.moveTo(bx - 4, byy + 10); ctx.lineTo(bx, byy + 18); ctx.lineTo(bx + 4, byy + 10); ctx.fill();
+      ctx.strokeStyle = left > .35 ? '#2fb7a6' : '#ff4a5a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(bx, byy, 12, -Math.PI / 2, -Math.PI / 2 + left * 6.283); ctx.stroke();
+      const drop = () => { ctx.beginPath(); ctx.moveTo(bx, byy - 8); ctx.bezierCurveTo(bx + 3, byy - 3, bx + 6, byy, bx + 6, byy + 3); ctx.arc(bx, byy + 3, 6, 0, Math.PI); ctx.bezierCurveTo(bx - 6, byy, bx - 3, byy - 3, bx, byy - 8); };
+      ctx.fillStyle = 'rgba(90,180,255,.25)'; drop(); ctx.fill();
+      ctx.save(); drop(); ctx.clip(); ctx.fillStyle = '#3a9aff'; const fh = 18 * p.w / 12; ctx.fillRect(bx - 7, byy + 9 - fh, 14, fh); ctx.restore();
+      ctx.strokeStyle = '#1a6ad0'; ctx.lineWidth = 1; drop(); ctx.stroke();
+    }
+    if (bl && since < .8) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; for (let j = 0; j < 6; j++) { const a = j * 1.047, r = 14 + since * 30, sx = x + Math.cos(a) * r, sy = by - 57 + Math.sin(a) * r, l = 4 * (1 - since / .8); ctx.strokeStyle = 'rgba(255,240,180,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sx - l, sy); ctx.lineTo(sx + l, sy); ctx.moveTo(sx, sy - l); ctx.lineTo(sx, sy + l); ctx.stroke(); } ctx.restore(); }
+  }
+}
+function drawCake() {
+  const x = jar.x, by = RAIL_Y - 8;
+  drawCart(x, 40);
+  const drips = (x0, w, y, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x0, y - 1); ctx.lineTo(x0 + w, y - 1); for (let i = 8; i >= 0; i--) { const xx = x0 + i * w / 8, l = 3 + ((i * 37) % 5); ctx.lineTo(xx, y + (i % 2 ? l : 2)); } ctx.closePath(); ctx.fill(); };
+  ctx.fillStyle = lg(x - 38, 0, x + 38, 0, [[0, '#d0608e'], [.4, '#ffacc8'], [1, '#b8407a']]); rr(x - 38, by - 30, 76, 30, 5); ctx.fill();
+  drips(x - 38, 76, by - 30, '#fff6f0');
+  for (let i = 0; i < 14; i++) { ctx.fillStyle = CONF_COLS[i % CONF_COLS.length]; ctx.fillRect(x - 32 + (i * 23) % 64, by - 18 + (i * 7) % 12, 2.6, 1.2); }
+  ctx.fillStyle = lg(x - 27, 0, x + 27, 0, [[0, '#d8b48a'], [.4, '#fff4e0'], [1, '#c8a070']]); rr(x - 27, by - 52, 54, 22, 5); ctx.fill();
+  drips(x - 27, 54, by - 52, '#ff8ab4');
+  for (const c of candles) {
+    const cx = x + c.dx, top = CAKE_TOP;
+    ctx.fillStyle = '#fffaf0'; rr(cx - 2.2, top - 12, 4.4, 12, 1); ctx.fill();
+    ctx.save(); rr(cx - 2.2, top - 12, 4.4, 12, 1); ctx.clip(); ctx.strokeStyle = CONF_COLS[(c.dx / 11 + 2) % 5]; ctx.lineWidth = 1.6; for (let j = -2; j < 5; j++) { ctx.beginPath(); ctx.moveTo(cx - 3, top - 12 + j * 3.5); ctx.lineTo(cx + 3, top - 9 + j * 3.5); ctx.stroke(); } ctx.restore();
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(cx, top - 12); ctx.lineTo(cx, top - 14.5); ctx.stroke();
+    if (c.lit) {
+      const f = (1 - .6 * c.w / 6) * (1 + .12 * Math.sin(time * 22 + c.dx)), fy = top - 15;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = rg(cx, fy - 4, 1, cx, fy - 4, 12 * f, [[0, 'rgba(255,200,90,.55)'], [1, 'rgba(255,150,40,0)']]); circ(cx, fy - 4, 12 * f); ctx.restore();
+      ctx.fillStyle = rg(cx, fy - 2, .5, cx, fy - 4, 7 * f, [[0, '#ffffff'], [.35, '#ffe14a'], [1, '#ff7a1a']]);
+      ctx.beginPath(); ctx.moveTo(cx, fy - 11 * f); ctx.quadraticCurveTo(cx + 4 * f, fy - 3 * f, cx, fy); ctx.quadraticCurveTo(cx - 4 * f, fy - 3 * f, cx, fy - 11 * f); ctx.fill();
+    } else if (time - c.smoke < 1.3) {
+      const k = (time - c.smoke) / 1.3;
+      for (let j = 0; j < 3; j++) { const kk = Math.min(1, k + j * .12); ctx.fillStyle = `rgba(220,220,230,${.45 * (1 - kk)})`; circ(cx + Math.sin(kk * 9 + j) * 3, top - 16 - kk * 26, 2 + kk * 4); }
+    }
+  }
+}
+function drawWheel() {
+  const x = jar.x, by = RAIL_Y - 8, cy = WHEEL_Y;
+  drawCart(x, 36);
+  ctx.strokeStyle = '#5a3010'; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+  for (const k of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + k * 26, by); ctx.lineTo(x + k * 3, cy); ctx.stroke(); }
+  if (wheel.w > .4) { ctx.strokeStyle = `rgba(255,255,255,${Math.min(.35, (wheel.w - .4) * .4)})`; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, cy, WHEEL_R + 2, 0, 6.283); ctx.stroke(); }
+  ctx.save(); ctx.translate(x, cy); ctx.rotate(wheel.a);
+  ctx.strokeStyle = '#8a5226'; ctx.lineWidth = 3; for (let j = 0; j < 8; j++) { const a = j * Math.PI / 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * WHEEL_R, Math.sin(a) * WHEEL_R); ctx.stroke(); }
+  ctx.strokeStyle = '#a0622c'; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.arc(0, 0, WHEEL_R, 0, 6.283); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,220,160,.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, WHEEL_R - 1.5, Math.PI * 1.1, Math.PI * 1.7); ctx.stroke();
+  for (let j = 0; j < 8; j++) { ctx.save(); ctx.rotate(j * Math.PI / 4); ctx.fillStyle = lg(-5, 0, 5, 0, [[0, '#a0602a'], [.5, '#e8a858'], [1, '#8a4a1a']]); rr(-5, -WHEEL_R - 7, 10, 11, 2); ctx.fill(); ctx.fillStyle = 'rgba(160,220,255,.45)'; rr(-4, -WHEEL_R - 6, 3, 9, 1.5); ctx.fill(); ctx.restore(); }
+  ctx.fillStyle = rg(-1.5, -1.5, .5, 0, 0, 7, [[0, '#ffffff'], [.4, '#c8c8d4'], [1, '#5a5a68']]); circ(0, 0, 6.5);
+  ctx.restore();
+}
+function modeDraw() {
+  if (mode === 'jar') drawJar(); else if (mode === 'balloons') drawBalloons(); else if (mode === 'flowers') drawPots(); else if (mode === 'candles') drawCake(); else drawWheel();
+}
+// petite image de chaque mini-jeu (choix des niveaux)
+function modeIcon(m, x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  if (m === 'jar') { ctx.fillStyle = 'rgba(210,240,255,.9)'; rr(-11, -14, 22, 28, 6); ctx.fill(); ctx.fillStyle = '#3a9aff'; rr(-10, -1, 20, 14, 5); ctx.fill(); ctx.strokeStyle = '#ff5a9a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, -14, 10, 3, 0, 0, 6.283); ctx.stroke(); }
+  else if (m === 'balloons') { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, 6); ctx.quadraticCurveTo(-4, 12, 1, 17); ctx.stroke(); ctx.fillStyle = rg(-4, -8, 1, 0, -4, 14, [[0, '#fff'], [.3, '#ff4d6d'], [1, '#a8102c']]); ell(0, -4, 10, 12); }
+  else if (m === 'flowers') { ctx.fillStyle = '#40a058'; rr(-4, -15, 8, 20, 4); ctx.fill(); rr(-10, -10, 5, 9, 2.5); ctx.fill(); rr(5, -12, 5, 9, 2.5); ctx.fill(); ctx.fillStyle = '#ff7ab0'; circ(0, -16, 3.5); ctx.fillStyle = '#d0703a'; ctx.beginPath(); ctx.moveTo(-10, 3); ctx.lineTo(10, 3); ctx.lineTo(7, 15); ctx.lineTo(-7, 15); ctx.fill(); }
+  else if (m === 'candles') { ctx.fillStyle = '#ffacc8'; rr(-13, -2, 26, 15, 3); ctx.fill(); ctx.fillStyle = '#fff6f0'; ctx.fillRect(-13, -2, 26, 4); ctx.fillStyle = '#fff'; ctx.fillRect(-1.6, -12, 3.2, 10); ctx.fillStyle = '#ffb030'; ctx.beginPath(); ctx.moveTo(0, -21); ctx.quadraticCurveTo(4, -15, 0, -12.5); ctx.quadraticCurveTo(-4, -15, 0, -21); ctx.fill(); }
+  else { ctx.strokeStyle = '#a0622c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 12, 0, 6.283); ctx.stroke(); ctx.lineWidth = 2; for (let j = 0; j < 4; j++) { const a = j * Math.PI / 4 + time; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 12, Math.sin(a) * 12); ctx.lineTo(-Math.cos(a) * 12, -Math.sin(a) * 12); ctx.stroke(); } ctx.fillStyle = '#e8a858'; for (let j = 0; j < 8; j++) { const a = j * Math.PI / 4 + time; circ(Math.cos(a) * 14, Math.sin(a) * 14, 2.6); } }
+  ctx.restore();
+}
+function star(x, y, r, on) {
+  ctx.beginPath(); for (let j = 0; j < 10; j++) { const a = -Math.PI / 2 + j * Math.PI / 5, rr2 = j % 2 ? r * .45 : r; ctx.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); } ctx.closePath();
+  ctx.fillStyle = on ? rg(x - r * .3, y - r * .3, r * .1, x, y, r, [[0, '#fff8c0'], [.5, '#ffd23a'], [1, '#e09a00']]) : 'rgba(120,90,60,.3)'; ctx.fill();
+  ctx.strokeStyle = on ? '#a86a00' : 'rgba(120,90,60,.4)'; ctx.lineWidth = Math.max(1, r / 10); ctx.stroke();
+}
+
 // ---------- état du jeu ----------
 let state = 'menu', level = 1, introT = 0, countT = 0, goT = -9, lock = 0, time = 0, endT = 0;
 let recoil = 0, aim = -Math.PI / 2;
 let racers = [], parts = [], pops = [], ripples = [], dust = [];
-let water = 0, winner = -1, finishers = 0;
-const myFill = () => Math.min(1, water / (fillSecs(level) * RATE));
+let winner = -1, finishers = 0, lastStars = 0, starSnd = 0;
+const myFill = () => prog;
 const jar = { x: 270, v: 40, vt: 40, next: 0, fill: 0, slosh: 0, sv: 0, splash: 0 };
 level = loadSaved();
 
 function resetRace() {
-  water = 0; winner = -1; finishers = 0; drops = []; inStreak = 0;
+  winner = -1; finishers = 0; drops = []; inStreak = 0; modeReset();
   const best = Math.floor(Math.random() * (LANES - 1));
   racers = RACERS.map((c, i) => ({ i, p: 0, v: 0, vt: 0, k: i === best ? 1 : .8 + .17 * Math.random(), next: 0, phase: Math.random() * 6, run: 0, rank: 0 }));
   Object.assign(jar, { x: 270, v: 0, vt: 0, next: 0, fill: 0, slosh: 0, sv: 0, splash: 0 });
@@ -496,7 +735,10 @@ function startLevel() {
 }
 function win() {
   state = 'won'; lock = time + .7; spawnConfetti(); tone(520, 780, .15, 'triangle', .2); setTimeout(() => tone(780, 1170, .25, 'triangle', .2), 150);
-  const next = Math.min(MAX_LEVEL, level + 1); try { localStorage.setItem('lamaCourse40', level >= MAX_LEVEL ? 1 : next); } catch (e) { }
+  const best = Math.max(...racers.filter(r => r.i !== ME).map(r => r.p));   // étoiles selon l'avance sur le 2e
+  lastStars = best < .6 ? 3 : best < .82 ? 2 : 1; starSnd = 0;
+  const st = loadStars(); st[level - 1] = Math.max(st[level - 1], lastStars); saveStars(st);
+  try { localStorage.setItem('lamaCourse40', Math.max(loadSaved(), Math.min(MAX_LEVEL, level + 1))); } catch (e) { }
   if (level >= MAX_LEVEL) state = 'end';
 }
 function lose() { state = 'lost'; lock = time + .7; tone(300, 90, .6, 'sawtooth', .15); }
@@ -518,12 +760,13 @@ const mouth = () => cannonPt(0, -126);
 const GRIP_X = 58, GRIP_Y = -8;
 
 // ---------- jet d'eau continu ----------
-let spraying = false, sprayPtr = null, aimX = 270, fingerX = 270, emitAcc = 0, inStreak = 0, lastGlug = 0, streamId = 0;
+let spraying = false, sprayPtr = null, aimX = 270, aimY = 600, fingerX = 270, fingerY = 600, emitAcc = 0, inStreak = 0, lastGlug = 0, streamId = 0;
 let drops = [];   // gouttes du jet, dans l'ordre d'émission
 const canSpray = () => state === 'play' || state === 'count' || state === 'intro';
 function sprayUpdate(dt) {
   const turn = 520 * dt; aimX += Math.max(-turn, Math.min(turn, fingerX - aimX));   // le canon suit le doigt, sans être instantané
-  const ty = jarMouthY();
+  aimY += (modeAimY(fingerY) - aimY) * Math.min(1, dt * 12);
+  const ty = aimY;
   aim = Math.atan2(ty - PY, aimX - PX);
   if (spraying && canSpray()) {
     emitAcc += dt * RATE;
@@ -536,19 +779,13 @@ function sprayUpdate(dt) {
   sprayNoise(spraying && canSpray());
 }
 function dropLand(d) {
-  const J = jarFor(level), off = Math.abs(d.x1 - jar.x);
-  if (off <= J.m - 1) {   // dans le récipient
-    jar.splash = Math.min(1, jar.splash + .12); jar.sv += (d.x1 - jar.x) * .004;
-    if (Math.random() < .35) parts.push({ x: d.x1, y: d.y1 - 2, vx: (Math.random() - .5) * 80, vy: -60 - Math.random() * 90, life: .35, max: .35, r: 1 + Math.random() * 1.8 });
-    if (state !== 'play' || racers[ME].rank) return;
-    water++; const before = inStreak; inStreak += 1 / RATE;
-    if (time - lastGlug > .13) { lastGlug = time; tone(260 + myFill() * 520, 420 + myFill() * 700, .07, 'sine', .07); }
-    if (Math.floor(inStreak / 2) > Math.floor(before / 2)) pops.push({ x: jar.x, y: d.y1 - 28, t: 0, s: 'Super !', col: '#7ff0ff' });
-    if (myFill() >= 1) finish(racers[ME]);
-  } else {                // à côté : l'eau éclabousse le décor
+  if (modeLand(d)) {   // sur la cible
+    if (state !== 'play' || racers[ME].rank || (mode !== 'jar' && mode !== 'wheel')) return;
+    const before = inStreak; inStreak += 1 / RATE;
+    if (Math.floor(inStreak / 2) > Math.floor(before / 2)) pops.push({ x: d.x1, y: d.y1 - 30, t: 0, s: 'Super !', col: '#7ff0ff' });
+  } else {             // à côté : l'eau éclabousse le décor
     inStreak = 0;
-    const rim = off <= J.m + 6, k = d.x1 < jar.x ? -1 : 1;
-    for (let i = 0; i < 2; i++) parts.push({ x: d.x1, y: d.y1, vx: rim ? k * (40 + Math.random() * 120) : (Math.random() - .5) * 160, vy: -30 - Math.random() * 110, life: .45, max: .45, r: 1.2 + Math.random() * 2.2 });
+    for (let i = 0; i < 2; i++) parts.push({ x: d.x1, y: d.y1, vx: (Math.random() - .5) * 160, vy: -30 - Math.random() * 110, life: .45, max: .45, r: 1.2 + Math.random() * 2.2 });
     if (Math.random() < .12) ripples.push({ x: d.x1, y: d.y1, t: 0 });
   }
 }
@@ -592,7 +829,7 @@ const toGame = e => [((e.clientX * (devicePixelRatio || 1)) - ox) / scale, ((e.c
 const clampAim = x => Math.max(112, Math.min(428, x));
 function tap(px, py, id) {
   if (time < lock) return;
-  if (state === 'menu' || state === 'paused') {
+  if (state === 'menu' || state === 'paused' || state === 'levels') {
     const b = btns.find(b => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h);
     if (b) { lock = time + .3; b.fn(); }
   }
@@ -600,22 +837,23 @@ function tap(px, py, id) {
   else if (state === 'lost') startLevel();
   else if (state === 'end') goMenu();
   else if (state === 'play' && Math.hypot(px - PAUSE.x, py - PAUSE.y) < PAUSE.r + 8) pauseGame();
-  else { spraying = true; sprayPtr = id; fingerX = clampAim(px); streamId++; try { cv.setPointerCapture(id); } catch (e) { } }   // on peut s'entraîner pendant le compte à rebours
+  else { spraying = true; sprayPtr = id; fingerX = clampAim(px); fingerY = py; streamId++; try { cv.setPointerCapture(id); } catch (e) { } }   // on peut s'entraîner pendant le compte à rebours
 }
 cv.addEventListener('pointerdown', e => { e.preventDefault(); audioInit(); const [px, py] = toGame(e); tap(px, py, e.pointerId); });
-cv.addEventListener('pointermove', e => { if (spraying && e.pointerId === sprayPtr) fingerX = clampAim(toGame(e)[0]); });
+cv.addEventListener('pointermove', e => { if (spraying && e.pointerId === sprayPtr) { const [px, py] = toGame(e); fingerX = clampAim(px); fingerY = py; } });
 const stopSpray = e => { if (e.pointerId === sprayPtr) { spraying = false; sprayPtr = null; } };
 cv.addEventListener('pointerup', stopSpray); cv.addEventListener('pointercancel', stopSpray);
 
 function updateJar(dt) {
-  const J = jarFor(level), xmin = 108 + J.r + 10, xmax = 432 - J.r - 10;
+  const R = cartR(), xmin = 108 + R + 10, xmax = 432 - R - 10;
+  if (!onCart()) return;
   if (state === 'play' || state === 'count') {
     if (time > jar.next) {   // nouvelle allure : lente, moyenne, rapide ou très rapide, parfois demi-tour
       jar.next = time + .7 + Math.random() * (2.4 - 1.2 * level / MAX_LEVEL);
       const s = [.3, .55, .8, 1][Math.floor(Math.random() * 4)];
-      jar.vt = (Math.random() < .3 ? -1 : 1) * Math.sign(jar.vt || jar.v || 1) * s * jarSpeed(level) * (1 + .4 * myFill());   // plus le récipient est plein, plus il file
+      jar.vt = (Math.random() < .3 ? -1 : 1) * Math.sign(jar.vt || jar.v || 1) * s * jarSpeed(level) * (mode === 'candles' ? .8 : mode === 'wheel' ? .85 : 1) * (1 + .3 * myFill());   // plus le récipient est plein, plus il file
     }
-  } else if (state === 'menu') jar.vt = Math.sign(jar.vt || 1) * 40;
+  } else if (state === 'menu' || state === 'levels') jar.vt = Math.sign(jar.vt || 1) * 40;
   else if (state !== 'paused') jar.vt = 0;
   const pv = jar.v; jar.v += (jar.vt - jar.v) * Math.min(1, dt * 4); jar.x += jar.v * dt;
   if (jar.x < xmin) { jar.x = xmin; jar.v = Math.abs(jar.v); jar.vt = Math.abs(jar.vt); }
@@ -626,7 +864,7 @@ function updateJar(dt) {
   jar.splash *= Math.pow(.05, dt);
 }
 function updateRace(dt) {
-  const moving = state === 'play' || state === 'won' || state === 'lost' || state === 'end', base = 1 / raceTime(level);
+  const moving = state === 'play' || state === 'won' || state === 'lost' || state === 'end', base = 1 / (raceTime(level) * MODES[mode].k);
   for (const r of racers) {
     const p0 = r.p;
     if (r.i === ME) { const tgt = myFill(); r.p += (tgt - r.p) * Math.min(1, dt * 5); if (Math.abs(tgt - r.p) < .0005) r.p = tgt; }
@@ -652,7 +890,7 @@ function update(dt) {
     if (countT <= 0) { state = 'play'; goT = time; tone(880, 880, .35, 'square', .1); }
     else if (Math.ceil(countT) !== prev) tone(440, 440, .15, 'square', .08);
   }
-  updateRace(dt); updateJar(dt);
+  updateRace(dt); updateJar(dt); if (state !== 'paused') modeUpdate(dt);
   recoil *= Math.pow(.001, dt); sprayUpdate(dt);
   for (const p of parts) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; }
   parts = parts.filter(p => p.life > 0);
@@ -1258,7 +1496,7 @@ function drawConfetti() {
   }
 }
 function overlayWin(title, lines, hint) {
-  const pi = level % 5 === 0 ? level / 5 - 1 : -1, tall = pi >= 0;
+  const pi = level % 5 === 0 ? (level / 5 - 1) % FASHION.length : -1, tall = pi >= 0, gold = level > 5 * FASHION.length;
   ctx.fillStyle = 'rgba(10,4,20,.65)'; ctx.fillRect(0, 0, W, H);
   const y0 = tall ? 230 : 300, h = tall ? 450 : 300;
   softShadow(W / 2, y0 + h + 10, 240, 22, .5);
@@ -1267,10 +1505,11 @@ function overlayWin(title, lines, hint) {
   text(title, W / 2, y0 + 58, 38, '#e3222f', 'center', '#fff');
   if (tall) {
     const k = Math.min(1, Math.max(0, (time - winT - .3) / .7)), e = k >= 1 ? 1 : 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2);
-    ctx.save(); ctx.translate(W / 2, y0 + 245); ctx.rotate(Math.sin(time * 3) * .05); ctx.scale(e, e); fashionPlush(pi, 0, 0, 1.15); ctx.restore();
+    ctx.save(); ctx.translate(W / 2, y0 + 245); ctx.rotate(Math.sin(time * 3) * .05); ctx.scale(e, e); if (gold) ctx.filter = 'sepia(1) saturate(2.6) hue-rotate(-12deg) brightness(1.08)'; fashionPlush(pi, 0, 0, 1.15); ctx.filter = 'none'; ctx.restore();
+    if (gold) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; for (let j = 0; j < 8; j++) { const a = j * .785 + time, rx = W / 2 + Math.cos(a) * 95, ry = y0 + 245 + Math.sin(a) * 75, l = 5 + 3 * Math.sin(time * 6 + j); ctx.strokeStyle = 'rgba(255,230,140,.9)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(rx - l, ry); ctx.lineTo(rx + l, ry); ctx.moveTo(rx, ry - l); ctx.lineTo(rx, ry + l); ctx.stroke(); } ctx.restore(); }
     text('Peluche à la mode !', W / 2, y0 + 108, 24, '#e8508a', 'center', '#fff');
     text(lines[0], W / 2, y0 + 352, 26, '#5a2a1a', 'center', '#fff6e0');
-    text('Tu gagnes ' + FASHION[pi].name, W / 2, y0 + 390, 22, '#5a2a1a', 'center', '#fff6e0');
+    text('Tu gagnes ' + FASHION[pi].name + (gold ? ' en or' : ''), W / 2, y0 + 390, 22, '#5a2a1a', 'center', '#fff6e0');
     if (hint && Math.floor(time * 2) % 2 === 0) text(hint, W / 2, y0 + 428, 24, '#2a8a5a', 'center', '#fff6e0');
   } else {
     lines.forEach((l, i) => text(l, W / 2, y0 + 125 + i * 42, i ? 24 : 28, '#5a2a1a', 'center', '#fff6e0'));
@@ -1314,7 +1553,7 @@ function render() {
   ctx.drawImage(backL, 0, 0, W, H);
   racers.forEach(drawRacer);
   for (const p of dust) { ctx.fillStyle = `rgba(214,170,110,${.6 * p.life / p.max})`; circ(p.x, p.y, p.r * (1.6 - p.life / p.max * .6)); }
-  drawJar();
+  modeDraw();
   ctx.drawImage(frontL, 0, 0, W, H);
   drawScreens(); drawBulbs(); drawCannon(); drawGirl();
   for (const r of ripples) { const k = r.t / .5; ctx.strokeStyle = `rgba(220,245,255,${.8 * (1 - k)})`; ctx.lineWidth = 3 * (1 - k) + 1; ctx.beginPath(); ctx.ellipse(r.x, r.y, 10 + k * 26, 7 + k * 18, 0, 0, 6.283); ctx.stroke(); }
@@ -1328,18 +1567,18 @@ function render() {
   ctx.drawImage(vigL, 0, 0, W, H);
   drawHUD(); if (state === 'play') drawPauseBtn();
   btns = [];
-  const J = jarFor(level);
   if (state === 'menu') menuScreen();
+  else if (state === 'levels') levelsScreen();
   else if (state === 'paused') pauseScreen();
   else if (state === 'intro') {
-    text('Niveau ' + level, W / 2, 506, 54, '#ffe066');
-    text('Remplis ' + J.name + ' !', W / 2, 556, 28);
-    text('Ton lama est le rose, en bas', W / 2, 592, 22, '#ffb0d0');
-    text('Garde le doigt appuyé pour arroser', W / 2, 624, 20, '#bff4ff');
+    text('Niveau ' + level, W / 2, 498, 50, '#ffe066');
+    text(modeName(mode, level), W / 2, 548, 30);
+    text(MODES[mode].hint, W / 2, 586, 20, '#bff4ff');
+    if (level <= MODE_ORDER.length) text('Garde le doigt appuyé pour arroser', W / 2, 618, 18, '#ffb0d0');
   }
-  else if (state === 'won') overlayWin('Victoire !', ['Ton lama gagne la course !', 'Prochain : niveau ' + (level + 1)], 'Touche pour continuer');
+  else if (state === 'won') { overlayWin('Victoire !', ['Ton lama gagne la course !', 'Prochain : ' + modeName(modeFor(level + 1), level + 1)], 'Touche pour continuer'); winStars(); }
   else if (state === 'lost') overlay('Perdu !', ['Le lama n°' + (winner + 1) + ' a gagné', myRank() > 1 ? 'Ton lama finit ' + myRank() + 'e' : 'Remplis plus vite !'], 'Touche pour réessayer');
-  else if (state === 'end') overlayWin('Bravo champion !', ['Les ' + MAX_LEVEL + ' courses sont gagnées !', 'Ton lama est une star'], 'Touche pour rejouer');
+  else if (state === 'end') { overlayWin('Bravo champion !', ['Les ' + MAX_LEVEL + ' courses sont gagnées !', 'Ton lama est une star'], 'Touche pour le menu'); winStars(); }
   drawConfetti();
   ctx.restore();
 }
@@ -1349,10 +1588,12 @@ function render() {
 let btns = [], pauseAt = 0;
 const PAUSE = { x: 496, y: 116, r: 21 };
 function loadSaved() { try { return Math.min(MAX_LEVEL, Math.max(1, +localStorage.getItem('lamaCourse40') || 1)); } catch (e) { return 1; } }
+function loadStars() { try { return (localStorage.getItem('lamaCourseStars') || '').padEnd(MAX_LEVEL, '0').slice(0, MAX_LEVEL).split('').map(Number); } catch (e) { return Array(MAX_LEVEL).fill(0); } }
+function saveStars(st) { try { localStorage.setItem('lamaCourseStars', st.join('')); } catch (e) { } }
 function goMenu() { level = loadSaved(); spraying = false; drops = []; parts = []; pops = []; ripples = []; confetti = []; dust = []; resetRace(); state = 'menu'; lock = time + .3; }
 function newGame() { level = 1; try { localStorage.setItem('lamaCourse40', 1); } catch (e) { } startLevel(); }
 function pauseGame() { if (state !== 'play') return; spraying = false; state = 'paused'; pauseAt = time; lock = time + .25; }
-function resumeGame() { const d = time - pauseAt; for (const r of racers) r.next += d; jar.next += d; endT += d; state = 'play'; }
+function resumeGame() { const d = time - pauseAt; for (const r of racers) r.next += d; jar.next += d; endT += d; nextBalloon += d; nextThirst += d; for (const p of pots) { p.until += d; p.t += d; } for (const c of candles) { c.at += d; c.smoke += d; } state = 'play'; }
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
 function button(label, x, y, w, h, fn, col) {
   btns.push({ x, y, w, h, fn });
@@ -1370,14 +1611,40 @@ function panel(y0, h) {
   ctx.strokeStyle = '#e3222f'; ctx.lineWidth = 6; rr(58, y0 + 8, W - 116, h - 16, 22); ctx.stroke();
 }
 function menuScreen() {
-  panel(250, 430);
-  text('LAMA COURSE', W / 2, 310, 42, '#e3222f', 'center', '#fff');
-  text("Remplis le récipient d'eau pour", W / 2, 352, 19, '#5a2a1a', 'center', '#fff6e0');
-  text('faire gagner la course à ton lama !', W / 2, 378, 19, '#5a2a1a', 'center', '#fff6e0');
-  button('Continuer – niveau ' + level, 100, 410, 340, 70, () => startLevel(), GREEN);
-  button('Recommencer au début', 100, 510, 340, 70, newGame);
-  text('Garde le doigt appuyé pour arroser', W / 2, 628, 18, '#5a2a1a', 'center', '#fff6e0');
+  panel(236, 492);
+  text('LAMA COURSE', W / 2, 294, 42, '#e3222f', 'center', '#fff');
+  text('Arrose, éclate, éteins, fais tourner :', W / 2, 334, 19, '#5a2a1a', 'center', '#fff6e0');
+  text(MODE_ORDER.length + ' mini-jeux pour faire gagner ton lama !', W / 2, 358, 19, '#5a2a1a', 'center', '#fff6e0');
+  MODE_ORDER.forEach((m, i) => modeIcon(m, W / 2 + (i - 2) * 52, 396, .9));
+  button('Continuer – niveau ' + level, 100, 432, 340, 66, () => startLevel(), GREEN);
+  button('Choisir un niveau', 100, 516, 340, 66, () => { state = 'levels'; lock = time + .3; }, [[0, '#ffc860'], [1, '#d88a1a']]);
+  button('Recommencer au début', 100, 600, 340, 66, newGame);
+  text('Garde le doigt appuyé pour arroser', W / 2, 700, 17, '#5a2a1a', 'center', '#fff6e0');
   text("Jeu de l'imaginaire de Prune", W / 2, 925, 24, '#ffe9b0', 'center', '#3a1030');
+}
+function levelsScreen() {   // grille des 60 niveaux : mini-jeu, étoiles, cadenas
+  panel(126, 772);
+  text('CHOISIS UN NIVEAU', W / 2, 176, 30, '#e3222f', 'center', '#fff');
+  const st = loadStars(), un = loadSaved();
+  for (let i = 0; i < MAX_LEVEL; i++) {
+    const c = i % 6, r = Math.floor(i / 6), x = 76 + c * 66, y = 204 + r * 59, w = 60, h = 53, n = i + 1, open = n <= un;
+    if (open) btns.push({ x, y, w, h, fn: () => { level = n; startLevel(); } });
+    ctx.fillStyle = open ? vgrad(y, y + h, n === un ? [[0, '#8af0b4'], [1, '#2fa86a']] : [[0, '#ffe0a0'], [1, '#e8a848']]) : 'rgba(110,80,50,.22)'; rr(x, y, w, h, 10); ctx.fill();
+    if (!open) { ctx.fillStyle = 'rgba(110,80,50,.5)'; rr(x + 22, y + 22, 16, 13, 3); ctx.fill(); ctx.strokeStyle = 'rgba(110,80,50,.5)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x + 30, y + 22, 5.5, Math.PI, 0); ctx.stroke(); continue; }
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2; rr(x + 1, y + 1, w - 2, h - 2, 9); ctx.stroke();
+    modeIcon(modeFor(n), x + 16, y + 20, .62);
+    text(String(n), x + 42, y + 19, 18, '#fff', 'center', '#7a3a10');
+    for (let k = 0; k < 3; k++) star(x + 16 + k * 14, y + 42, 5.5, k < st[i]);
+  }
+  button('Retour', 150, 814, 240, 58, goMenu);
+}
+function winStars() {   // étoiles gagnées, posées sur le haut du panneau de victoire
+  const y = (level % 5 === 0 ? 230 : 300) - 4;
+  for (let k = 0; k < 3; k++) {
+    const t = Math.min(1, Math.max(0, (time - winT - .25 - k * .25) / .3)), e = t >= 1 ? 1 : t * (2.2 - 1.2 * t);
+    if (k < lastStars && t > 0 && starSnd <= k) { starSnd = k + 1; tone(880 + k * 220, 1320 + k * 220, .12, 'triangle', .12); }
+    ctx.save(); ctx.translate(W / 2 + (k - 1) * 64, y - (k === 1 ? 10 : 0)); ctx.scale(k < lastStars ? Math.max(.01, e) : 1, k < lastStars ? Math.max(.01, e) : 1); star(0, 0, k === 1 ? 30 : 25, k < lastStars); ctx.restore();
+  }
 }
 function pauseScreen() {
   panel(300, 330);
