@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Construit LamaCourse.apk à partir de l'APK Capacitor de Lama Splash :
 # - remplace le jeu (assets/public/index.html)
-# - change l'identifiant (com.lamacourse.game) et le nom (« Lama Course ») pour qu'il s'installe à côté de Lama Splash.
+# - change l'identifiant (com.lamacourse.game) et le nom (« Lama Course ») pour qu'il s'installe à côté de Lama Splash
+# - remplace l'icône et l'écran de démarrage par les images de icon/res (générées par icon/make-icons.js).
 #   Les noms ont la même longueur, on corrige donc directement le manifeste et la table de ressources binaires.
 # Prérequis (Ubuntu) : apt install apksigner zipalign
 set -euo pipefail
@@ -10,9 +11,9 @@ BASE="${1:-$HERE/../lama-splash/LamaSplash.apk}"
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
 
-python3 -I - "$BASE" "$HERE/index.html" "$OUT/unsigned.apk" <<'PY'
-import sys, zipfile
-src, page, dst = sys.argv[1:]
+python3 -I - "$BASE" "$HERE/index.html" "$HERE/icon" "$OUT/unsigned.apk" <<'PY'
+import sys, zipfile, pathlib
+src, page, icons, dst = sys.argv[1:]
 u = lambda s: s.encode('utf-16-le')
 def sub(buf, a, b):
     assert len(a) == len(b) and buf.count(a) == 1, (buf.count(a), a[:40])
@@ -28,7 +29,11 @@ patch = {
     'assets/capacitor.config.json': lambda c: c.replace(b'com.lamasplash.game', b'com.lamacourse.game').replace(b'Lama Splash', b'Lama Course'),
     'assets/public/index.html': lambda _: open(page, 'rb').read(),
 }
+for f in pathlib.Path(icons, 'res').rglob('*.png'):   # icône et écran de démarrage, aux mêmes chemins que dans l'APK
+    patch[f.relative_to(icons).as_posix()] = lambda _, f=f: f.read_bytes()
 with zipfile.ZipFile(src) as zi, zipfile.ZipFile(dst, 'w') as zo:
+    missing = set(patch) - set(zi.namelist())
+    assert not missing, ('absents de l\'APK de base', missing)
     for info in zi.infolist():
         data = zi.read(info)
         if info.filename in patch: data = patch[info.filename](data)
