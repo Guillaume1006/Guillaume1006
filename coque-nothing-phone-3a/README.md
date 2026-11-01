@@ -18,6 +18,11 @@ Coque imprimable en 3D, paramétrique.
   conservée contre l'ouverture caméra), découpée en 3 arcs par des ponts de 4 mm.
   Options : `glyph_open` (false = dos plein), `glyph_gap`, `glyph_band`, `bridge_w`,
   `bridge_angles`.
+- **Quad Lock** : logement de 0,6 mm de profondeur dans le dos (56 × 66 mm + jeu 0,3 mm),
+  centré à 78 mm du bas, pour coller l'**adaptateur universel Quad Lock officiel**.
+  Les tailles annoncées varient selon la version (V3 : 56 × 66 ou 48 × 60 ; MAG : 60 × 60) :
+  mesure le tien et règle `ql_w`, `ql_h`, `ql_r`. Collage : nettoie à l'alcool, utilise
+  l'adhésif fourni + une colle compatible TPU, laisse sécher 24 h. Option `quadlock`.
 
 ⚠️ Les positions des boutons et de la caméra sont **approximatives**. Mesure ton
 téléphone au pied à coulisse et ajuste les variables `cam_*`, `right_*`, `left_*`

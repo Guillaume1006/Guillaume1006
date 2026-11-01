@@ -10,6 +10,7 @@ clearance, wall, back, lip, lip_h = 0.3, 1.6, 1.6, 1.2, 1.0
 cam_w, cam_h, cam_from_top = 44, 28, 26
 right_from, right_to, left_from, left_to, btn_h = 33, 82, 33, 78, 4.5
 glyph_open, glyph_gap, glyph_band, bridge_w, bridge_angles = True, 2.0, 6.0, 4.0, [90, 210, 330]
+quadlock, ql_w, ql_h, ql_r, ql_clear, ql_depth, ql_from_bottom = True, 56, 66, 8, 0.3, 0.6, 78
 usb_w, usb_h, spk_w, spk_h = 14, 7.5, 58, 4.0
 SEG, eps = 64, 0.01
 
@@ -49,6 +50,9 @@ cuts = [
 ]
 if glyph_open:
     cuts.append(glyph_cut().translate([0, L - clearance - cam_from_top, -back - eps]))
+if quadlock:
+    cuts.append(rrect(ql_w + 2 * ql_clear, ql_h + 2 * ql_clear, ql_r + ql_clear, ql_depth + eps)
+                .translate([0, clearance + ql_from_bottom, -back - eps]))
 zc = phone_t / 2
 cuts.append(box(wall + 2, right_to - right_from, btn_h).translate([W / 2 - 1, L - clearance - right_to, zc - btn_h / 2]))
 cuts.append(box(wall + 2, left_to - left_from, btn_h).translate([-W / 2 - wall - 1, L - clearance - left_to, zc - btn_h / 2]))

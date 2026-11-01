@@ -30,6 +30,15 @@ glyph_band   = 6.0;             // largeur de la bande ouverte
 bridge_w     = 4.0;             // largeur des ponts de matière
 bridge_angles = [90, 210, 330]; // position des ponts (degrés, 0 = droite, 90 = haut)
 
+/* [Quad Lock] — logement pour l'adaptateur universel officiel (collé) */
+quadlock      = true;   // false = pas de logement
+ql_w          = 56;     // largeur de l'adaptateur (mesurer le tien !)
+ql_h          = 66;     // hauteur de l'adaptateur
+ql_r          = 8;      // rayon des coins de l'adaptateur
+ql_clear      = 0.3;    // jeu autour de l'adaptateur
+ql_depth      = 0.6;    // profondeur du logement dans le dos
+ql_from_bottom = 78;    // du bas du téléphone au centre de l'adaptateur
+
 /* [Boutons] — distances depuis le haut du téléphone */
 right_from = 33;  right_to = 82;   // Power + Essential Key (côté droit)
 left_from  = 33;  left_to  = 78;   // Volume (côté gauche)
@@ -78,6 +87,11 @@ difference() {
     // Ouvertures Glyph
     if (glyph_open)
         translate([0, L - clearance - cam_from_top, -back - eps]) glyph_cut();
+
+    // Logement Quad Lock (dos extérieur)
+    if (quadlock)
+        translate([0, clearance + ql_from_bottom, -back - eps])
+            rrect(ql_w + 2*ql_clear, ql_h + 2*ql_clear, ql_r + ql_clear, ql_depth + eps);
 
     zc = phone_t/2;
     // Côté droit (+X) : Power + Essential Key
