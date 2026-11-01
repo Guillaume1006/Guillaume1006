@@ -3,14 +3,14 @@ Usage : pip install manifold3d trimesh && python build_stl.py
 """
 import numpy as np
 import trimesh
-from manifold3d import CrossSection, Manifold, JoinType
+from manifold3d import CrossSection, Manifold, JoinType, OpType
 
 phone_w, phone_l, phone_t, phone_r = 77.5, 163.5, 8.4, 9
 clearance, wall, back, lip, lip_h = 0.3, 1.6, 1.6, 1.2, 1.0
-cam_w, cam_h, cam_from_top = 44, 28, 26
-right_from, right_to, left_from, left_to, btn_h = 33, 82, 33, 78, 4.5
-glyph_open, glyph_gap, glyph_band, bridge_w, bridge_angles = True, 2.0, 6.0, 4.0, [90, 210, 330]
-quadlock, ql_from_bottom, ql_od, ql_hgt, ql_bore = True, 78, 44, 4.5, 31
+cam_d, cam_from_top = 59.6, 36.6
+right_from, right_to, left_from, left_to, btn_h = 59, 101, 53, 86, 4.5
+glyph_open, glyph_r, glyph_band, glyph_arcs = True, 32.9, 3.4, [(14, 53), (161, 212), (309, 338)]
+quadlock, ql_from_bottom, ql_od, ql_hgt, ql_bore = True, 70, 44, 4.5, 31
 ql_arm_r, ql_arm_w, ql_lip_t, ql_chan_h, ql_clr, ql_entry = 18.5, 8.5, 1.5, 2.2, 0.25, 45
 usb_w, usb_h, spk_w, spk_h = 14, 7.5, 58, 4.0
 SEG, eps = 64, 0.01
@@ -31,12 +31,13 @@ def stadium(w, h, depth):
 
 
 def glyph_cut():
-    d = back + 2 * eps
-    band = stadium(cam_w + 2 * (glyph_gap + glyph_band), cam_h + 2 * (glyph_gap + glyph_band), d)
-    band = band - stadium(cam_w + 2 * glyph_gap, cam_h + 2 * glyph_gap, d + 2 * eps).translate([0, 0, -eps])
-    for a in bridge_angles:
-        band = band - box(100, bridge_w, d + 2 * eps).translate([0, -bridge_w / 2, -eps]).rotate([0, 0, a])
-    return band
+    d, parts = back + 2 * eps, []
+    dot = CrossSection.circle(glyph_band / 2, 24)
+    for a0, a1 in glyph_arcs:
+        angs = list(np.arange(a0, a1, 3.0)) + [a1]
+        pts = [dot.translate([glyph_r * np.cos(np.radians(u)), glyph_r * np.sin(np.radians(u))]) for u in angs]
+        parts += [Manifold.extrude(CrossSection.batch_hull([p, q]), d) for p, q in zip(pts, pts[1:])]
+    return Manifold.batch_boolean(parts, OpType.Add)
 
 
 def box(sx, sy, sz):
@@ -71,7 +72,7 @@ if quadlock:
 cuts = [
     rrect(W, L, phone_r + clearance, phone_t + clearance + eps).translate([0, L / 2, 0]),
     rrect(W - 2 * lip, L - 2 * lip, phone_r - lip, H).translate([0, L / 2, phone_t]),
-    stadium(cam_w, cam_h, back + 2 * eps).translate([0, L - clearance - cam_from_top, -back - eps]),
+    Manifold.cylinder(back + 2 * eps, cam_d / 2, cam_d / 2, 128).translate([0, L - clearance - cam_from_top, -back - eps]),
 ]
 if glyph_open:
     cuts.append(glyph_cut().translate([0, L - clearance - cam_from_top, -back - eps]))

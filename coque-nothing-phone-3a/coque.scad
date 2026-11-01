@@ -21,21 +21,20 @@ back      = 1.6;    // épaisseur du dos
 lip       = 1.2;    // rebord qui recouvre l'écran
 lip_h     = 1.0;    // épaisseur du rebord (au-dessus de l'écran)
 
-/* [Caméra (dos)] — îlot centré en haut */
-cam_w     = 44;     // largeur de l'ouverture
-cam_h     = 28;     // hauteur de l'ouverture
-cam_from_top = 26;  // du haut du téléphone au centre de l'ouverture
+/* [Caméra (dos)] — disque rond centré (mesuré sur photo officielle) */
+cam_d        = 59.6;   // diamètre de l'ouverture (disque Ø 58 mm + marge)
+cam_from_top = 36.6;   // du haut du téléphone au centre du disque
 
-/* [Glyph] — ouvertures autour de la caméra pour laisser passer la lumière */
-glyph_open   = true;            // false = dos plein
-glyph_gap    = 2.0;             // matière laissée autour de l'ouverture caméra
-glyph_band   = 6.0;             // largeur de la bande ouverte
-bridge_w     = 4.0;             // largeur des ponts de matière
-bridge_angles = [90, 210, 330]; // position des ponts (degrés, 0 = droite, 90 = haut)
+/* [Glyph] — 3 arcs lumineux autour du disque */
+glyph_open = true;     // false = dos fermé autour du disque
+glyph_r    = 32.9;     // rayon des arcs (au centre de la fente)
+glyph_band = 3.4;      // largeur des fentes
+// angles de début/fin de chaque arc, vus depuis l'intérieur (0 = côté droit de l'écran, 90 = haut)
+glyph_arcs = [[14, 53], [161, 212], [309, 338]];
 
 /* [Quad Lock] — fixation quart de tour imprimée dans la coque */
 quadlock   = true;   // false = dos lisse
-ql_from_bottom = 78; // du bas du téléphone au centre de la fixation
+ql_from_bottom = 70; // du bas du téléphone au centre de la fixation
 ql_od      = 44;     // diamètre extérieur du plot
 ql_hgt     = 4.5;    // hauteur du plot au-dessus du dos
 ql_bore    = 31;     // diamètre de l'ouverture centrale (tête du support)
@@ -47,8 +46,8 @@ ql_clr     = 0.25;   // jeu
 ql_entry   = 45;     // angle d'entrée des ergots (on tourne de 45° pour verrouiller)
 
 /* [Boutons] — distances depuis le haut du téléphone */
-right_from = 33;  right_to = 82;   // Power + Essential Key (côté droit)
-left_from  = 33;  left_to  = 78;   // Volume (côté gauche)
+right_from = 59;  right_to = 101;  // Power + Essential Key (côté droit)
+left_from  = 53;  left_to  = 86;   // Volume (côté gauche)
 btn_h      = 4.5;                  // hauteur des fentes
 
 /* [Bas] */
@@ -62,13 +61,11 @@ W = phone_w + 2*clearance;
 L = phone_l + 2*clearance;
 H = back + phone_t + clearance + lip_h;     // hauteur totale
 
-module glyph_cut() {
-    difference() {
-        stadium(cam_w + 2*(glyph_gap + glyph_band), cam_h + 2*(glyph_gap + glyph_band), back + 2*eps);
-        translate([0, 0, -eps]) stadium(cam_w + 2*glyph_gap, cam_h + 2*glyph_gap, back + 4*eps);
-        for (a = bridge_angles)
-            rotate([0, 0, a]) translate([0, -bridge_w/2, -eps]) cube([100, bridge_w, back + 4*eps]);
-    }
+module glyph_cut() {   // fentes en arc à bouts ronds
+    for (arc = glyph_arcs)
+        for (t = [arc[0] : 3 : arc[1] - 3])
+            hull() for (u = [t, min(t + 3, arc[1])])
+                translate([glyph_r*cos(u), glyph_r*sin(u), 0]) cylinder(d = glyph_band, h = back + 2*eps, $fn = 24);
 }
 
 // Plot Quad Lock, centré à l'origine, dos extérieur en z = 0, sortant vers -Z
@@ -118,8 +115,8 @@ if (part == "test") {
     // Ouverture de l'écran (rebord de "lip" mm)
     translate([0, L/2, phone_t]) rrect(W - 2*lip, L - 2*lip, phone_r - lip, H);
 
-    // Caméra
-    translate([0, L - clearance - cam_from_top, -back - eps]) stadium(cam_w, cam_h, back + 2*eps);
+    // Caméra (disque complet)
+    translate([0, L - clearance - cam_from_top, -back - eps]) cylinder(d = cam_d, h = back + 2*eps, $fn = 128);
 
     // Ouvertures Glyph
     if (glyph_open)
