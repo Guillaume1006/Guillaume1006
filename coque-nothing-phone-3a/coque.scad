@@ -3,7 +3,10 @@
 // Z = épaisseur (0 = dos du téléphone).
 // Cotes du téléphone issues des fiches techniques ; positions des boutons et
 // de la caméra APPROXIMATIVES -> à vérifier au pied à coulisse avant impression.
-// Impression conseillée : TPU 95A, couche 0.2 mm, dos à plat sur le plateau.
+// Fixation Quad Lock imprimée : cotes ESTIMÉES -> imprimer d'abord part = "test".
+// Impression conseillée : PETG, écran vers le plateau, supports internes.
+
+part = "coque";     // "coque" = coque complète, "test" = pastille d'essai Quad Lock
 
 /* [Téléphone] */
 phone_w   = 77.5;   // largeur
@@ -30,14 +33,18 @@ glyph_band   = 6.0;             // largeur de la bande ouverte
 bridge_w     = 4.0;             // largeur des ponts de matière
 bridge_angles = [90, 210, 330]; // position des ponts (degrés, 0 = droite, 90 = haut)
 
-/* [Quad Lock] — logement pour l'adaptateur universel officiel (collé) */
-quadlock      = true;   // false = pas de logement
-ql_w          = 56;     // largeur de l'adaptateur (mesurer le tien !)
-ql_h          = 66;     // hauteur de l'adaptateur
-ql_r          = 8;      // rayon des coins de l'adaptateur
-ql_clear      = 0.3;    // jeu autour de l'adaptateur
-ql_depth      = 0.6;    // profondeur du logement dans le dos
-ql_from_bottom = 78;    // du bas du téléphone au centre de l'adaptateur
+/* [Quad Lock] — fixation quart de tour imprimée dans la coque */
+quadlock   = true;   // false = dos lisse
+ql_from_bottom = 78; // du bas du téléphone au centre de la fixation
+ql_od      = 44;     // diamètre extérieur du plot
+ql_hgt     = 4.5;    // hauteur du plot au-dessus du dos
+ql_bore    = 31;     // diamètre de l'ouverture centrale (tête du support)
+ql_arm_r   = 18.5;   // rayon extérieur des 4 ergots du support
+ql_arm_w   = 8.5;    // largeur des ergots
+ql_lip_t   = 1.5;    // épaisseur du rebord qui retient les ergots
+ql_chan_h  = 2.2;    // hauteur de la gorge où tournent les ergots
+ql_clr     = 0.25;   // jeu
+ql_entry   = 45;     // angle d'entrée des ergots (on tourne de 45° pour verrouiller)
 
 /* [Boutons] — distances depuis le haut du téléphone */
 right_from = 33;  right_to = 82;   // Power + Essential Key (côté droit)
@@ -64,6 +71,21 @@ module glyph_cut() {
     }
 }
 
+// Plot Quad Lock, centré à l'origine, dos extérieur en z = 0, sortant vers -Z
+module quadlock_boss() {
+    translate([0, 0, -ql_hgt]) cylinder(h = ql_hgt + eps, d1 = ql_od, d2 = ql_od + 2, $fn = 96);
+}
+module quadlock_cut() {
+    z0 = -ql_hgt;                       // face du plot
+    // Ouverture centrale + gorge de rotation
+    translate([0, 0, z0 - eps]) cylinder(h = ql_lip_t + ql_chan_h + eps, d = ql_bore, $fn = 96);
+    translate([0, 0, z0 + ql_lip_t]) cylinder(h = ql_chan_h, r = ql_arm_r + ql_clr, $fn = 96);
+    // 4 entrées pour les ergots
+    for (k = [0:3]) rotate([0, 0, ql_entry + 90*k])
+        translate([0, -(ql_arm_w/2 + ql_clr), z0 - eps])
+            cube([ql_arm_r + ql_clr, ql_arm_w + 2*ql_clr, ql_lip_t + 2*eps]);
+}
+
 module rrect(w, l, r, h) {
     linear_extrude(h)
         offset(r = r) square([w - 2*r, l - 2*r], center = true);
@@ -72,9 +94,24 @@ module stadium(w, h, depth) {   // pastille horizontale
     hull() for (s = [-1, 1]) translate([s*(w - h)/2, 0, 0]) cylinder(d = h, h = depth);
 }
 
-difference() {
-    // Coque extérieure, centrée sur (0, L/2)
-    translate([0, L/2, -back]) rrect(W + 2*wall, L + 2*wall, phone_r + clearance + wall, H);
+QL = [0, clearance + ql_from_bottom, -back];   // centre de la fixation
+
+if (part == "test") {
+    // Pastille d'essai : un bout de dos avec la fixation, à tester sur ton support
+    difference() {
+        union() {
+            translate([0, 0, -back]) rrect(ql_od + 8, ql_od + 8, 6, back);
+            translate([0, 0, -back]) quadlock_boss();
+        }
+        translate([0, 0, -back]) quadlock_cut();
+    }
+} else difference() {
+    union() {
+        // Coque extérieure, centrée sur (0, L/2)
+        translate([0, L/2, -back]) rrect(W + 2*wall, L + 2*wall, phone_r + clearance + wall, H);
+        if (quadlock) translate(QL) quadlock_boss();
+    }
+    if (quadlock) translate(QL) quadlock_cut();
 
     // Logement du téléphone
     translate([0, L/2, 0]) rrect(W, L, phone_r + clearance, phone_t + clearance + eps);
@@ -87,11 +124,6 @@ difference() {
     // Ouvertures Glyph
     if (glyph_open)
         translate([0, L - clearance - cam_from_top, -back - eps]) glyph_cut();
-
-    // Logement Quad Lock (dos extérieur)
-    if (quadlock)
-        translate([0, clearance + ql_from_bottom, -back - eps])
-            rrect(ql_w + 2*ql_clear, ql_h + 2*ql_clear, ql_r + ql_clear, ql_depth + eps);
 
     zc = phone_t/2;
     // Côté droit (+X) : Power + Essential Key
