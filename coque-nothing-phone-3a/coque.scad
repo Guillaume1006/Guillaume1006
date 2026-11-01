@@ -23,13 +23,12 @@ cam_w     = 44;     // largeur de l'ouverture
 cam_h     = 28;     // hauteur de l'ouverture
 cam_from_top = 26;  // du haut du téléphone au centre de l'ouverture
 
-/* [Glyph] — petits trous autour de la caméra pour laisser passer la lumière */
-glyph_holes = true;  // false = dos plein
-glyph_w     = 68;    // largeur de la zone perforée (pastille centrée sur la caméra)
-glyph_h     = 52;    // hauteur de la zone perforée
-hole_d      = 1.8;   // diamètre des trous
-hole_pitch  = 3.0;   // écart entre trous (grille hexagonale)
-hole_margin = 1.5;   // matière laissée autour de l'ouverture caméra
+/* [Glyph] — ouvertures autour de la caméra pour laisser passer la lumière */
+glyph_open   = true;            // false = dos plein
+glyph_gap    = 2.0;             // matière laissée autour de l'ouverture caméra
+glyph_band   = 6.0;             // largeur de la bande ouverte
+bridge_w     = 4.0;             // largeur des ponts de matière
+bridge_angles = [90, 210, 330]; // position des ponts (degrés, 0 = droite, 90 = haut)
 
 /* [Boutons] — distances depuis le haut du téléphone */
 right_from = 33;  right_to = 82;   // Power + Essential Key (côté droit)
@@ -47,18 +46,12 @@ W = phone_w + 2*clearance;
 L = phone_l + 2*clearance;
 H = back + phone_t + clearance + lip_h;     // hauteur totale
 
-// distance d'un point au bord d'une pastille centrée (<0 = dedans)
-function stadium_dist(x, y, w, h) = sqrt(pow(max(abs(x) - (w - h)/2, 0), 2) + y*y) - h/2;
-
-module glyph_holes_cut() {
-    rows = ceil(glyph_h / (hole_pitch * 0.866)) + 1;
-    cols = ceil(glyph_w / hole_pitch) + 1;
-    for (j = [-rows:rows], i = [-cols:cols]) {
-        x = (i + (j % 2 == 0 ? 0 : 0.5)) * hole_pitch;
-        y = j * hole_pitch * 0.866;
-        if (stadium_dist(x, y, glyph_w, glyph_h) < -hole_d/2 &&
-            stadium_dist(x, y, cam_w, cam_h) > hole_d/2 + hole_margin)
-            translate([x, y, 0]) cylinder(d = hole_d, h = back + 2*eps, $fn = 16);
+module glyph_cut() {
+    difference() {
+        stadium(cam_w + 2*(glyph_gap + glyph_band), cam_h + 2*(glyph_gap + glyph_band), back + 2*eps);
+        translate([0, 0, -eps]) stadium(cam_w + 2*glyph_gap, cam_h + 2*glyph_gap, back + 4*eps);
+        for (a = bridge_angles)
+            rotate([0, 0, a]) translate([0, -bridge_w/2, -eps]) cube([100, bridge_w, back + 4*eps]);
     }
 }
 
@@ -82,9 +75,9 @@ difference() {
     // Caméra
     translate([0, L - clearance - cam_from_top, -back - eps]) stadium(cam_w, cam_h, back + 2*eps);
 
-    // Trous Glyph
-    if (glyph_holes)
-        translate([0, L - clearance - cam_from_top, -back - eps]) glyph_holes_cut();
+    // Ouvertures Glyph
+    if (glyph_open)
+        translate([0, L - clearance - cam_from_top, -back - eps]) glyph_cut();
 
     zc = phone_t/2;
     // Côté droit (+X) : Power + Essential Key

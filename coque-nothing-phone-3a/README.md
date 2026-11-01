@@ -14,10 +14,10 @@ Coque imprimable en 3D, paramétrique.
 - Coque : 167,3 × 81,3 × 11,3 mm, bords 1,6 mm, dos 1,6 mm, jeu 0,3 mm, rebord d'écran 1,2 mm
 - Découpes : îlot caméra (44 × 28 mm, centré en haut), Power + Essential Key (droite),
   volume (gauche), USB-C + haut-parleur/micros (bas)
-- **Trous Glyph** : 184 trous de 1,8 mm (grille hexagonale, pas de 3 mm) en anneau
-  autour de la caméra pour laisser passer les LED Glyph. Option `glyph_holes`
-  (mettre `false` pour un dos plein) ; zone réglable avec `glyph_w` / `glyph_h`.
-  Astuce : en TPU transparent ou naturel, la lumière diffuse aussi à travers la matière.
+- **Ouvertures Glyph** : bande ouverte de 6 mm autour de la caméra (2 mm de matière
+  conservée contre l'ouverture caméra), découpée en 3 arcs par des ponts de 4 mm.
+  Options : `glyph_open` (false = dos plein), `glyph_gap`, `glyph_band`, `bridge_w`,
+  `bridge_angles`.
 
 ⚠️ Les positions des boutons et de la caméra sont **approximatives**. Mesure ton
 téléphone au pied à coulisse et ajuste les variables `cam_*`, `right_*`, `left_*`
