@@ -13,7 +13,7 @@ quart de tour compatible Quad Lock imprimée directement dans le dos.
 | `verification_photo.png` | Découpes superposées à la photo officielle du téléphone |
 
 ## Cotes
-- Téléphone : 163,5 × 77,5 × 8,4 mm (fiche technique)
+- Téléphone : 163,52 × 77,50 × 8,35 mm, 201 g (dimensions officielles Nothing)
 - Coque : 167,3 × 81,3 mm, 11,3 mm d'épaisseur (15,8 mm au niveau de la fixation)
 - Bords 1,6 mm, dos 1,6 mm, jeu 0,3 mm, rebord d'écran 1,2 mm
 - Positions calées sur la photo officielle du dos (voir `verification_photo.png`) :

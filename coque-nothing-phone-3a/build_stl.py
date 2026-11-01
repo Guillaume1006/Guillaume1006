@@ -5,7 +5,7 @@ import numpy as np
 import trimesh
 from manifold3d import CrossSection, Manifold, JoinType, OpType
 
-phone_w, phone_l, phone_t, phone_r = 77.5, 163.5, 8.4, 9
+phone_w, phone_l, phone_t, phone_r = 77.50, 163.52, 8.35, 9  # officiel Nothing
 clearance, wall, back, lip, lip_h = 0.3, 1.6, 1.6, 1.2, 1.0
 cam_d, cam_from_top = 59.6, 36.6
 right_from, right_to, left_from, left_to, btn_h = 59, 101, 53, 86, 4.5

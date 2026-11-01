@@ -9,9 +9,9 @@
 part = "coque";     // "coque" = coque complète, "test" = pastille d'essai Quad Lock
 
 /* [Téléphone] */
-phone_w   = 77.5;   // largeur
-phone_l   = 163.5;  // hauteur
-phone_t   = 8.4;    // épaisseur
+phone_w   = 77.50;  // largeur (officiel Nothing)
+phone_l   = 163.52; // hauteur (officiel Nothing)
+phone_t   = 8.35;   // épaisseur (officiel Nothing)
 phone_r   = 9;      // rayon des coins (vue de face)
 
 /* [Coque] */
