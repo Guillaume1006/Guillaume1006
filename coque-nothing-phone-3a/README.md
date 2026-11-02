@@ -17,12 +17,13 @@ quart de tour compatible Quad Lock imprimée directement dans le dos.
 - Coque : 167,3 × 81,3 mm, 11,3 mm d'épaisseur (15,8 mm au niveau de la fixation)
 - Bords 1,6 mm, dos 1,6 mm, jeu 0,3 mm, rebord d'écran 1,2 mm
 - Positions calées sur la photo officielle du dos (voir `verification_photo.png`) :
-  - **Caméra** : ouverture ronde Ø 59,6 mm (tout le disque, flash compris), centre à 36,6 mm du haut
-  - **Glyph** : 3 fentes en arc de 3,4 mm sur un rayon de 32,9 mm (haut-gauche, droite,
+  - **Caméra** : ouverture qui épouse le bloc caméra noir (51,8 × 23,8 mm), centre à 35,9 mm du haut
+  - **Flash** : trou Ø 7 mm, à 17 mm du haut et 6,7 mm à gauche du centre (vu de dos)
+  - **Glyph** : 3 fentes en arc de 3,4 mm sur un rayon de 32,9 mm autour du disque (haut-gauche, droite,
     bas-gauche vu de dos). Options `glyph_open`, `glyph_r`, `glyph_band`, `glyph_arcs`.
   - **Boutons** : Power + Essential Key à 59–101 mm du haut (droite), volume à 53–86 mm (gauche)
 - USB-C + haut-parleur/micros (bas)
-- **Fixation Quad Lock** : plot Ø 44 mm × 4,5 mm centré à 70 mm du bas (sous le disque caméra). On présente le
+- **Fixation Quad Lock** : plot Ø 44 mm × 4,5 mm centré à 70 mm du bas (sous la zone caméra). On présente le
   téléphone à 45°, on appuie, on tourne d'un quart de tour : les 4 ergots du support
   passent sous le rebord. Options `quadlock`, `ql_*`.
 

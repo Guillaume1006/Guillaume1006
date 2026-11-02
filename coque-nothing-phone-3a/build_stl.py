@@ -7,7 +7,8 @@ from manifold3d import CrossSection, Manifold, JoinType, OpType
 
 phone_w, phone_l, phone_t, phone_r = 77.50, 163.52, 8.35, 9  # officiel Nothing
 clearance, wall, back, lip, lip_h = 0.3, 1.6, 1.6, 1.2, 1.0
-cam_d, cam_from_top = 59.6, 36.6
+cam_w, cam_h, cam_from_top = 51.8, 23.8, 35.9
+flash_d, flash_x, flash_from_top, disk_from_top = 7.0, 6.7, 17.0, 36.6
 right_from, right_to, left_from, left_to, btn_h = 59, 101, 53, 86, 4.5
 glyph_open, glyph_r, glyph_band, glyph_arcs = True, 32.9, 3.4, [(14, 53), (161, 212), (309, 338)]
 quadlock, ql_from_bottom, ql_od, ql_hgt, ql_bore = True, 70, 44, 4.5, 31
@@ -72,10 +73,11 @@ if quadlock:
 cuts = [
     rrect(W, L, phone_r + clearance, phone_t + clearance + eps).translate([0, L / 2, 0]),
     rrect(W - 2 * lip, L - 2 * lip, phone_r - lip, H).translate([0, L / 2, phone_t]),
-    Manifold.cylinder(back + 2 * eps, cam_d / 2, cam_d / 2, 128).translate([0, L - clearance - cam_from_top, -back - eps]),
+    stadium(cam_w, cam_h, back + 2 * eps).translate([0, L - clearance - cam_from_top, -back - eps]),
+    Manifold.cylinder(back + 2 * eps, flash_d / 2, flash_d / 2, 48).translate([flash_x, L - clearance - flash_from_top, -back - eps]),
 ]
 if glyph_open:
-    cuts.append(glyph_cut().translate([0, L - clearance - cam_from_top, -back - eps]))
+    cuts.append(glyph_cut().translate([0, L - clearance - disk_from_top, -back - eps]))
 if quadlock:
     cuts.append(quadlock_cut().translate(QL))
 zc = phone_t / 2

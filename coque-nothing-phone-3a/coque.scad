@@ -21,9 +21,14 @@ back      = 1.6;    // épaisseur du dos
 lip       = 1.2;    // rebord qui recouvre l'écran
 lip_h     = 1.0;    // épaisseur du rebord (au-dessus de l'écran)
 
-/* [Caméra (dos)] — disque rond centré (mesuré sur photo officielle) */
-cam_d        = 59.6;   // diamètre de l'ouverture (disque Ø 58 mm + marge)
-cam_from_top = 36.6;   // du haut du téléphone au centre du disque
+/* [Caméra (dos)] — mesuré sur photo officielle */
+cam_w        = 51.8;   // ouverture qui épouse le bloc caméra noir (51 × 23 mm + jeu)
+cam_h        = 23.8;
+cam_from_top = 35.9;   // du haut du téléphone au centre du bloc caméra
+flash_d      = 7.0;    // trou du flash
+flash_x      = 6.7;    // décalage du flash (vers la gauche, vu de dos)
+flash_from_top = 17.0; // du haut du téléphone au centre du flash
+disk_from_top  = 36.6; // centre du disque autour duquel sont les arcs Glyph
 
 /* [Glyph] — 3 arcs lumineux autour du disque */
 glyph_open = true;     // false = dos fermé autour du disque
@@ -115,12 +120,14 @@ if (part == "test") {
     // Ouverture de l'écran (rebord de "lip" mm)
     translate([0, L/2, phone_t]) rrect(W - 2*lip, L - 2*lip, phone_r - lip, H);
 
-    // Caméra (disque complet)
-    translate([0, L - clearance - cam_from_top, -back - eps]) cylinder(d = cam_d, h = back + 2*eps, $fn = 128);
+    // Caméra (contour du bloc noir)
+    translate([0, L - clearance - cam_from_top, -back - eps]) stadium(cam_w, cam_h, back + 2*eps);
+    // Flash
+    translate([flash_x, L - clearance - flash_from_top, -back - eps]) cylinder(d = flash_d, h = back + 2*eps, $fn = 48);
 
     // Ouvertures Glyph
     if (glyph_open)
-        translate([0, L - clearance - cam_from_top, -back - eps]) glyph_cut();
+        translate([0, L - clearance - disk_from_top, -back - eps]) glyph_cut();
 
     zc = phone_t/2;
     // Côté droit (+X) : Power + Essential Key
