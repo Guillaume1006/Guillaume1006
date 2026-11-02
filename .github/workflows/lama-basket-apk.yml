@@ -1,0 +1,54 @@
+name: Lama Basket - APK Android
+
+on:
+  push:
+    paths:
+      - "lama-basket/**"
+      - ".github/workflows/lama-basket-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lama-basket-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compiler l'APK
+        working-directory: lama-basket/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease -PversionCode=${{ github.run_number }}
+
+      - name: Renommer l'APK
+        run: cp lama-basket/android/app/build/outputs/apk/release/app-release.apk "lama-basket-${{ github.run_number }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lama-basket-apk
+          path: lama-basket-*.apk
+
+      - name: Publier une release téléchargeable
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: lama-basket-v${{ github.run_number }}
+          name: Lama Basket (build ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: lama-basket-*.apk
+          body: |
+            APK Android du jeu Lama Basket (branche `${{ github.ref_name }}`).
+            Sur le téléphone : télécharger le fichier .apk ci-dessous, l'ouvrir et autoriser l'installation.

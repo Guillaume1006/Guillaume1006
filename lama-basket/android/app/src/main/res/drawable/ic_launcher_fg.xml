@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ballon de basket au centre de l'icône -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#33000000" android:pathData="M56,32a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
+    <path android:fillColor="#F47A20" android:pathData="M54,30a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
+    <path android:fillColor="#00000000" android:strokeColor="#2A1206" android:strokeWidth="2.4"
+        android:pathData="M30,54h48M54,30v48" />
+    <path android:fillColor="#00000000" android:strokeColor="#2A1206" android:strokeWidth="2.4"
+        android:pathData="M37,35c8,9 8,29 0,38M71,35c-8,9 -8,29 0,38" />
+    <path android:fillColor="#00000000" android:strokeColor="#2A1206" android:strokeWidth="2.4"
+        android:pathData="M54,30a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
+    <path android:fillColor="#66FFFFFF" android:pathData="M44,38a8,5 -30,1 1,8 -3a8,5 -30,1 1,-8 3z" />
+</vector>

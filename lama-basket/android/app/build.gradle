@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Numéro de build fourni par GitHub Actions (-PversionCode=...) pour que chaque APK
+// s'installe par-dessus le précédent sans perdre la progression.
+def buildNumber = (project.findProperty('versionCode') ?: '1').toString().toInteger()
+
+android {
+    namespace 'fr.guillaume.lamabasket'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'fr.guillaume.lamabasket'
+        minSdk 26
+        targetSdk 35
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
+    }
+
+    signingConfigs {
+        // Clé fixe pour pouvoir mettre à jour le jeu sans le désinstaller.
+        lama {
+            storeFile file('lama-basket.keystore')
+            storePassword 'lamabasket'
+            keyAlias 'lama'
+            keyPassword 'lamabasket'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.lama
+        }
+        debug {
+            signingConfig signingConfigs.lama
+        }
+    }
+
+    // Le jeu (HTML/JS) est embarqué tel quel depuis lama-basket/web
+    sourceSets {
+        main {
+            assets.srcDirs = ['../../web']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
