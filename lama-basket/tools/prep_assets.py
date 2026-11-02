@@ -1,7 +1,7 @@
 """Prépare les illustrations HD de Lama Basket à partir des images Canva fournies.
 
 - détourage des fonds verts (lama, ballon, panneau)
-- effacement du chariot peint sur le rail (il devient un élément mobile)
+- effacement du chariot peint sur le rail (le jeu dessine sa propre rampe lumineuse et ses chariots dorés)
 - masques du ciel et de l'ouverture des rideaux (pour les variantes de décor)
 - repérage des ampoules (pour les faire clignoter)
 Sorties dans lama-basket/web/img/ + assets.json (repères).
@@ -102,7 +102,7 @@ src = Image.open(BG).convert('RGB')
 W, H = src.size
 a = np.asarray(src).astype(np.float32)
 
-# chariot : sprite (parties métalliques) puis effacement
+# chariot peint : effacé (le jeu dessine la rampe et les chariots)
 TX0, TX1, TY0, TY1 = 452, 612, 334, 430
 fixed = a.copy()
 AX, AY = 472.0, 205.0          # sommet du chapiteau (les rayures partent de là)
@@ -124,14 +124,6 @@ m[TY0 - 2:TY1 + 2, TX0 - 2:TX1 + 2] = 1
 m = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(2))).astype(np.float32) / 255
 edge = m * (1 - m) * 4
 fixed = fixed * (1 - edge[..., None] * 0.6) + bl * (edge[..., None] * 0.6)
-# sprite du chariot : ce qui diffère entre l'original et l'image retouchée
-reg = a[TY0:TY1, TX0:TX1]
-diff = np.abs(reg - fixed[TY0:TY1, TX0:TX1]).mean(2)
-sat = reg.max(2) - reg.min(2)
-metal = (diff > 22) & (sat < 62) & (reg.max(2) < 228)
-metal[(RAIL1 - TY0 - 1):, :] = False
-mimg = Image.fromarray((metal * 255).astype(np.uint8)).filter(ImageFilter.MedianFilter(3)).filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(0.7))
-Image.fromarray(np.dstack([reg, np.asarray(mimg)]).clip(0, 255).astype(np.uint8), 'RGBA').save(OUT + '/trolley.png', optimize=True)
 bgimg = Image.fromarray(fixed.clip(0, 255).astype(np.uint8))
 bgimg.save(OUT + '/bg.jpg', quality=88, optimize=True, progressive=True)
 
