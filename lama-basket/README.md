@@ -1,9 +1,9 @@
 # Lama Basket
 
 Jeu mobile Android de basket façon fête foraine : on lance le ballon d'un glissement de doigt
-vers le haut dans un panier qui se déplace de gauche à droite. La scène reprend l'aperçu validé :
-chapiteau rayé, panier suspendu à un rail doré, écrans LAMA TV avec des lamas qui dansent,
-rideaux, cornets dorés et ballon posé sur un podium.
+vers le haut dans un panier qui se déplace de gauche à droite. La scène est l'aperçu validé, en
+illustrations HD générées avec Canva : chapiteau rayé, panier lumineux suspendu à un rail,
+écrans LAMA TV avec des lamas qui dansent, rideaux, cornets dorés et ballon posé sur un podium.
 
 ## Installer l'APK sur le téléphone
 
@@ -23,13 +23,18 @@ Chaque push qui modifie `lama-basket/` relance la compilation (workflow `Lama Ba
 | Points | Panier 2 pts, parfait (sans toucher le cercle ni la planche) 3 pts, ballon doré +5 pts. |
 | Combos | Paniers d'affilée : x2 dès le 5e, x3 dès le 9e, x4 dès le 13e. Un raté remet la série à zéro. |
 | Ballons | 16 ballons à gagner, un tous les 5 niveaux (plus le ballon classique de départ), à choisir dans le menu Ballons. |
-| Décors | Un nouveau décor tous les 10 niveaux : Le grand chapiteau, Fête de jour, Coucher de soleil, Nuit & feux d'artifice, Grande roue sous la neige, Fête sur la plage, Fête hantée, Gala des lumières. |
-| Animations | Lamas qui dansent sur les écrans, ampoules qui clignotent, fanions qui bougent, grande roue qui tourne, feux d'artifice, neige… |
+| Décors | Une nouvelle ambiance tous les 10 niveaux sur la scène HD (ciel, éclairage et effets) : Le grand chapiteau, Fête de jour, Coucher de soleil, Nuit & feux d'artifice, Grande roue sous la neige, Fête sur la plage, Fête hantée, Gala des lumières. |
+| Animations | Lamas qui dansent sur les écrans, ampoules qui clignotent, panier et chariot qui glissent sur le rail, grande roue qui tourne dans le ciel, feux d'artifice, neige, confettis… |
 | Son | Effets et petite musique de manège synthétisés (réglables dans le menu). |
 
 ## Organisation
 
-- `web/index.html` : tout le jeu (HTML5 Canvas, aucun fichier externe). Il s'ouvre aussi dans un navigateur pour tester.
+- `web/index.html` : tout le jeu (HTML5 Canvas). Il s'ouvre aussi dans un navigateur pour tester.
+- `web/img/` : illustrations HD (décor, panneau, chariot, ballon, lama, masque du ciel) et `assets.json` (repères).
+  Si elles manquent, le jeu retombe sur des décors dessinés en code.
+- `tools/prep_assets.py` : prépare ces images à partir des PNG exportés de Canva (détourage des fonds verts,
+  effacement du chariot peint, masque du ciel, repérage des ampoules). Les repères de `assets.json` sont recopiés
+  dans `HD_META` en tête du module HD de `index.html`.
 - `android/` : application Android minimale (WebView plein écran) qui embarque `web/`.
 - `android/app/lama-basket.keystore` : clé de signature fixe (mot de passe `lamabasket`) qui permet d'installer
   les mises à jour par-dessus. Le dépôt étant public, elle ne sert qu'à cela ; ne pas l'utiliser pour une publication sur le Play Store.
