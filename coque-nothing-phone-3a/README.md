@@ -11,6 +11,7 @@ quart de tour compatible Quad Lock en PETG, qui se loge dans le dos de la coque.
 | `coque.scad` | Modèle OpenSCAD (`part = "coque"` ou `"support"`), toutes les cotes en tête de fichier |
 | `build_stl.py` | Régénère les STL sans OpenSCAD (`pip install manifold3d trimesh`) |
 | `make_bambu.py` | Régénère les 3MF à partir des STL |
+| `bambu_filament_Elegoo_TPU_95A.json` | Profil de filament Bambu Studio pour l'Elegoo TPU 95A |
 | `rendu_3d.png` | Rendu 3D |
 | `verification_photo.png` | Découpes superposées à la photo officielle (rouge = ouvertures, orange = logement du support) |
 

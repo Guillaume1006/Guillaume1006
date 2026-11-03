@@ -23,14 +23,31 @@ Ne retourne pas les pièces : elles sont déjà dans le bon sens.
 - Essaie-le tout de suite sur ton support Quad Lock : présente-le à 45°, appuie, tourne d'un
   quart de tour, tire fort. Ajustements dans le tableau du `README.md`.
 
-## 2. Coque — TPU 95A
+## 2. Coque — TPU 95A (Elegoo TPU 95A Translucent)
+
+### Profil de filament
+Fichier fourni : `bambu_filament_Elegoo_TPU_95A.json` (valeurs de l'étiquette Elegoo).
+- Bambu Studio → **Fichier > Importer > Importer des configurations…** → choisir le fichier.
+  Le filament « Elegoo TPU 95A Translucent » apparaît dans la liste des filaments.
+- Si l'import est refusé, crée-le à la main :
+  1. Dans **Filament**, choisis **Generic TPU**, clique sur l'icône **Modifier** (crayon)
+  2. Onglet **Filament** : buse **230 °C** (première couche **235 °C**, plage 220–240 °C),
+     plateau **40 °C** (Textured PEI et première couche), **débit volumétrique max 3,2 mm³/s**
+  3. Onglet **Refroidissement** : ventilateur 80–100 %
+  4. **Enregistrer sous** → « Elegoo TPU 95A Translucent »
+
+### Bobine
 - Le TPU **ne passe pas dans l'AMS / AMS lite** : bobine sur le **support externe**.
-- Sèche le TPU avant (4–6 h à 55–65 °C).
-- Filament : **Bambu TPU 95A HF** (ou Generic TPU), en filament externe (« Ext »)
+  Sur l'écran de l'imprimante ou dans Bambu Studio (onglet Appareil), règle l'emplacement
+  **Ext** sur ce filament (type TPU, couleur transparente).
+- **Sèche-la avant : 70 °C pendant 8 h** (valeurs Elegoo).
+
+### Impression
 - Plaque : Textured PEI
 - Process : 0.20mm Standard, **murs : 4**, couches dessus/dessous : 5, remplissage 40 % (Gyroïde)
 - **Pas de supports** : le dos est à plat et le rebord d'écran (1,2 mm) s'imprime sans
-- Si ça file : baisse la vitesse à ~40–60 mm/s
+- Si ça file ou que le fil se tord dans l'extrudeur : baisse le débit max à 2,5 mm³/s
+- Bonus : en TPU translucide, la lumière Glyph diffuse aussi à travers la coque.
 
 ## 3. Assemblage
 1. Pose le support PETG **à l'intérieur** de la coque : la plaque carrée se loge dans le creux
