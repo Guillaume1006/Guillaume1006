@@ -2,11 +2,12 @@
 
 Deux fichiers prêts à ouvrir, déjà orientés et centrés sur le plateau :
 
-| Ordre | Fichier | Temps indicatif |
-|---|---|---|
-| 1 | `bambu_1_test_quadlock.3mf` : pastille d'essai Quad Lock (plaque au plateau, plot en haut) | ~15–20 min |
-| 2 | `bambu_2_coque.3mf` : coque (écran vers le plateau, plot en haut) | ~2 h |
+| Ordre | Fichier |
+|---|---|
+| 1 | `bambu_1_test_quadlock.3mf` : pastille d'essai Quad Lock (plaque au plateau, plot en haut) |
+| 2 | `bambu_2_coque.3mf` : coque (écran vers le plateau, plot en haut) |
 
+Bambu Studio affiche le temps d'impression et le poids de filament après le tranchage.
 Ils tiennent sur tous les plateaux Bambu Lab (A1 mini compris : la coque fait 167 × 81 mm).
 
 ## 1. Ouvrir
