@@ -1,4 +1,4 @@
-# Imprimer avec Bambu Lab (Bambu Studio)
+# Imprimer en TPU 95A avec Bambu Lab (Bambu Studio)
 
 Deux fichiers prêts à ouvrir, déjà orientés et centrés sur le plateau :
 
@@ -10,30 +10,42 @@ Deux fichiers prêts à ouvrir, déjà orientés et centrés sur le plateau :
 Bambu Studio affiche le temps d'impression et le poids de filament après le tranchage.
 Ils tiennent sur tous les plateaux Bambu Lab (A1 mini compris : la coque fait 167 × 81 mm).
 
+## ⚠️ TPU et Quad Lock
+Le TPU 95A est souple : idéal pour clipser le téléphone et amortir les chocs, mais les
+ergots du support Quad Lock peuvent déformer le rebord du plot et se décrocher.
+**La pastille d'essai en TPU est indispensable** : si elle se déclipse quand tu tires fort,
+ne l'utilise pas à moto. Solutions alors : coller l'adaptateur universel Quad Lock officiel
+au dos (je peux remettre un logement), ou imprimer seulement la fixation en PETG.
+
+## 0. Filament
+- Le TPU **ne passe pas dans l'AMS / AMS lite** : mets la bobine sur le **support externe**.
+- Sèche le TPU avant (4–6 h à 55–65 °C) : humide, il file et fait des bulles.
+
 ## 1. Ouvrir
-Bambu Studio → **Fichier > Importer > Importer 3MF/STL** (ou glisser le fichier dans la fenêtre).
-Si Bambu Studio demande s'il faut charger « la géométrie uniquement », réponds **oui**.
+Bambu Studio → **Fichier > Importer > Importer 3MF/STL** (ou glisser le fichier).
+Si Bambu Studio demande de charger « la géométrie uniquement », réponds **oui**.
 Ne retourne pas la pièce : elle est déjà dans le bon sens.
 
-## 2. Réglages (panneau de gauche)
-- **Imprimante** : la tienne (A1, A1 mini, P1S, X1C…), buse 0,4 mm
-- **Plaque** : Textured PEI (sur Smooth PEI, mets de la colle en bâton : le PETG colle trop fort)
-- **Filament** : Bambu PETG HF (ou Generic PETG)
-- **Process** : 0.20mm Standard, puis dans l'onglet de l'objet :
-  - Qualité : hauteur de couche 0,2 mm
-  - Solidité : **Murs : 4**, couches dessus/dessous : 5, **remplissage 40 %** (Gyroïde)
-  - **Supports** (coque uniquement) : activer, type **Arborescent (auto)**, cocher **Sur le plateau uniquement**
-    → les supports remplissent seulement l'intérieur de la coque, sous le dos
-  - Autres : **Bordure (brim) extérieure, 5 mm** pour la coque (seul le fin rebord d'écran touche le plateau)
-- La pastille d'essai : mêmes réglages **sans** supports ni bordure.
+## 2. Réglages
+- **Imprimante** : la tienne, buse 0,4 mm
+- **Plaque** : Textured PEI (ou Smooth PEI + colle en bâton pour pouvoir décoller le TPU)
+- **Filament** : **Bambu TPU 95A HF** (ou Generic TPU), en **filament externe** (« Ext »)
+- **Process** : 0.20mm Standard, puis :
+  - Solidité : **Murs : 4**, couches dessus/dessous : 5, remplissage **40 %** (Gyroïde)
+  - Vitesse : laisse le profil filament limiter le débit ; si ça file, baisse à ~40–60 mm/s
+  - Rétraction : garde celle du profil TPU (courte)
+  - **Supports** (coque uniquement) : activer, type **Arborescent (auto)**,
+    cocher **Sur le plateau uniquement**, **distance Z haut : 0,3 mm**, interface : 0 couche
+    → supports seulement à l'intérieur, sous le dos ; l'écart de 0,3 mm les rend détachables en TPU
+  - **Bordure (brim) extérieure 5 mm** pour la coque (seul le rebord d'écran touche le plateau)
+- Pastille d'essai : mêmes réglages **sans** supports ni bordure.
 
 ## 3. Trancher et envoyer
-**Trancher la plaque** → vérifier l'aperçu couche par couche (le plot Quad Lock doit être en haut)
-→ **Imprimer la plaque** (Wi-Fi / cloud Bambu, ou carte microSD). L'impression se suit aussi dans l'app Bambu Handy.
+**Trancher la plaque** → vérifier l'aperçu (plot Quad Lock en haut) → **Imprimer la plaque**
+(Wi-Fi / cloud, ou microSD). Suivi possible dans l'app Bambu Handy.
 
 ## 4. Après l'impression
-- Retire les supports à l'intérieur de la coque (pince plate), ébavure les bords au cutter.
-- Pastille d'essai : présente-la à 45° sur ton support Quad Lock, appuie, tourne d'un quart de tour.
-  Si ça ne rentre pas, ne tourne pas ou a du jeu, voir le tableau de réglages du `README.md`,
-  puis régénère : `python build_stl.py && python make_bambu.py`.
+- Retire les supports intérieurs en tirant doucement à la pince, coupe les restes au cutter.
+- Pastille : présente-la à 45° sur ton support, appuie, tourne d'un quart de tour, tire fort.
+  Réglages dans le tableau du `README.md`, puis : `python build_stl.py && python make_bambu.py`.
 - N'imprime la coque qu'une fois la pastille validée.

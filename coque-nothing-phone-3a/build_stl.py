@@ -6,7 +6,7 @@ import trimesh
 from manifold3d import CrossSection, Manifold, JoinType, OpType
 
 phone_w, phone_l, phone_t, phone_r = 77.50, 163.52, 8.35, 9  # officiel Nothing
-clearance, wall, back, lip, lip_h = 0.3, 1.6, 1.6, 0.8, 1.0  # lip 0.8 en PETG, 1.2 en TPU
+clearance, wall, back, lip, lip_h = 0.3, 1.6, 1.6, 1.2, 1.0  # lip 1.2 en TPU 95A, 0.8 en PETG
 cam_w, cam_h, cam_from_top = 51.8, 23.8, 35.9
 flash_d, flash_x, flash_from_top, disk_from_top = 7.0, 6.7, 17.0, 36.6
 right_from, right_to, left_from, left_to, btn_h = 59, 101, 53, 86, 4.5

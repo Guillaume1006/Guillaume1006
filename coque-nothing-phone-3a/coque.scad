@@ -18,7 +18,7 @@ phone_r   = 9;      // rayon des coins (vue de face)
 clearance = 0.3;    // jeu autour du téléphone
 wall      = 1.6;    // épaisseur des bords
 back      = 1.6;    // épaisseur du dos
-lip       = 0.8;    // rebord qui recouvre l'écran (0.8 en PETG, 1.2 en TPU)
+lip       = 1.2;    // rebord qui recouvre l'écran (1.2 en TPU 95A, 0.8 en PETG)
 lip_h     = 1.0;    // épaisseur du rebord (au-dessus de l'écran)
 
 /* [Caméra (dos)] — mesuré sur photo officielle */

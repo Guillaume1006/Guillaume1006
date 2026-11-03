@@ -17,7 +17,7 @@ quart de tour compatible Quad Lock imprimée directement dans le dos.
 ## Cotes
 - Téléphone : 163,52 × 77,50 × 8,35 mm, 201 g (dimensions officielles Nothing)
 - Coque : 167,3 × 81,3 mm, 11,3 mm d'épaisseur (15,8 mm au niveau de la fixation)
-- Bords 1,6 mm, dos 1,6 mm, jeu 0,3 mm, rebord d'écran 0,8 mm (PETG)
+- Bords 1,6 mm, dos 1,6 mm, jeu 0,3 mm, rebord d'écran 1,2 mm (TPU 95A)
 - Positions calées sur la photo officielle du dos (voir `verification_photo.png`) :
   - **Caméra** : ouverture qui épouse le bloc caméra noir (51,8 × 23,8 mm), centre à 35,9 mm du haut
   - **Flash** : trou Ø 7 mm, à 17 mm du haut et 6,7 mm à gauche du centre (vu de dos)
@@ -42,8 +42,9 @@ Les positions viennent d'une photo (précision ~1 mm) : un contrôle au pied à 
 ## Impression
 Avec une imprimante Bambu Lab : suivre **`BAMBU.md`** (réglages Bambu Studio pas à pas).
 
-- **PETG** (ou ASA/PC) : la fixation doit être rigide, le TPU est trop souple pour verrouiller.
-  Le rebord `lip` est réglé à 0,8 mm pour le PETG (1,2 mm si tu imprimes en TPU).
+- **TPU 95A** (choix retenu) : souple, se clipse et amortit. Le plot Quad Lock en TPU peut
+  manquer de rigidité : valider impérativement la pastille d'essai en TPU avant la moto.
+  En PETG, passer `lip` à 0,8 mm.
 - **Orientation : écran vers le plateau** (le rebord repose sur le plateau, le plot est en haut).
 - Supports « depuis le plateau uniquement » (ils ne remplissent que l'intérieur de la coque)
 - Couche 0,2 mm, 4 périmètres, remplissage 40 % minimum
