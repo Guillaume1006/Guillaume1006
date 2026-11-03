@@ -9,13 +9,15 @@ quart de tour compatible Quad Lock imprimée directement dans le dos.
 | `test_quadlock.stl` | Pastille d'essai (52 × 52 mm, ~15 min) pour tester la fixation sur ton support |
 | `coque.scad` | Modèle OpenSCAD, toutes les cotes en tête de fichier (`part = "test"` pour la pastille) |
 | `build_stl.py` | Régénère les deux STL sans OpenSCAD (`pip install manifold3d trimesh`) |
+| `bambu_1_test_quadlock.3mf`, `bambu_2_coque.3mf` | **Prêts pour Bambu Studio** (orientés, centrés) — voir `BAMBU.md` |
+| `make_bambu.py` | Régénère les deux 3MF à partir des STL |
 | `apercu*.png` | Aperçus |
 | `verification_photo.png` | Découpes superposées à la photo officielle du téléphone |
 
 ## Cotes
 - Téléphone : 163,52 × 77,50 × 8,35 mm, 201 g (dimensions officielles Nothing)
 - Coque : 167,3 × 81,3 mm, 11,3 mm d'épaisseur (15,8 mm au niveau de la fixation)
-- Bords 1,6 mm, dos 1,6 mm, jeu 0,3 mm, rebord d'écran 1,2 mm
+- Bords 1,6 mm, dos 1,6 mm, jeu 0,3 mm, rebord d'écran 0,8 mm (PETG)
 - Positions calées sur la photo officielle du dos (voir `verification_photo.png`) :
   - **Caméra** : ouverture qui épouse le bloc caméra noir (51,8 × 23,8 mm), centre à 35,9 mm du haut
   - **Flash** : trou Ø 7 mm, à 17 mm du haut et 6,7 mm à gauche du centre (vu de dos)
@@ -38,8 +40,10 @@ Pas d'homologation : une fixation imprimée reste moins sûre que l'officielle.
 Les positions viennent d'une photo (précision ~1 mm) : un contrôle au pied à coulisse reste conseillé.
 
 ## Impression
+Avec une imprimante Bambu Lab : suivre **`BAMBU.md`** (réglages Bambu Studio pas à pas).
+
 - **PETG** (ou ASA/PC) : la fixation doit être rigide, le TPU est trop souple pour verrouiller.
-  En PETG, passe `lip` à 0,8 mm pour pouvoir clipser le téléphone.
+  Le rebord `lip` est réglé à 0,8 mm pour le PETG (1,2 mm si tu imprimes en TPU).
 - **Orientation : écran vers le plateau** (le rebord repose sur le plateau, le plot est en haut).
 - Supports « depuis le plateau uniquement » (ils ne remplissent que l'intérieur de la coque)
 - Couche 0,2 mm, 4 périmètres, remplissage 40 % minimum
