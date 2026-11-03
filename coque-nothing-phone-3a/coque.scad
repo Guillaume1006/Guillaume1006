@@ -3,10 +3,11 @@
 // Z = épaisseur (0 = dos du téléphone).
 // Cotes du téléphone issues des fiches techniques ; positions des boutons et
 // de la caméra APPROXIMATIVES -> à vérifier au pied à coulisse avant impression.
-// Fixation Quad Lock imprimée : cotes ESTIMÉES -> imprimer d'abord part = "test".
-// Impression conseillée : PETG, écran vers le plateau, supports internes.
+// Deux pièces : la coque en TPU 95A et le support Quad Lock en PETG (insert).
+// L'insert se pose à l'intérieur de la coque : sa plaque se loge dans un creux
+// du dos, le plot sort par un trou, le téléphone le bloque. Cotes Quad Lock ESTIMÉES.
 
-part = "coque";     // "coque" = coque complète, "test" = pastille d'essai Quad Lock
+part = "coque";     // "coque" = coque TPU, "support" = support Quad Lock PETG
 
 /* [Téléphone] */
 phone_w   = 77.50;  // largeur (officiel Nothing)
@@ -37,8 +38,12 @@ glyph_band = 3.4;      // largeur des fentes
 // angles de début/fin de chaque arc, vus depuis l'intérieur (0 = côté droit de l'écran, 90 = haut)
 glyph_arcs = [[14, 53], [161, 212], [309, 338]];
 
-/* [Quad Lock] — fixation quart de tour imprimée dans la coque */
-quadlock   = true;   // false = dos lisse
+/* [Quad Lock] — support quart de tour, pièce séparée en PETG */
+quadlock   = true;   // false = dos lisse, sans trou ni logement
+ins_w      = 52;     // côté de la plaque carrée de l'insert (empêche la rotation)
+ins_r      = 6;      // rayon des coins de la plaque
+ins_t      = 0.8;    // épaisseur de la plaque = profondeur du logement dans le dos
+ins_clr    = 0.2;    // jeu entre insert PETG et coque TPU
 ql_from_bottom = 70; // du bas du téléphone au centre de la fixation
 ql_od      = 44;     // diamètre extérieur du plot
 ql_hgt     = 4.5;    // hauteur du plot au-dessus du dos
@@ -73,9 +78,19 @@ module glyph_cut() {   // fentes en arc à bouts ronds
                 translate([glyph_r*cos(u), glyph_r*sin(u), 0]) cylinder(d = glyph_band, h = back + 2*eps, $fn = 24);
 }
 
-// Plot Quad Lock, centré à l'origine, dos extérieur en z = 0, sortant vers -Z
+// Plot Quad Lock, centré à l'origine, base en z = 0, sortant vers -Z
 module quadlock_boss() {
-    translate([0, 0, -ql_hgt]) cylinder(h = ql_hgt + eps, d1 = ql_od, d2 = ql_od + 2, $fn = 96);
+    translate([0, 0, -ql_hgt]) cylinder(h = ql_hgt + eps, d = ql_od, $fn = 96);
+}
+// Insert PETG dans le repère de la coque (face intérieure du dos en z = 0)
+module quadlock_insert() {
+    difference() {
+        union() {
+            translate([0, 0, -ins_t]) rrect(ins_w, ins_w, ins_r, ins_t);          // plaque
+            translate([0, 0, -back - ql_hgt]) cylinder(h = ql_hgt + back - ins_t + eps, d = ql_od, $fn = 96);
+        }
+        translate([0, 0, -back]) quadlock_cut();
+    }
 }
 module quadlock_cut() {
     z0 = -ql_hgt;                       // face du plot
@@ -96,24 +111,17 @@ module stadium(w, h, depth) {   // pastille horizontale
     hull() for (s = [-1, 1]) translate([s*(w - h)/2, 0, 0]) cylinder(d = h, h = depth);
 }
 
-QL = [0, clearance + ql_from_bottom, -back];   // centre de la fixation
-
-if (part == "test") {
-    // Pastille d'essai : un bout de dos avec la fixation, à tester sur ton support
-    difference() {
-        union() {
-            translate([0, 0, -back]) rrect(ql_od + 8, ql_od + 8, 6, back);
-            translate([0, 0, -back]) quadlock_boss();
-        }
-        translate([0, 0, -back]) quadlock_cut();
-    }
+if (part == "support") {
+    quadlock_insert();
 } else difference() {
-    union() {
-        // Coque extérieure, centrée sur (0, L/2)
-        translate([0, L/2, -back]) rrect(W + 2*wall, L + 2*wall, phone_r + clearance + wall, H);
-        if (quadlock) translate(QL) quadlock_boss();
+    // Coque extérieure, centrée sur (0, L/2)
+    translate([0, L/2, -back]) rrect(W + 2*wall, L + 2*wall, phone_r + clearance + wall, H);
+
+    // Logement de l'insert Quad Lock (creux intérieur + trou pour le plot)
+    if (quadlock) translate([0, clearance + ql_from_bottom, 0]) {
+        translate([0, 0, -ins_t]) rrect(ins_w + 2*ins_clr, ins_w + 2*ins_clr, ins_r + ins_clr, ins_t + eps);
+        translate([0, 0, -back - eps]) cylinder(h = back + 2*eps, d = ql_od + 2*ins_clr, $fn = 96);
     }
-    if (quadlock) translate(QL) quadlock_cut();
 
     // Logement du téléphone
     translate([0, L/2, 0]) rrect(W, L, phone_r + clearance, phone_t + clearance + eps);

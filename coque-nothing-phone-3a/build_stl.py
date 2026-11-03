@@ -1,4 +1,4 @@
-"""Génère coque.stl et test_quadlock.stl sans OpenSCAD (mêmes paramètres que coque.scad).
+"""Génère coque.stl (TPU) et support_quadlock.stl (PETG) sans OpenSCAD (mêmes paramètres que coque.scad).
 Usage : pip install manifold3d trimesh && python build_stl.py
 """
 import numpy as np
@@ -13,6 +13,7 @@ right_from, right_to, left_from, left_to, btn_h = 59, 101, 53, 86, 4.5
 glyph_open, glyph_r, glyph_band, glyph_arcs = True, 32.9, 3.4, [(14, 53), (161, 212), (309, 338)]
 quadlock, ql_from_bottom, ql_od, ql_hgt, ql_bore = True, 70, 44, 4.5, 31
 ql_arm_r, ql_arm_w, ql_lip_t, ql_chan_h, ql_clr, ql_entry = 18.5, 8.5, 1.5, 2.2, 0.25, 45
+ins_w, ins_r, ins_t, ins_clr = 52, 6, 0.8, 0.2  # insert PETG
 usb_w, usb_h, spk_w, spk_h = 14, 7.5, 58, 4.0
 SEG, eps = 64, 0.01
 
@@ -45,8 +46,11 @@ def box(sx, sy, sz):
     return Manifold.cube([sx, sy, sz])
 
 
-def quadlock_boss():
-    return Manifold.cylinder(ql_hgt + eps, ql_od / 2, ql_od / 2 + 1, 96).translate([0, 0, -ql_hgt])
+def quadlock_insert():
+    """Insert PETG dans le repère de la coque (face intérieure du dos en z = 0)."""
+    plate = rrect(ins_w, ins_w, ins_r, ins_t).translate([0, 0, -ins_t])
+    boss = Manifold.cylinder(ql_hgt + back - ins_t + eps, ql_od / 2, ql_od / 2, 96).translate([0, 0, -back - ql_hgt])
+    return (plate + boss) - quadlock_cut().translate([0, 0, -back])
 
 
 def quadlock_cut():
@@ -66,10 +70,7 @@ def export(man, name):
     print(f"{name} : {mesh.extents.round(1)} mm, étanche={mesh.is_watertight}, volume={mesh.volume/1000:.1f} cm3")
 
 
-QL = [0, clearance + ql_from_bottom, -back]
 case = rrect(W + 2 * wall, L + 2 * wall, phone_r + clearance + wall, H).translate([0, L / 2, -back])
-if quadlock:
-    case = case + quadlock_boss().translate(QL)
 cuts = [
     rrect(W, L, phone_r + clearance, phone_t + clearance + eps).translate([0, L / 2, 0]),
     rrect(W - 2 * lip, L - 2 * lip, phone_r - lip, H).translate([0, L / 2, phone_t]),
@@ -78,8 +79,10 @@ cuts = [
 ]
 if glyph_open:
     cuts.append(glyph_cut().translate([0, L - clearance - disk_from_top, -back - eps]))
-if quadlock:
-    cuts.append(quadlock_cut().translate(QL))
+if quadlock:  # logement de l'insert : creux intérieur + trou pour le plot
+    y = clearance + ql_from_bottom
+    cuts.append(rrect(ins_w + 2 * ins_clr, ins_w + 2 * ins_clr, ins_r + ins_clr, ins_t + eps).translate([0, y, -ins_t]))
+    cuts.append(Manifold.cylinder(back + 2 * eps, ql_od / 2 + ins_clr, ql_od / 2 + ins_clr, 96).translate([0, y, -back - eps]))
 zc = phone_t / 2
 cuts.append(box(wall + 2, right_to - right_from, btn_h).translate([W / 2 - 1, L - clearance - right_to, zc - btn_h / 2]))
 cuts.append(box(wall + 2, left_to - left_from, btn_h).translate([-W / 2 - wall - 1, L - clearance - left_to, zc - btn_h / 2]))
@@ -91,6 +94,5 @@ for c in cuts:
 
 export(case, "coque.stl")
 
-# Pastille d'essai : un bout de dos avec la fixation, à tester sur ton support
-test = rrect(ql_od + 8, ql_od + 8, 6, back).translate([0, 0, -back]) + quadlock_boss().translate([0, 0, -back])
-export(test - quadlock_cut().translate([0, 0, -back]), "test_quadlock.stl")
+# Support Quad Lock en PETG (insert), à poser dans la coque avant le téléphone
+export(quadlock_insert(), "support_quadlock.stl")

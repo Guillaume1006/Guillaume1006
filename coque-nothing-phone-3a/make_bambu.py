@@ -1,7 +1,7 @@
 """Crée des fichiers .3mf prêts à ouvrir dans Bambu Studio, déjà orientés pour l'impression.
 Usage : python make_bambu.py   (après build_stl.py)
-- bambu_1_test_quadlock.3mf : pastille d'essai, plaque sur le plateau, plot vers le haut
-- bambu_2_coque.3mf         : coque, écran vers le plateau, plot vers le haut
+- bambu_1_support_quadlock_PETG.3mf : support Quad Lock, plaque sur le plateau, plot vers le haut
+- bambu_2_coque_TPU.3mf             : coque TPU 95A, dos sur le plateau (aucun support nécessaire)
 """
 import zipfile
 import numpy as np
@@ -61,5 +61,5 @@ def write_3mf(mesh, name, out):
     print(f"{out} : {mesh.extents.round(1)} mm, étanche={mesh.is_watertight}")
 
 
-write_3mf(prepare("test_quadlock.stl", flip=True), "Test Quad Lock", "bambu_1_test_quadlock.3mf")
-write_3mf(prepare("coque.stl", flip=True), "Coque Nothing Phone 3a", "bambu_2_coque.3mf")
+write_3mf(prepare("support_quadlock.stl", flip=True), "Support Quad Lock PETG", "bambu_1_support_quadlock_PETG.3mf")
+write_3mf(prepare("coque.stl", flip=False), "Coque Nothing Phone 3a TPU", "bambu_2_coque_TPU.3mf")

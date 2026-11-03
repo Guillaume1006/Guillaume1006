@@ -1,22 +1,22 @@
 # Coque Nothing Phone (3a)
 
-Coque imprimable en 3D, paramétrique, avec ouvertures Glyph et fixation
-quart de tour compatible Quad Lock imprimée directement dans le dos.
+Coque imprimable en 3D, paramétrique : coque en TPU 95A avec ouvertures Glyph, et support
+quart de tour compatible Quad Lock en PETG, qui se loge dans le dos de la coque.
 
 | Fichier | Rôle |
 |---|---|
-| `coque.stl` | Coque complète, prête à trancher |
-| `test_quadlock.stl` | Pastille d'essai (52 × 52 mm, ~15 min) pour tester la fixation sur ton support |
-| `coque.scad` | Modèle OpenSCAD, toutes les cotes en tête de fichier (`part = "test"` pour la pastille) |
-| `build_stl.py` | Régénère les deux STL sans OpenSCAD (`pip install manifold3d trimesh`) |
-| `bambu_1_test_quadlock.3mf`, `bambu_2_coque.3mf` | **Prêts pour Bambu Studio** (orientés, centrés) — voir `BAMBU.md` |
-| `make_bambu.py` | Régénère les deux 3MF à partir des STL |
-| `apercu*.png` | Aperçus |
-| `verification_photo.png` | Découpes superposées à la photo officielle du téléphone |
+| `coque.stl` | Coque, à imprimer en **TPU 95A** |
+| `support_quadlock.stl` | Support Quad Lock (insert), à imprimer en **PETG** |
+| `bambu_1_support_quadlock_PETG.3mf`, `bambu_2_coque_TPU.3mf` | **Prêts pour Bambu Studio** (orientés, centrés) — voir `BAMBU.md` |
+| `coque.scad` | Modèle OpenSCAD (`part = "coque"` ou `"support"`), toutes les cotes en tête de fichier |
+| `build_stl.py` | Régénère les STL sans OpenSCAD (`pip install manifold3d trimesh`) |
+| `make_bambu.py` | Régénère les 3MF à partir des STL |
+| `rendu_3d.png` | Rendu 3D |
+| `verification_photo.png` | Découpes superposées à la photo officielle (rouge = ouvertures, orange = logement du support) |
 
 ## Cotes
 - Téléphone : 163,52 × 77,50 × 8,35 mm, 201 g (dimensions officielles Nothing)
-- Coque : 167,3 × 81,3 mm, 11,3 mm d'épaisseur (15,8 mm au niveau de la fixation)
+- Coque : 167,3 × 81,3 × 11,2 mm (+ 4,5 mm de plot Quad Lock une fois le support posé)
 - Bords 1,6 mm, dos 1,6 mm, jeu 0,3 mm, rebord d'écran 1,2 mm (TPU 95A)
 - Positions calées sur la photo officielle du dos (voir `verification_photo.png`) :
   - **Caméra** : ouverture qui épouse le bloc caméra noir (51,8 × 23,8 mm), centre à 35,9 mm du haut
@@ -25,12 +25,14 @@ quart de tour compatible Quad Lock imprimée directement dans le dos.
     bas-gauche vu de dos). Options `glyph_open`, `glyph_r`, `glyph_band`, `glyph_arcs`.
   - **Boutons** : Power + Essential Key à 59–101 mm du haut (droite), volume à 53–86 mm (gauche)
 - USB-C + haut-parleur/micros (bas)
-- **Fixation Quad Lock** : plot Ø 44 mm × 4,5 mm centré à 70 mm du bas (sous la zone caméra). On présente le
-  téléphone à 45°, on appuie, on tourne d'un quart de tour : les 4 ergots du support
-  passent sous le rebord. Options `quadlock`, `ql_*`.
+- **Support Quad Lock (PETG)** : plaque carrée 52 × 52 × 0,8 mm + plot Ø 44 × 4,5 mm.
+  La plaque se loge dans un creux à l'intérieur du dos (centré à 70 mm du bas), le plot sort
+  par un trou Ø 44,4 mm ; le téléphone bloque le tout, le carré empêche la rotation.
+  On présente le téléphone à 45° sur le support, on appuie, on tourne d'un quart de tour.
+  Options `quadlock`, `ql_*`, `ins_*`.
 
 ⚠️ **Cotes estimées.** Quad Lock ne publie pas les cotes de son interface : celles-ci
-sont des estimations. **Imprime d'abord `test_quadlock.stl`** et essaie-la sur ton support :
+sont des estimations. **Imprime d'abord le support PETG** (petit, rapide) et essaie-le sur ton support :
 - n'entre pas → augmente `ql_bore`, `ql_arm_w` ou `ql_clr`
 - entre mais ne tourne pas → augmente `ql_arm_r` ou `ql_chan_h`
 - tourne mais flotte → diminue `ql_chan_h` / `ql_clr`
@@ -42,9 +44,5 @@ Les positions viennent d'une photo (précision ~1 mm) : un contrôle au pied à 
 ## Impression
 Avec une imprimante Bambu Lab : suivre **`BAMBU.md`** (réglages Bambu Studio pas à pas).
 
-- **TPU 95A** (choix retenu) : souple, se clipse et amortit. Le plot Quad Lock en TPU peut
-  manquer de rigidité : valider impérativement la pastille d'essai en TPU avant la moto.
-  En PETG, passer `lip` à 0,8 mm.
-- **Orientation : écran vers le plateau** (le rebord repose sur le plateau, le plot est en haut).
-- Supports « depuis le plateau uniquement » (ils ne remplissent que l'intérieur de la coque)
-- Couche 0,2 mm, 4 périmètres, remplissage 40 % minimum
+- **Coque : TPU 95A**, dos à plat sur le plateau, **sans supports**, 4 murs, 0,2 mm
+- **Support Quad Lock : PETG**, plaque à plat, plot en haut, sans supports, remplissage 100 %
