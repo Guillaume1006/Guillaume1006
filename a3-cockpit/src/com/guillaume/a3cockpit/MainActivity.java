@@ -160,9 +160,10 @@ public class MainActivity extends Activity {
                 sideW = 84;
                 Ui.place(stage, new MmiChrome.SlotSide(this, sideH), 8, top, sideW, sideH);
             }
-            cw = Ui.W - sideW - 24;
+            Ui.place(stage, new MmiChrome.Band(this), sideW + 9, top, 14, sideH);   // bande de séparation
+            cw = Ui.W - sideW - 32;
             ch = sideH;
-            content = Ui.place(stage, new FrameLayout(this), sideW + 16, top, cw, ch);
+            content = Ui.place(stage, new FrameLayout(this), sideW + 24, top, cw, ch);
             home = new MmiHomePage(this, cw, ch);
         } else {
             dock = Ui.place(stage, new Dock(this, Ui.H - 24), 12, 12, 68, Ui.H - 24);

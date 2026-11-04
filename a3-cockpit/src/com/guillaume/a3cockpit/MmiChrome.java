@@ -88,10 +88,6 @@ final class MmiChrome {
         SlotSide(final MainActivity a, float h) {
             super(a);
             setBackground(Ui.gradient(0xFF17181B, 0xFF0B0C0E, 4));
-            View edge = Ui.place(this, new View(a), 82, 0, 2, h);                     // liseré d'ambiance
-            edge.setBackground(new android.graphics.drawable.GradientDrawable(
-                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                    new int[]{Ui.alpha(Ui.ACCENT, 0x00), Ui.alpha(Ui.ACCENT, 0xB0), Ui.alpha(Ui.ACCENT, 0x00)}));
             int n = OrbitSlots.SIDE_COUNT;
             float cell = h / (n + 1);                       // 5 applis + bouton Menu fixe
             for (int i = 0; i < n; i++) {
@@ -138,6 +134,28 @@ final class MmiChrome {
 
         private static void edit(final MainActivity a, int slot) {
             OrbitSlots.edit(a, slot, new Runnable() { @Override public void run() { a.rebuild(); } });
+        }
+    }
+
+    /** Bande lumineuse verticale de la couleur du thème (sépare la barre des applis du reste). */
+    static final class Band extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        Band(Context c) { super(c); }
+
+        @Override protected void onDraw(Canvas c) {
+            float w = getWidth(), h = getHeight(), cx = w / 2f;
+            int ac = Ui.ACCENT;
+            // halo doux
+            p.setShader(new LinearGradient(0, 0, w, 0, new int[]{Ui.alpha(ac, 0x00), Ui.alpha(ac, 0x55), Ui.alpha(ac, 0x00)},
+                    null, Shader.TileMode.CLAMP));
+            c.drawRect(0, h * 0.03f, w, h * 0.97f, p);
+            // trait central, estompé aux extrémités
+            float lw = Math.max(2f, w * 0.22f);
+            p.setShader(new LinearGradient(0, 0, 0, h, new int[]{Ui.alpha(ac, 0x00), ac, Ui.accentLight(), ac, Ui.alpha(ac, 0x00)},
+                    new float[]{0f, 0.18f, 0.5f, 0.82f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(cx - lw / 2f, 0, cx + lw / 2f, h, p);
+            p.setShader(null);
         }
     }
 

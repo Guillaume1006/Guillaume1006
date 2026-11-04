@@ -18,23 +18,9 @@ final class BackgroundView extends View {
 
     @Override protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight();
-        if (Ui.MMI) {                                   // noir profond + dégradé de la couleur d'ambiance
-            int ac = Ui.ACCENT;
-            p.setShader(new LinearGradient(0, 0, 0, h, new int[]{0xFF101113, 0xFF050506, 0xFF000000},
-                    new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, p);
-            // halo principal en bas, derrière la voiture
-            p.setShader(new RadialGradient(w * 0.42f, h * 1.02f, w * 0.62f,
-                    new int[]{Ui.alpha(ac, 0x5A), Ui.alpha(ac, 0x1E), Ui.alpha(ac, 0x00)},
-                    new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, p);
-            // reflet discret en haut à droite (derrière l'horloge)
-            p.setShader(new RadialGradient(w * 0.92f, h * 0.05f, w * 0.38f,
-                    new int[]{Ui.alpha(ac, 0x30), Ui.alpha(ac, 0x00)}, null, Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, p);
-            // fine ligne lumineuse en diagonale
-            p.setShader(new LinearGradient(0, h * 0.30f, w, h * 0.12f,
-                    new int[]{Ui.alpha(ac, 0x00), Ui.alpha(ac, 0x16), Ui.alpha(ac, 0x00)}, null, Shader.TileMode.CLAMP));
+        if (Ui.MMI) {                                   // dégradé gris foncé → noir, sobre
+            p.setShader(new LinearGradient(0, 0, w * 0.35f, h, new int[]{0xFF1E1F22, 0xFF0E0F11, 0xFF000000},
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(0, 0, w, h, p);
             p.setShader(null);
             return;
