@@ -50,6 +50,14 @@ final class SettingsPage extends Page {
         list.removeAllViews();
         final MainActivity a = this.a;
 
+        section("Affichage");
+        row(IconView.PALETTE, "Thème", Ui.MMI ? "Audi MMI (noir)" : "Coucher de soleil", new Runnable() {
+            @Override public void run() {
+                Prefs.put("theme", Ui.MMI ? "sunset" : "mmi");
+                a.rebuild();
+            }
+        });
+
         section("Véhicule");
         row(IconView.EDIT, "Nom affiché", Prefs.carName(), new Runnable() { @Override public void run() { editName(); } });
         row(IconView.CAR, "Carrosserie", Prefs.fiveDoors() ? "Sportback (5 portes)" : "3 portes", new Runnable() {

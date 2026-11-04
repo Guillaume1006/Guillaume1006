@@ -111,6 +111,7 @@ final class CarSideView extends View {
 
     /** Photo (vue de 3/4) posée sur le plateau, mise à l'échelle sur toute la zone. */
     private void drawPhotoScene(Canvas c, float w, float h) {
+        if (Ui.MMI) { drawPhotoGlow(c, w, h); return; }
         float ar = photo.getWidth() / (float) photo.getHeight();
         float th = h * 0.57f, tw = th * ar;
         if (tw > w * 0.70f) { tw = w * 0.70f; th = tw / ar; }
@@ -152,6 +153,48 @@ final class CarSideView extends View {
         c.drawBitmap(photo, null, r, p);
 
         // reflet animé (touchez la voiture)
+        if (sweep >= 0f) {
+            c.save();
+            c.clipRect(r);
+            float x = r.left - tw * 0.3f + sweep * tw * 1.6f;
+            p.setShader(new LinearGradient(x - tw * 0.08f, 0, x + tw * 0.08f, 0,
+                    new int[]{0x00FFFFFF, 0x40FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+            c.drawRect(r, p);
+            p.setShader(null);
+            c.restore();
+        }
+    }
+
+    /** Thème MMI : voiture sur une lueur bleue, sans plateau. */
+    private void drawPhotoGlow(Canvas c, float w, float h) {
+        float ar = photo.getWidth() / (float) photo.getHeight();
+        float th = h * 0.86f, tw = th * ar;
+        if (tw > w * 0.96f) { tw = w * 0.96f; th = tw / ar; }
+        float cx = w / 2f, bottom = h * 0.94f, ty = bottom - th * 0.12f;
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new RadialGradient(0, 0, 1, new int[]{0xAA1E8CFF, 0x401E8CFF, 0x001E8CFF},
+                new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+        c.save();
+        c.translate(cx, ty);
+        c.scale(tw * 0.62f, th * 0.16f);
+        c.drawCircle(0, 0, 1, p);
+        c.restore();
+        p.setShader(new RadialGradient(0, 0, 1, 0xE0000000, 0x00000000, Shader.TileMode.CLAMP));
+        c.save();
+        c.translate(cx, ty);
+        c.scale(tw * 0.46f, th * 0.08f);
+        c.drawCircle(0, 0, 1, p);
+        c.restore();
+        p.setShader(null);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1.5f, w / 300f));
+        r.set(cx - tw * 0.55f, ty - th * 0.07f, cx + tw * 0.55f, ty + th * 0.07f);
+        p.setShader(new LinearGradient(r.left, 0, r.right, 0, new int[]{0x003FA9FF, 0xFF5CC0FF, 0x003FA9FF}, null, Shader.TileMode.CLAMP));
+        c.drawArc(r, 10, 160, false, p);
+        p.setShader(null);
+        p.setStyle(Paint.Style.FILL);
+        r.set(cx - tw / 2f, bottom - th, cx + tw / 2f, bottom);
+        c.drawBitmap(photo, null, r, p);
         if (sweep >= 0f) {
             c.save();
             c.clipRect(r);

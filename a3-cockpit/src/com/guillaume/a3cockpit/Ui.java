@@ -29,8 +29,27 @@ final class Ui {
     static int s(float v) { return Math.round(v * scale); }
     static float f(float v) { return v * scale; }
 
-    static final int TEXT = 0xFFFFFFFF, TEXT2 = 0xB8FFFFFF, TEXT3 = 0x73FFFFFF;
-    static final int CARD = 0xA617121F, CARD_STROKE = 0x24FFFFFF, CHIP = 0x1CFFFFFF, CHIP_ON = 0x38FFFFFF;
+    static final int TEXT = 0xFFFFFFFF;
+    static int TEXT2 = 0xB8FFFFFF, TEXT3 = 0x73FFFFFF;
+    static int CARD = 0xA617121F, CARD_STROKE = 0x24FFFFFF, CHIP = 0x1CFFFFFF, CHIP_ON = 0x38FFFFFF;
+    static final int AUDI_RED = 0xFFD8001E, MMI_BLUE = 0xFF2E9BFF;
+
+    /** Thème : "mmi" (noir façon Audi MMI, par défaut) ou "sunset" (coucher de soleil). */
+    static boolean MMI = true;
+    static float RADIUS = 1f;          // facteur appliqué aux arrondis
+
+    static void applyTheme(String name) {
+        MMI = !"sunset".equals(name);
+        if (MMI) {
+            TEXT2 = 0xFFA9ADB3; TEXT3 = 0xFF6C7077;
+            CARD = 0xF00B0C0E; CARD_STROKE = 0x26FFFFFF; CHIP = 0x14FFFFFF; CHIP_ON = 0x30FFFFFF;
+            RADIUS = 0.35f;
+        } else {
+            TEXT2 = 0xB8FFFFFF; TEXT3 = 0x73FFFFFF;
+            CARD = 0xA617121F; CARD_STROKE = 0x24FFFFFF; CHIP = 0x1CFFFFFF; CHIP_ON = 0x38FFFFFF;
+            RADIUS = 1f;
+        }
+    }
     static final int GREEN = 0xFF30D158, RED = 0xFFFF453A, ORANGE = 0xFFFF5F2E, YELLOW = 0xFFFFD60A,
             BLUE = 0xFF0A84FF, PINK = 0xFFFF375F, PURPLE = 0xFF7B61FF, TEAL = 0xFF5AC8FA,
             LIME = 0xFFB8D432, GRAY = 0xFF8E8E93, AMBER = 0xFFFF9F0A;
@@ -43,7 +62,7 @@ final class Ui {
     static GradientDrawable round(int color, float radius) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);
-        g.setCornerRadius(f(radius));
+        g.setCornerRadius(f(radius * RADIUS));
         return g;
     }
 
@@ -55,7 +74,7 @@ final class Ui {
 
     static GradientDrawable gradient(int top, int bottom, float radius) {
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{top, bottom});
-        g.setCornerRadius(f(radius));
+        g.setCornerRadius(f(radius * RADIUS));
         return g;
     }
 

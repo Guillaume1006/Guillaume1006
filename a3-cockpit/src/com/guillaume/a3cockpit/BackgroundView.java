@@ -18,6 +18,13 @@ final class BackgroundView extends View {
 
     @Override protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight();
+        if (Ui.MMI) {                                   // noir profond, léger voile gris en haut
+            p.setShader(new LinearGradient(0, 0, 0, h, new int[]{0xFF101113, 0xFF050506, 0xFF000000},
+                    new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, w, h, p);
+            p.setShader(null);
+            return;
+        }
         p.setShader(new LinearGradient(0, 0, 0, h,
                 new int[]{0xFF0E0B1C, 0xFF2A1C47, 0xFF6B3462, 0xFFD2603F, 0xFF2A1426},
                 new float[]{0f, 0.38f, 0.62f, 0.8f, 1f}, Shader.TileMode.CLAMP));

@@ -28,7 +28,8 @@ public class MainActivity extends Activity {
     final Handler h = new Handler(Looper.getMainLooper());
     private FrameLayout stage, content;
     private Dock dock;
-    private HomePage home;
+    private MmiChrome.Bar bar;
+    private Page home;
     private VehiclePage vehicle;
     private Page current;
     private float cw, ch;
@@ -43,6 +44,7 @@ public class MainActivity extends Activity {
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             if (dock != null) dock.refresh();
+            if (bar != null) bar.refresh();
             if (current != null) current.refresh();
             h.postDelayed(this, 500);
         }
@@ -137,14 +139,26 @@ public class MainActivity extends Activity {
         Ui.H = hh / Ui.scale;
         int vehicleTab = vehicle != null ? vehicle.getTab() : 0;
         String page = current == null || current == home ? "home" : current instanceof VehiclePage ? "vehicle"
-                : current instanceof AppsPage ? "apps" : "settings";
+                : current instanceof AppsPage || current instanceof MenuPage ? "apps" : "settings";
 
+        Ui.applyTheme(Prefs.str("theme", "mmi"));
         stage.removeAllViews();
-        dock = Ui.place(stage, new Dock(this, Ui.H - 24), 12, 12, 68, Ui.H - 24);
-        cw = Ui.W - 104;
-        ch = Ui.H - 24;
-        content = Ui.place(stage, new FrameLayout(this), 92, 12, cw, ch);
-        home = new HomePage(this, cw, ch);
+        dock = null;
+        bar = null;
+        if (Ui.MMI) {
+            bar = Ui.place(stage, new MmiChrome.Bar(this, Ui.W), 0, 0, Ui.W, 40);
+            Ui.place(stage, new MmiChrome.Side(this, Ui.H - 56), 8, 48, 60, Ui.H - 56);
+            cw = Ui.W - 84;
+            ch = Ui.H - 56;
+            content = Ui.place(stage, new FrameLayout(this), 76, 48, cw, ch);
+            home = new MmiHomePage(this, cw, ch);
+        } else {
+            dock = Ui.place(stage, new Dock(this, Ui.H - 24), 12, 12, 68, Ui.H - 24);
+            cw = Ui.W - 104;
+            ch = Ui.H - 24;
+            content = Ui.place(stage, new FrameLayout(this), 92, 12, cw, ch);
+            home = new HomePage(this, cw, ch);
+        }
         vehicle = null;
         current = null;
         switch (page) {
@@ -153,7 +167,13 @@ public class MainActivity extends Activity {
             case "settings": showSettings(); break;
             default: showHome();
         }
-        dock.refresh();
+        if (dock != null) dock.refresh();
+        if (bar != null) bar.refresh();
+    }
+
+    /** Reconstruit tout l'écran (changement de thème). */
+    void rebuild() {
+        if (lastW > 0) build(lastW, lastH);
     }
 
     private void show(Page p) {
@@ -164,6 +184,8 @@ public class MainActivity extends Activity {
         content.removeAllViews();
         content.addView(p, new FrameLayout.LayoutParams(-1, -1));
         current = p;
+        if (bar != null) bar.setTitle(p == home ? "" : p instanceof VehiclePage ? "Véhicule" : p instanceof SettingsPage
+                ? "Réglages" : "Menu");
         p.setAlpha(0f);
         p.setTranslationY(Ui.f(10));
         p.animate().alpha(1f).translationY(0).setDuration(200).start();
@@ -183,6 +205,12 @@ public class MainActivity extends Activity {
     }
 
     void showApps() {
+        if (content == null) return;
+        show(Ui.MMI ? new MenuPage(this, cw, ch) : new AppsPage(this, cw, ch));
+    }
+
+    /** Tiroir de toutes les applis installées. */
+    void showDrawer() {
         if (content != null) show(new AppsPage(this, cw, ch));
     }
 
@@ -233,7 +261,8 @@ public class MainActivity extends Activity {
     }
 
     void carChanged() {
-        if (home != null) home.reloadCar();
+        if (home instanceof HomePage) ((HomePage) home).reloadCar();
+        if (home instanceof MmiHomePage) ((MmiHomePage) home).reloadCar();
         if (vehicle != null) vehicle.setTab(vehicle.getTab());
     }
 
