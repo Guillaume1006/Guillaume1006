@@ -40,8 +40,8 @@ final class MmiHomePage extends Page {
         Ui.place(this, new Floor(), 0, 0, w, h);
 
         // voiture dans la partie gauche de l'orbite
-        float cw = rx * 1.42f, ch = ry * 1.12f;
-        car = Ui.place(this, new CarSideView(a), ox - rx * 1.06f, oy - ry * 0.64f, cw, ch);
+        float cw = rx * 1.56f, ch = ry * 1.20f;                 // centrée dans l'orbite
+        car = Ui.place(this, new CarSideView(a), ox - cw / 2f, oy - ch * 0.56f, cw, ch);
         Ui.onTap(car, new Runnable() { @Override public void run() { car.shine(); } });
 
         // carrousel en orbite : 7 emplacements personnalisables (appui long pour modifier)

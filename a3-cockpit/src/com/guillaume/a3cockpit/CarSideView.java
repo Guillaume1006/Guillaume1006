@@ -165,32 +165,34 @@ final class CarSideView extends View {
         }
     }
 
-    /** Thème MMI : voiture sur une lueur bleue, sans plateau. */
+    /** Thème MMI : voiture posée sur une lueur rouge Audi, sans plateau. */
     private void drawPhotoGlow(Canvas c, float w, float h) {
         float ar = photo.getWidth() / (float) photo.getHeight();
-        float th = h * 0.86f, tw = th * ar;
-        if (tw > w * 0.96f) { tw = w * 0.96f; th = tw / ar; }
-        float cx = w / 2f, bottom = h * 0.94f, ty = bottom - th * 0.12f;
+        float th = h * 0.78f, tw = th * ar;
+        if (tw > w * 0.94f) { tw = w * 0.94f; th = tw / ar; }
+        float cx = w / 2f, ty = h * 0.74f;                    // centre de la lueur = appui des roues
+        float bottom = ty + th * 0.21f;                        // l'arrière repose sur l'anneau
+        float gx = tw * 0.60f, gy = th * 0.17f;
         p.setStyle(Paint.Style.FILL);
-        p.setShader(new RadialGradient(0, 0, 1, new int[]{0xAA1E8CFF, 0x401E8CFF, 0x001E8CFF},
+        p.setShader(new RadialGradient(0, 0, 1, new int[]{0xB0E0101E, 0x50C8001A, 0x00C8001A},
                 new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
         c.save();
         c.translate(cx, ty);
-        c.scale(tw * 0.62f, th * 0.16f);
+        c.scale(gx, gy);
         c.drawCircle(0, 0, 1, p);
         c.restore();
         p.setShader(new RadialGradient(0, 0, 1, 0xE0000000, 0x00000000, Shader.TileMode.CLAMP));
         c.save();
         c.translate(cx, ty);
-        c.scale(tw * 0.46f, th * 0.08f);
+        c.scale(tw * 0.44f, gy * 0.55f);
         c.drawCircle(0, 0, 1, p);
         c.restore();
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1.5f, w / 300f));
-        r.set(cx - tw * 0.55f, ty - th * 0.07f, cx + tw * 0.55f, ty + th * 0.07f);
-        p.setShader(new LinearGradient(r.left, 0, r.right, 0, new int[]{0x003FA9FF, 0xFF5CC0FF, 0x003FA9FF}, null, Shader.TileMode.CLAMP));
-        c.drawArc(r, 10, 160, false, p);
+        p.setStrokeWidth(Math.max(1.5f, w / 280f));
+        r.set(cx - gx * 0.92f, ty - gy * 0.80f, cx + gx * 0.92f, ty + gy * 0.80f);
+        p.setShader(new LinearGradient(r.left, 0, r.right, 0, new int[]{0x00FF2030, 0xFFFF3040, 0x00FF2030}, null, Shader.TileMode.CLAMP));
+        c.drawOval(r, p);
         p.setShader(null);
         p.setStyle(Paint.Style.FILL);
         r.set(cx - tw / 2f, bottom - th, cx + tw / 2f, bottom);
