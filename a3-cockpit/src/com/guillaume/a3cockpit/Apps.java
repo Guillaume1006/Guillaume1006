@@ -40,8 +40,7 @@ final class Apps {
 
     interface Picked { void on(App app); }
 
-    static final String NAV = "app_nav", MUSIC = "app_music", PHONE = "app_phone", RADIO = "app_radio", SOUND = "app_sound",
-            CAM = "app_cam";
+    static final String NAV = "app_nav", MUSIC = "app_music", PHONE = "app_phone", RADIO = "app_radio", SOUND = "app_sound";
 
     static String role(String key) {
         switch (key) {
@@ -49,7 +48,6 @@ final class Apps {
             case MUSIC: return "Musique";
             case PHONE: return "Téléphone";
             case RADIO: return "Radio";
-            case CAM: return "Appli caméra de l'autoradio";
             default: return "Son / Égaliseur";
         }
     }
@@ -138,10 +136,6 @@ final class Apps {
                 break;
             case RADIO:
                 found = byKeywords(a, new String[]{"radio", "fmradio"}, new String[]{"Radio", "FM", "Tuner"});
-                break;
-            case CAM:
-                found = byKeywords(a, new String[]{"backcar", "reverse", "avin", "camera"},
-                        new String[]{"Caméra", "Camera", "AVIN", "Recul", "Rear"});
                 break;
             case SOUND:
                 found = byKeywords(a, new String[]{"equalizer", "eqset", ".eq", "dsp"},

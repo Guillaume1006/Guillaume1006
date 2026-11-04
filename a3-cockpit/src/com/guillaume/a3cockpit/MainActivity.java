@@ -23,9 +23,7 @@ import java.io.InputStream;
 
 public class MainActivity extends Activity {
     static final String ACTION_DATA = "com.guillaume.a3cockpit.VEHICLE_DATA";
-    private static final int REQ_PHOTO = 7, REQ_PERM = 8, REQ_CAM = 9;
-    CameraView activeCamera;
-    private boolean camAsked;
+    private static final int REQ_PHOTO = 7, REQ_PERM = 8;
 
     final Handler h = new Handler(Looper.getMainLooper());
     private FrameLayout stage, content;
@@ -92,10 +90,6 @@ public class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
         if (req == REQ_PERM && res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) gps.start();
-        if (req == REQ_CAM) {
-            camAsked = false;
-            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED && activeCamera != null) activeCamera.resume();
-        }
     }
 
     @Override protected void onResume() {
@@ -103,21 +97,13 @@ public class MainActivity extends Activity {
         applyImmersive();
         MediaHub.refresh(this);
         if (current != null) current.onShow();
-        if (activeCamera != null) activeCamera.resume();
         h.removeCallbacks(tick);
         h.post(tick);
-    }
-
-    void requestCameraPermission() {
-        if (camAsked) return;
-        camAsked = true;
-        requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAM);
     }
 
     @Override protected void onPause() {
         super.onPause();
         h.removeCallbacks(tick);
-        if (activeCamera != null) activeCamera.pause();   // libère la caméra pour l'appli de recul d'origine
     }
 
     @Override protected void onDestroy() {
@@ -151,8 +137,7 @@ public class MainActivity extends Activity {
         Ui.H = hh / Ui.scale;
         int vehicleTab = vehicle != null ? vehicle.getTab() : 0;
         String page = current == null || current == home ? "home" : current instanceof VehiclePage ? "vehicle"
-                : current instanceof AppsPage ? "apps" : current instanceof CameraPage ? "camera" : "settings";
-        if (home != null) home.stopCamera();
+                : current instanceof AppsPage ? "apps" : "settings";
 
         stage.removeAllViews();
         dock = Ui.place(stage, new Dock(this, Ui.H - 24), 12, 12, 68, Ui.H - 24);
@@ -165,7 +150,6 @@ public class MainActivity extends Activity {
         switch (page) {
             case "vehicle": showVehicle(vehicleTab); break;
             case "apps": showApps(); break;
-            case "camera": showCamera(); break;
             case "settings": showSettings(); break;
             default: showHome();
         }
@@ -202,10 +186,6 @@ public class MainActivity extends Activity {
         if (content != null) show(new AppsPage(this, cw, ch));
     }
 
-    void showCamera() {
-        if (content != null) show(new CameraPage(this, cw, ch));
-    }
-
     void showSettings() {
         if (content != null) show(new SettingsPage(this, cw, ch));
     }
@@ -219,7 +199,7 @@ public class MainActivity extends Activity {
             Intent i = getPackageManager().getLaunchIntentForPackage(MediaHub.pkg);
             if (i != null && Apps.start(this, i)) return;
         }
-        Apps.open(this, Apps.MUSIC);
+        Apps.open(this, Apps.RADIO);
     }
 
     // ---------------- Réglages appliqués ----------------
