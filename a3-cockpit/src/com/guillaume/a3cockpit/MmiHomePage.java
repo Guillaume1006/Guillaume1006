@@ -31,7 +31,7 @@ final class MmiHomePage extends Page {
     private final SimpleDateFormat dm = new SimpleDateFormat("EEEE d MMMM", Locale.FRANCE);
 
     /** Disposition : "orbit" = carrousel au sol autour de la voiture, "side" = raccourcis dans la barre latérale. */
-    static boolean orbit() { return !"side".equals(Prefs.str("home_layout", "orbit")); }
+    static boolean orbit() { return "orbit".equals(Prefs.str("home_layout", "side")); }
 
     private final boolean withOrbit;
 

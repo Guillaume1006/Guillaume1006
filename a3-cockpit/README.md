@@ -20,6 +20,15 @@ L'interface se met à l'échelle de n'importe quel écran paysage.
 
 *(Aperçus générés sur PC avec des données de démonstration.)*
 
+## Version 2.0
+
+- Thème **Audi MMI** (noir) par défaut, accueil **sans carrousel** : voiture au centre sur une lueur rouge,
+  les 7 raccourcis personnalisables dans la barre de gauche (appui long pour changer).
+- Le carrousel autour de la voiture et l'ancien thème « Coucher de soleil » restent disponibles dans Réglages.
+- L'APK 2.0 n'est pas publié dans ce dépôt : il contient des rendus de voiture à usage personnel.
+  Pour le reconstruire, ajoutez vos propres images `res/drawable-nodpi/car_home.png` (accueil) et
+  `car_open.png` (page Ouvrants) ; sans elles, l'appli utilise la photo et le dessin intégrés.
+
 ## Installation
 
 1. Copier `A3Cockpit.apk` sur une clé USB (ou le télécharger depuis l'autoradio).
