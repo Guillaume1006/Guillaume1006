@@ -35,9 +35,9 @@ final class Ui {
     static final int AUDI_RED = 0xFFD8001E, MMI_BLUE = 0xFF2E9BFF;
 
     /** Couleur d'ambiance du thème MMI (fond, lueur sous la voiture, boutons). */
-    static final String[] ACCENT_IDS = {"red", "violet", "blue", "green"};
-    static final String[] ACCENT_NAMES = {"Rouge", "Violet", "Bleu", "Vert"};
-    static final int[] ACCENT_COLORS = {0xFFD8001E, 0xFF8E44FF, 0xFF1E8CFF, 0xFF1FBF5A};
+    static final String[] ACCENT_IDS = {"red", "violet", "blue", "green", "orange", "lightgrey", "darkgrey"};
+    static final String[] ACCENT_NAMES = {"Rouge", "Violet", "Bleu", "Vert", "Orange", "Gris clair", "Gris très foncé"};
+    static final int[] ACCENT_COLORS = {0xFFD8001E, 0xFF8E44FF, 0xFF1E8CFF, 0xFF1FBF5A, 0xFFFF7A00, 0xFFC9CDD3, 0xFF6A6F78};
     static int ACCENT = AUDI_RED;
 
     static int accentIndex() {
