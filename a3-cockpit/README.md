@@ -5,9 +5,9 @@ voiture sur plateau, multimédia, vitesse, raccourcis, et une page **Véhicule**
 **Ouvrants / Radars / Ordi / Entretien**.
 
 Conçu pour une **Audi A3 8P Sportback (2011, gris Daytona)** et un autoradio **Junsun** MT8163 · 1024×600 ·
-boîtier CAN HRD (LuZheng/HaoZheng → Audi → A3). La voiture est dessinée en vectoriel d'après les cotes réelles
-de l'A3 8PA phase 2 (4 292 × 1 423 mm, empattement 2 578 mm) : calandre single-frame, phares à LED, ligne
-tornado, custode, becquet, rétros à répétiteur, jantes 17" à 5 doubles branches.
+boîtier CAN HRD (LuZheng/HaoZheng → Audi → A3). L'accueil affiche la photo détourée de l'A3 vue de 3/4,
+posée sur un plateau. Réglages → *Apparence de la voiture* : photo de mon A3, dessin vectoriel
+(profil d'après les cotes réelles de l'A3 8PA phase 2), ou une autre photo de la galerie.
 L'interface se met à l'échelle de n'importe quel écran paysage.
 
 ![Accueil](apercu/home_demo.png)

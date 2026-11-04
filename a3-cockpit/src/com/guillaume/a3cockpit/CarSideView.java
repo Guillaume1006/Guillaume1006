@@ -97,20 +97,80 @@ final class CarSideView extends View {
     @Override protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight();
         if (w <= 0 || h <= 0) return;
-        float k = Math.min(w / 1100f, h / 400f);
-        c.save();
-        c.translate(w / 2f - 510 * k, h / 2f - 205 * k);
-        c.scale(k, k);
-        drawTurntable(c);
-        if (photo != null) drawPhoto(c);
-        else drawCar(c);
-        c.restore();
-
+        if (photo != null) {
+            drawPhotoScene(c, w, h);
+        } else {
+            drawVectorScene(c, w, h);
+        }
         if (sweep >= 0f) {
             sweep += 0.025f;
             if (sweep > 1.2f) sweep = -1f;
             postInvalidateOnAnimation();
         }
+    }
+
+    /** Photo (vue de 3/4) posée sur le plateau, mise à l'échelle sur toute la zone. */
+    private void drawPhotoScene(Canvas c, float w, float h) {
+        float ar = photo.getWidth() / (float) photo.getHeight();
+        float th = h * 0.88f, tw = th * ar;
+        if (tw > w * 0.98f) { tw = w * 0.98f; th = tw / ar; }
+        float bottom = h * 0.95f, cx = w / 2f;
+        float ty = bottom - th * 0.09f;                 // ligne de contact des roues
+        float rx = tw * 0.56f, ry = th * 0.15f;
+
+        // plateau
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new RadialGradient(cx, ty, rx, new int[]{0xAA000000, 0x66101018, 0x00000000},
+                new float[]{0f, 0.7f, 1f}, Shader.TileMode.CLAMP));
+        c.save();
+        c.scale(1f, ry / rx, cx, ty);
+        c.drawCircle(cx, ty, rx, p);
+        c.restore();
+        p.setShader(null);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1.5f, w / 400f));
+        r.set(cx - rx, ty - ry, cx + rx, ty + ry);
+        p.setShader(new LinearGradient(cx - rx, 0, cx + rx, 0, new int[]{0x00FFFFFF, 0x70FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+        c.drawOval(r, p);
+        r.set(cx - rx * 0.82f, ty - ry * 0.7f, cx + rx * 0.82f, ty + ry * 0.7f);
+        p.setShader(new LinearGradient(cx - rx, 0, cx + rx, 0, new int[]{0x00FFFFFF, 0x30FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+        c.drawOval(r, p);
+        p.setShader(null);
+        p.setStyle(Paint.Style.FILL);
+
+        // ombre sous la voiture
+        p.setShader(new RadialGradient(0, 0, 1, 0xDD000000, 0x00000000, Shader.TileMode.CLAMP));
+        c.save();
+        c.translate(cx, ty - th * 0.03f);
+        c.scale(tw * 0.47f, th * 0.1f);
+        c.drawCircle(0, 0, 1, p);
+        c.restore();
+        p.setShader(null);
+
+        r.set(cx - tw / 2f, bottom - th, cx + tw / 2f, bottom);
+        c.drawBitmap(photo, null, r, p);
+
+        // reflet animé (touchez la voiture)
+        if (sweep >= 0f) {
+            c.save();
+            c.clipRect(r);
+            float x = r.left - tw * 0.3f + sweep * tw * 1.6f;
+            p.setShader(new LinearGradient(x - tw * 0.08f, 0, x + tw * 0.08f, 0,
+                    new int[]{0x00FFFFFF, 0x40FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+            c.drawRect(r, p);
+            p.setShader(null);
+            c.restore();
+        }
+    }
+
+    private void drawVectorScene(Canvas c, float w, float h) {
+        float k = Math.min(w / 1100f, h / 400f);
+        c.save();
+        c.translate(w / 2f - 510 * k, h / 2f - 205 * k);
+        c.scale(k, k);
+        drawTurntable(c);
+        drawCar(c);
+        c.restore();
     }
 
     private void drawTurntable(Canvas c) {
@@ -129,14 +189,6 @@ final class CarSideView extends View {
         c.drawOval(r, p);
         p.setShader(null);
         p.setStyle(Paint.Style.FILL);
-    }
-
-    private void drawPhoto(Canvas c) {
-        float maxW = 1000, maxH = 300;
-        float s = Math.min(maxW / photo.getWidth(), maxH / photo.getHeight());
-        float bw = photo.getWidth() * s, bh = photo.getHeight() * s;
-        r.set(510 - bw / 2, 340 - bh, 510 + bw / 2, 340);
-        c.drawBitmap(photo, null, r, p);
     }
 
     private Path poly(float... xy) {

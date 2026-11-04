@@ -27,7 +27,7 @@ final class Prefs {
     // Raccourcis
     static String carName() { return str("car_name", "Audi A3 Sportback"); }
     static boolean fiveDoors() { return "5".equals(str("car_body", "5")); }
-    static int carColor() { return integer("car_color", 0xFF55595F); }
+    static int carColor() { return integer("car_color", 0xFF3D434B); }
     static boolean diesel() { return !"essence".equals(str("fuel", "diesel")); }
     static int tank() { return integer("tank", 55); }
 }

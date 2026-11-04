@@ -23,9 +23,9 @@ final class SettingsPage extends Page {
     private final float rw;
     private TextView obdValue;
 
-    static final String[] COLOR_NAMES = {"Gris Daytona (gris foncé)", "Argent", "Gris clair", "Gris foncé", "Noir", "Blanc", "Rouge", "Bleu nuit",
+    static final String[] COLOR_NAMES = {"Gris Daytona (mon A3)", "Gris foncé neutre", "Argent", "Gris clair", "Gris foncé", "Noir", "Blanc", "Rouge", "Bleu nuit",
             "Bleu vif", "Jaune", "Vert", "Orange", "Lime"};
-    static final int[] COLORS = {0xFF55595F, 0xFFC4C9CF, 0xFF9A9EA4, 0xFF4A4D52, 0xFF1C1D20, 0xFFEDEEF0, 0xFFC8102E, 0xFF22385E,
+    static final int[] COLORS = {0xFF3D434B, 0xFF55595F, 0xFFC4C9CF, 0xFF9A9EA4, 0xFF4A4D52, 0xFF1C1D20, 0xFFEDEEF0, 0xFFC8102E, 0xFF22385E,
             0xFF1E5AD8, 0xFFF2C300, 0xFF3F6B3A, 0xFFE8641B, 0xFFC5D92B};
 
     SettingsPage(final MainActivity a, float w, float h) {
@@ -61,13 +61,18 @@ final class SettingsPage extends Page {
         });
         int ci = indexOf(Prefs.carColor());
         row(IconView.PALETTE, "Couleur", ci >= 0 ? COLOR_NAMES[ci] : "Personnalisée", new Runnable() { @Override public void run() { pickColor(); } });
-        row(IconView.PHOTO, "Photo de ma voiture", Prefs.bool("car_photo", false) ? "Personnalisée · toucher pour retirer" : "Dessin intégré · toucher pour choisir",
-                new Runnable() {
-                    @Override public void run() {
-                        if (Prefs.bool("car_photo", false)) { a.clearCarPhoto(); build(); }
-                        else a.pickCarPhoto();
-                    }
-                });
+        String look = Prefs.str("car_look", "photo");
+        row(IconView.PHOTO, "Apparence de la voiture", "custom".equals(look) ? "Ma photo" : "vector".equals(look)
+                ? "Dessin vectoriel" : "Photo de mon A3", new Runnable() {
+            @Override public void run() {
+                String cur = Prefs.str("car_look", "photo");
+                String next = "photo".equals(cur) ? "vector" : "vector".equals(cur) && a.hasCustomPhoto() ? "custom" : "photo";
+                a.setCarLook(next);
+                build();
+            }
+        });
+        row(IconView.PHOTO, "Choisir une autre photo", a.hasCustomPhoto() ? "Remplacer ma photo" : "Depuis la galerie",
+                new Runnable() { @Override public void run() { a.pickCarPhoto(); } });
         row(IconView.FUEL, "Réservoir", Prefs.tank() + " L", new Runnable() { @Override public void run() { editTank(); } });
         row(IconView.ROAD, "Kilométrage", Odometer.known() ? Ui.num(Odometer.km()) + " km" : "À saisir", new Runnable() {
             @Override public void run() { a.showVehicle(3); }
