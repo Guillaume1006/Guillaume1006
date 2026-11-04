@@ -40,10 +40,10 @@ final class MmiHomePage extends Page {
         withOrbit = orbit();
         if (withOrbit) {
             // anneau posé au sol, vu en perspective, la voiture se tient dessus
-            ox = w * 0.385f;
+            ox = w * 0.405f;                                    // centre de la zone à gauche de l'horloge
             oy = h * 0.60f;
-            rx = w * 0.320f;
-            ry = h * 0.27f;
+            rx = w * 0.275f;
+            ry = h * 0.25f;
         } else {
             ox = w * 0.385f;
             oy = h * 0.62f;
@@ -55,13 +55,13 @@ final class MmiHomePage extends Page {
 
         float cw, ch, gx, gy;
         if (withOrbit) {
-            cw = rx * 1.30f;
-            gx = ox - rx * 0.28f;
-            gy = oy + ry * 0.04f;
-        } else {
-            cw = rx * 1.80f;                                    // voiture en grand, centrée
+            cw = rx * 1.42f;                                    // voiture au centre de l'anneau
             gx = ox;
-            gy = oy + ry * 0.10f;
+            gy = oy + ry * 0.05f;
+        } else {
+            cw = rx * 1.55f;                                    // voiture centrée, un peu plus petite
+            gx = ox;
+            gy = oy + ry * 0.08f;
         }
         ch = cw * 0.80f;
         // dans CarSideView, la lueur (appui des roues) est à 74 % de la hauteur de la vue
@@ -70,12 +70,12 @@ final class MmiHomePage extends Page {
 
         if (withOrbit) {
             // 7 emplacements personnalisables (appui long pour modifier), plus petits au fond
-            float[] angles = {-55, -25, 3, 30, 58, 92, 130};
+            float[] angles = {-152, -28, 8, 48, 90, 132, 172};
             for (int i = 0; i < OrbitSlots.COUNT; i++) item(angles[i], i);
         }
 
         // colonne de droite : anneaux, horloge, date, multimédia
-        float x0 = withOrbit ? w * 0.815f : w * 0.795f, cwid = w - x0 - 4;
+        float x0 = w * 0.80f, cwid = w - x0 - 4;
         Ui.place(this, new MmiChrome.Rings(a), x0, 28, cwid, 58);
         TextView brand = Ui.place(this, Ui.text(a, "Audi", 26, Ui.AUDI_RED, Ui.MED), x0, 92, cwid, 32);
         brand.setGravity(Gravity.CENTER);
@@ -119,15 +119,20 @@ final class MmiHomePage extends Page {
         final String v = OrbitSlots.get(slot);
         double t = Math.toRadians(deg);
         float x = ox + rx * (float) Math.cos(t), y = oy + ry * (float) Math.sin(t);
-        float depth = 0.80f + 0.20f * (float) ((Math.sin(t) + 1) / 2);   // perspective : fond plus petit
-        float d = 44 * depth;
-        FrameLayout b = Ui.place(this, new FrameLayout(a), x - d / 2f - 4, y - d / 2f - 4, 150, d + 8);
+        float depth = 0.82f + 0.18f * (float) ((Math.sin(t) + 1) / 2);   // perspective : fond plus petit
+        float d = 40 * depth;
+        boolean left = Math.cos(t) < -0.2;                  // à gauche : nom à gauche de l'icône
+        float bw = 140;
+        float bx = left ? x - bw + d / 2f + 4 : x - d / 2f - 4;
+        FrameLayout b = Ui.place(this, new FrameLayout(a), bx, y - d / 2f - 4, bw, d + 8);
+        float ix = left ? bw - d - 4 : 4;
         if (OrbitSlots.empty(a, v)) {                       // emplacement libre : petit « + » discret
-            Ui.place(b, new MmiChrome.Orb(a, IconView.PLUS, null, true), 4 + d * 0.22f, 4 + d * 0.22f, d * 0.56f, d * 0.56f);
+            Ui.place(b, new MmiChrome.Orb(a, IconView.PLUS, null, true), ix + d * 0.22f, 4 + d * 0.22f, d * 0.56f, d * 0.56f);
         } else {
-            Ui.place(b, new MmiChrome.Orb(a, OrbitSlots.icon(v), OrbitSlots.appIcon(a, v), false), 4, 4, d, d);
-            Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 14 * (0.9f + 0.1f * depth), 0xFFE4E6EA, Ui.REG),
-                    d + 14, d / 2f - 5, 110, 18);
+            Ui.place(b, new MmiChrome.Orb(a, OrbitSlots.icon(v), OrbitSlots.appIcon(a, v), false), ix, 4, d, d);
+            TextView tl = Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 13, 0xFFB4B8BE, Ui.REG),
+                    left ? 0 : d + 12, d / 2f - 4, bw - d - 16, 17);
+            if (left) tl.setGravity(Gravity.END);
         }
         Ui.onTap(b, new Runnable() {
             @Override public void run() {
@@ -208,13 +213,13 @@ final class MmiHomePage extends Page {
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeWidth(Math.max(2f, 2.6f * k));
                 r.set(cx - ax, cy - ay, cx + ax, cy + ay);
-                p.setShader(new LinearGradient(0, cy - ay, 0, cy + ay,
-                        new int[]{0x18FFFFFF, 0x50FFFFFF, 0xE6FFFFFF}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+                p.setShader(new LinearGradient(0, cy - ay, 0, cy + ay,               // rouge discret
+                        new int[]{0x14D8001E, 0x40D8001E, 0x80E0102A}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
                 c.drawOval(r, p);
                 // anneau intérieur et reflet
                 p.setStrokeWidth(Math.max(1f, 1.2f * k));
                 r.set(cx - ax * 0.80f, cy - ay * 0.80f, cx + ax * 0.80f, cy + ay * 0.80f);
-                p.setShader(new LinearGradient(0, cy - ay, 0, cy + ay, 0x08FFFFFF, 0x40FFFFFF, Shader.TileMode.CLAMP));
+                p.setShader(new LinearGradient(0, cy - ay, 0, cy + ay, 0x06D8001E, 0x2AD8001E, Shader.TileMode.CLAMP));
                 c.drawOval(r, p);
                 p.setShader(null);
             }

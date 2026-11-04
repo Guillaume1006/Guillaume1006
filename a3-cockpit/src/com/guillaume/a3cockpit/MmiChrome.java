@@ -94,16 +94,15 @@ final class MmiChrome {
                 final String v = OrbitSlots.get(i);
                 boolean empty = OrbitSlots.empty(a, v);
                 FrameLayout b = Ui.place(this, new FrameLayout(a), 0, i * cell, 76, cell);
-                Ui.place(b, new Glow(a), 6, cell * 0.30f, 64, cell * 0.52f);
                 if (empty) {
-                    Ui.place(b, new IconView(a, IconView.PLUS, 0x66FFFFFF), 28, cell * 0.30f, 20, 20);
+                    Ui.place(b, new IconView(a, IconView.PLUS, 0x55FFFFFF), 28, cell * 0.30f, 20, 20);
                 } else {
                     android.graphics.drawable.Drawable ic = OrbitSlots.appIcon(a, v);
                     if (ic != null) {
                         android.widget.ImageView iv = Ui.place(b, new android.widget.ImageView(a), 24, cell * 0.16f, 28, 28);
-                        iv.setImageDrawable(ic);
+                        iv.setImageDrawable(Ui.grey(ic));
                     } else {
-                        Ui.place(b, new IconView(a, OrbitSlots.icon(v), 0xFFE4E6EA), 25, cell * 0.17f, 26, 26);
+                        Ui.place(b, new IconView(a, OrbitSlots.icon(v), 0xFFB4B8BE), 25, cell * 0.17f, 26, 26);
                     }
                     TextView t = Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 10, Ui.TEXT2, Ui.REG), 2, cell * 0.17f + 32, 72, 13);
                     t.setGravity(Gravity.CENTER);
@@ -177,22 +176,21 @@ final class MmiChrome {
                 IconView.draw(c, icon, 0x88FFFFFF, cx, cy, r * 1.1f);
                 return;
             }
-            p.setShader(new RadialGradient(cx - r * 0.35f, cy - r * 0.45f, r * 1.6f,
-                    new int[]{0xFFFFFFFF, 0xFFB7BCC4, 0xFF4A4F57, 0xFF1C1E22}, new float[]{0f, 0.35f, 0.8f, 1f},
-                    Shader.TileMode.CLAMP));
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xB0101113);
             c.drawCircle(cx, cy, r, p);
-            p.setShader(null);
             p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(Math.max(1f, r * 0.06f));
-            p.setColor(0x66FFFFFF);
+            p.setStrokeWidth(Math.max(1f, r * 0.05f));
+            p.setColor(0x38FFFFFF);
             c.drawCircle(cx, cy, r - p.getStrokeWidth() / 2f, p);
             p.setStyle(Paint.Style.FILL);
-            if (app != null) {                              // icône de l'application dans la pastille
-                int s = Math.round(r * 1.25f);
-                app.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f), Math.round(cx + s / 2f), Math.round(cy + s / 2f));
-                app.draw(c);
+            if (app != null) {                              // icône de l'application, en gris
+                int s = Math.round(r * 1.15f);
+                android.graphics.drawable.Drawable g = Ui.grey(app);
+                g.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f), Math.round(cx + s / 2f), Math.round(cy + s / 2f));
+                g.draw(c);
             } else {
-                IconView.draw(c, icon, 0xFF16181B, cx, cy, r * 1.05f);
+                IconView.draw(c, icon, 0xFFB4B8BE, cx, cy, r * 1.0f);
             }
         }
     }

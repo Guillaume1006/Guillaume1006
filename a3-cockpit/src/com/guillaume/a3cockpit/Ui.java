@@ -66,6 +66,20 @@ final class Ui {
         return g;
     }
 
+    /** Copie de l'icône d'une appli, en niveaux de gris discrets (style MMI sobre). */
+    static android.graphics.drawable.Drawable grey(android.graphics.drawable.Drawable d) {
+        if (d == null) return null;
+        android.graphics.drawable.Drawable g = d.getConstantState() != null
+                ? d.getConstantState().newDrawable().mutate() : d.mutate();
+        android.graphics.ColorMatrix m = new android.graphics.ColorMatrix();
+        m.setSaturation(0f);
+        android.graphics.ColorMatrix dim = new android.graphics.ColorMatrix();
+        dim.setScale(0.82f, 0.82f, 0.84f, 0.9f);
+        m.postConcat(dim);
+        g.setColorFilter(new android.graphics.ColorMatrixColorFilter(m));
+        return g;
+    }
+
     static GradientDrawable card() {
         GradientDrawable g = round(CARD, 26);
         g.setStroke(Math.max(1, s(1)), CARD_STROKE);
