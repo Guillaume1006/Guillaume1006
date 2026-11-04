@@ -1,2 +1,4 @@
 build/
 *.idsig
+# Rendu Hum3D recoloré : usage personnel, non publié
+res/drawable-nodpi/car_open.png

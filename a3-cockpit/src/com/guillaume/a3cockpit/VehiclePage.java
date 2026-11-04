@@ -32,7 +32,7 @@ final class VehiclePage extends Page {
     private int tab = 0;
 
     // contenu de l'onglet courant
-    private CarTopView top;
+    private View top;
     private final List<TextView> values = new ArrayList<>();
     private final List<IconView> icons = new ArrayList<>();
     private TextView big, foot, note;
@@ -99,8 +99,10 @@ final class VehiclePage extends Page {
     // ---------------- Ouvrants ----------------
 
     private void buildOpenings() {
-        float lw = bw * 0.44f;
-        top = Ui.place(body, new CarTopView(a, CarTopView.MODE_OPENINGS), 10, 0, lw, bh - 14);
+        android.graphics.Bitmap img = a.openingsImage();
+        float lw = bw * (img != null ? 0.5f : 0.44f);
+        top = Ui.place(body, img != null ? new OpeningsView(a, img) : new CarTopView(a, CarTopView.MODE_OPENINGS),
+                10, 0, lw, bh - 14);
         float x = lw + 20, rw = bw - x - 24;
         int[] list = VehicleState.relevantOpenings(Prefs.fiveDoors());
         float rowH = Math.min(58, (bh - 70) / list.length);

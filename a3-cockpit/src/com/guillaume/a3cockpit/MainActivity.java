@@ -271,6 +271,19 @@ public class MainActivity extends Activity {
         return photo;
     }
 
+    private Bitmap openImg;
+    private boolean openLoaded;
+
+    /** Rendu de l'A3 pour la page Ouvrants (ressource locale facultative « car_open »). */
+    Bitmap openingsImage() {
+        if (!openLoaded) {
+            openLoaded = true;
+            int id = getResources().getIdentifier("car_open", "drawable", getPackageName());
+            if (id != 0) openImg = BitmapFactory.decodeResource(getResources(), id);
+        }
+        return openImg;
+    }
+
     void pickCarPhoto() {
         Toast.makeText(this, "Astuce : une photo de profil détourée (PNG transparent) rend le mieux.", Toast.LENGTH_LONG).show();
         Intent i = new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE);
