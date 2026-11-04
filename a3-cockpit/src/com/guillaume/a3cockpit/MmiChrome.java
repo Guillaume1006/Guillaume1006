@@ -72,8 +72,8 @@ final class MmiChrome {
             };
             float cell = Math.min(64, h / icons.length);
             for (int i = 0; i < icons.length; i++) {
-                FrameLayout b = Ui.place(this, new FrameLayout(a), 0, i * cell, 60, cell);
-                Ui.place(b, new IconView(a, icons[i], 0xFFD5D8DD), 18, (cell - 24) / 2f, 24, 24);
+                FrameLayout b = Ui.place(this, new FrameLayout(a), 0, i * cell, 66, cell);
+                Ui.place(b, new IconView(a, icons[i], 0xFFD5D8DD), 19, (cell - 28) / 2f, 28, 28);
                 Ui.onTap(b, acts[i]);
                 if (i > 0) {
                     View sep = Ui.place(this, new View(a), 10, i * cell, 40, 1);
@@ -93,18 +93,18 @@ final class MmiChrome {
                 final int slot = i;
                 final String v = OrbitSlots.get(i);
                 boolean empty = OrbitSlots.empty(a, v);
-                FrameLayout b = Ui.place(this, new FrameLayout(a), 0, i * cell, 76, cell);
+                FrameLayout b = Ui.place(this, new FrameLayout(a), 0, i * cell, 84, cell);
                 if (empty) {
-                    Ui.place(b, new IconView(a, IconView.PLUS, 0x55FFFFFF), 28, cell * 0.30f, 20, 20);
+                    Ui.place(b, new IconView(a, IconView.PLUS, 0x55FFFFFF), 30, cell * 0.30f, 24, 24);
                 } else {
                     android.graphics.drawable.Drawable ic = OrbitSlots.appIcon(a, v);
                     if (ic != null) {
-                        android.widget.ImageView iv = Ui.place(b, new android.widget.ImageView(a), 24, cell * 0.16f, 28, 28);
+                        android.widget.ImageView iv = Ui.place(b, new android.widget.ImageView(a), 25, cell * 0.12f, 34, 34);
                         iv.setImageDrawable(Ui.grey(ic));
                     } else {
-                        Ui.place(b, new IconView(a, OrbitSlots.icon(v), 0xFFB4B8BE), 25, cell * 0.17f, 26, 26);
+                        Ui.place(b, new IconView(a, OrbitSlots.icon(v), 0xFFC4C8CE), 26, cell * 0.13f, 32, 32);
                     }
-                    TextView t = Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 10, Ui.TEXT2, Ui.REG), 2, cell * 0.17f + 32, 72, 13);
+                    TextView t = Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 12, 0xFFC4C8CE, Ui.REG), 2, cell * 0.13f + 38, 80, 15);
                     t.setGravity(Gravity.CENTER);
                 }
                 Ui.onTap(b, new Runnable() {
@@ -117,7 +117,7 @@ final class MmiChrome {
                     @Override public boolean onLongClick(View view) { edit(a, slot); return true; }
                 });
                 if (i > 0) {
-                    View sep = Ui.place(this, new View(a), 14, i * cell, 48, 1);
+                    View sep = Ui.place(this, new View(a), 16, i * cell, 52, 1);
                     sep.setBackgroundColor(0x1CFFFFFF);
                 }
             }

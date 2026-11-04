@@ -31,6 +31,11 @@ final class MmiHomePage extends Page {
     private final SimpleDateFormat dm = new SimpleDateFormat("EEEE d MMMM", Locale.FRANCE);
 
     /** Disposition : "orbit" = carrousel au sol autour de la voiture, "side" = raccourcis dans la barre latérale. */
+    /** Source du bloc audio de l'accueil : radio (par défaut) ou lecteur audio. */
+    static boolean player() { return "player".equals(Prefs.str("audio_src", "radio")); }
+
+    private TextView srcRadio, srcPlayer;
+
     static boolean orbit() { return "orbit".equals(Prefs.str("home_layout", "side")); }
 
     private final boolean withOrbit;
@@ -100,6 +105,11 @@ final class MmiHomePage extends Page {
         });
         ctrl(mid + 30, 350, IconView.NEXT, false, new Runnable() { @Override public void run() { MediaHub.next(); } });
 
+        // choix de la source : Radio ou Lecteur audio
+        float sw = (cwid - 16) / 2f;
+        srcRadio = source(x0 + 4, 414, sw, "Radio", "radio");
+        srcPlayer = source(x0 + 12 + sw, 414, sw, "Lecteur", "player");
+
         // onglet du bas : état du véhicule
         View dv = new View(a);
         dot = Ui.round(Ui.GRAY, 5);
@@ -151,6 +161,27 @@ final class MmiHomePage extends Page {
         OrbitSlots.edit(a, slot, new Runnable() { @Override public void run() { a.rebuild(); } });
     }
 
+    private TextView source(float x, float y, float w, String label, final String value) {
+        TextView t = Ui.place(this, Ui.text(a, label, 14, Ui.TEXT, Ui.MED), x, y, w, 38);
+        t.setGravity(Gravity.CENTER);
+        Ui.onTap(t, new Runnable() {
+            @Override public void run() {
+                Prefs.put("audio_src", value);
+                refresh();
+            }
+        });
+        return t;
+    }
+
+    private void styleSource(TextView t, boolean on) {
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(Ui.f(19 * Ui.RADIUS));
+        g.setColor(on ? 0x2EFFFFFF : 0x0FFFFFFF);
+        g.setStroke(Math.max(1, Ui.s(on ? 1.5f : 1f)), on ? Ui.AUDI_RED : 0x30FFFFFF);
+        t.setBackground(g);
+        t.setTextColor(on ? Ui.TEXT : Ui.TEXT2);
+    }
+
     private IconView ctrl(float x, float y, int icon, boolean big, Runnable r) {
         float s = big ? 52 : 40;
         FrameLayout b = Ui.place(this, new FrameLayout(a), x, y, s, s);
@@ -173,10 +204,14 @@ final class MmiHomePage extends Page {
             mediaTitle.setText(MediaHub.title != null ? MediaHub.title : (MediaHub.appLabel != null ? MediaHub.appLabel : "Lecture"));
             mediaSub.setText(MediaHub.artist != null ? MediaHub.artist : (MediaHub.appLabel != null ? MediaHub.appLabel : ""));
         } else {
-            mediaTitle.setText("Radio");
-            mediaSub.setText(MediaHub.access ? "Rien en lecture" : "Touchez pour ouvrir");
+            mediaTitle.setText(player() ? "Lecteur audio" : "Radio");
+            mediaSub.setText("Touchez pour ouvrir");
         }
-        mediaIcon.set(MediaHub.pkg != null && !MediaHub.pkg.contains("radio") ? IconView.MUSIC : IconView.RADIO, 0xFFD5D8DD);
+        boolean pl = player();
+        mediaIcon.set(MediaHub.ctl != null ? (MediaHub.pkg != null && !MediaHub.pkg.contains("radio") ? IconView.MUSIC : IconView.RADIO)
+                : (pl ? IconView.MUSIC : IconView.RADIO), 0xFFD5D8DD);
+        styleSource(srcRadio, !pl);
+        styleSource(srcPlayer, pl);
         playIcon.set(MediaHub.playing ? IconView.PAUSE : IconView.PLAY, Ui.TEXT);
 
         boolean five = Prefs.fiveDoors();

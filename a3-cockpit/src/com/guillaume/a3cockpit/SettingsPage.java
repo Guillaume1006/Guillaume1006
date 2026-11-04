@@ -58,6 +58,18 @@ final class SettingsPage extends Page {
             }
         });
 
+        row(IconView.RADIO, "Source audio de l'accueil", MmiHomePage.player() ? "Lecteur audio" : "Radio", new Runnable() {
+            @Override public void run() {
+                Prefs.put("audio_src", MmiHomePage.player() ? "radio" : "player");
+                build();
+            }
+        });
+        row(IconView.HOME, "Barre du haut de l'appli", Prefs.bool("mmi_bar", false) ? "Affichée" : "Masquée (barre Android)", new Runnable() {
+            @Override public void run() {
+                Prefs.put("mmi_bar", !Prefs.bool("mmi_bar", false));
+                a.rebuild();
+            }
+        });
         row(IconView.HOME, "Disposition de l'accueil", MmiHomePage.orbit() ? "Carrousel autour de la voiture"
                 : "Raccourcis dans la barre latérale", new Runnable() {
             @Override public void run() {

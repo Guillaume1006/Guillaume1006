@@ -146,18 +146,23 @@ public class MainActivity extends Activity {
         dock = null;
         bar = null;
         if (Ui.MMI) {
-            bar = Ui.place(stage, new MmiChrome.Bar(this, Ui.W), 0, 0, Ui.W, 40);
-            float sideW;
+            // barre du haut de l'appli : masquée par défaut (celle d'Android suffit)
+            float top = 8;
+            if (Prefs.bool("mmi_bar", false)) {
+                bar = Ui.place(stage, new MmiChrome.Bar(this, Ui.W), 0, 0, Ui.W, 40);
+                top = 48;
+            }
+            float sideW, sideH = Ui.H - top - 8;
             if (MmiHomePage.orbit()) {
-                sideW = 60;
-                Ui.place(stage, new MmiChrome.Side(this, Ui.H - 56), 8, 48, sideW, Ui.H - 56);
+                sideW = 66;
+                Ui.place(stage, new MmiChrome.Side(this, sideH), 8, top, sideW, sideH);
             } else {
-                sideW = 76;
-                Ui.place(stage, new MmiChrome.SlotSide(this, Ui.H - 56), 8, 48, sideW, Ui.H - 56);
+                sideW = 84;
+                Ui.place(stage, new MmiChrome.SlotSide(this, sideH), 8, top, sideW, sideH);
             }
             cw = Ui.W - sideW - 24;
-            ch = Ui.H - 56;
-            content = Ui.place(stage, new FrameLayout(this), sideW + 16, 48, cw, ch);
+            ch = sideH;
+            content = Ui.place(stage, new FrameLayout(this), sideW + 16, top, cw, ch);
             home = new MmiHomePage(this, cw, ch);
         } else {
             dock = Ui.place(stage, new Dock(this, Ui.H - 24), 12, 12, 68, Ui.H - 24);
@@ -230,11 +235,7 @@ public class MainActivity extends Activity {
     }
 
     void openMediaApp() {
-        if (MediaHub.pkg != null) {
-            Intent i = getPackageManager().getLaunchIntentForPackage(MediaHub.pkg);
-            if (i != null && Apps.start(this, i)) return;
-        }
-        Apps.open(this, Apps.RADIO);
+        Apps.open(this, MmiHomePage.player() ? Apps.MUSIC : Apps.RADIO);
     }
 
     // ---------------- Réglages appliqués ----------------
