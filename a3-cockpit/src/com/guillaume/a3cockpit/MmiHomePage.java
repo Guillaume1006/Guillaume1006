@@ -79,36 +79,37 @@ final class MmiHomePage extends Page {
             for (int i = 0; i < OrbitSlots.COUNT; i++) item(angles[i], i);
         }
 
-        // colonne de droite : anneaux, horloge, date, multimédia
-        float x0 = w * 0.80f, cwid = w - x0 - 4;
-        Ui.place(this, new MmiChrome.Rings(a), x0, 28, cwid, 58);
-        TextView brand = Ui.place(this, Ui.text(a, "Audi", 26, Ui.AUDI_RED, Ui.MED), x0, 92, cwid, 32);
+        // colonne de droite : anneaux, horloge, date, multimédia (agrandie de 10 %)
+        final float K = COL;
+        float cwid = (w * 0.20f - 4) * K, x0 = w - cwid - 4;
+        Ui.place(this, new MmiChrome.Rings(a), x0, 28 * K, cwid, 58 * K);
+        TextView brand = Ui.place(this, Ui.text(a, "Audi", 26 * K, Ui.AUDI_RED, Ui.MED), x0, 92 * K, cwid, 32 * K);
         brand.setGravity(Gravity.CENTER);
-        clock = Ui.place(this, Ui.text(a, "", 62, Ui.TEXT, Ui.LIGHT), x0, 150, cwid, 74);
+        clock = Ui.place(this, Ui.text(a, "", 62 * K, Ui.TEXT, Ui.LIGHT), x0, 150 * K, cwid, 74 * K);
         clock.setGravity(Gravity.CENTER);
-        date = Ui.place(this, Ui.text(a, "", 15, Ui.TEXT2, Ui.REG), x0, 228, cwid, 19);
+        date = Ui.place(this, Ui.text(a, "", 15 * K, Ui.TEXT2, Ui.REG), x0, 228 * K, cwid, 19 * K);
         date.setGravity(Gravity.CENTER);
-        View sep = Ui.place(this, new View(a), x0 + 20, 268, cwid - 40, 1);
+        View sep = Ui.place(this, new View(a), x0 + 20, 268 * K, cwid - 40, 1);
         sep.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{0x00FFFFFF, 0x50FFFFFF, 0x00FFFFFF}));
 
-        mediaIcon = Ui.place(this, new IconView(a, IconView.RADIO, 0xFFD5D8DD), x0 + 10, 292, 26, 26);
-        mediaTitle = Ui.place(this, Ui.text(a, "", 16, Ui.TEXT, Ui.MED), x0 + 46, 290, cwid - 52, 20);
-        mediaSub = Ui.place(this, Ui.text(a, "", 12, Ui.TEXT2, Ui.REG), x0 + 46, 313, cwid - 52, 15);
-        View hit = Ui.place(this, new View(a), x0, 282, cwid, 52);
+        mediaIcon = Ui.place(this, new IconView(a, IconView.RADIO, 0xFFD5D8DD), x0 + 10 * K, 292 * K, 26 * K, 26 * K);
+        mediaTitle = Ui.place(this, Ui.text(a, "", 16 * K, Ui.TEXT, Ui.MED), x0 + 46 * K, 290 * K, cwid - 52 * K, 20 * K);
+        mediaSub = Ui.place(this, Ui.text(a, "", 12 * K, Ui.TEXT2, Ui.REG), x0 + 46 * K, 313 * K, cwid - 52 * K, 15 * K);
+        View hit = Ui.place(this, new View(a), x0, 282 * K, cwid, 52 * K);
         Ui.onTap(hit, new Runnable() { @Override public void run() { a.openMediaApp(); } });
 
         float mid = x0 + cwid / 2f;
-        ctrl(mid - 74, 350, IconView.PREV, false, new Runnable() { @Override public void run() { MediaHub.prev(); } });
-        playIcon = ctrl(mid - 26, 344, IconView.PLAY, true, new Runnable() {
+        ctrl(mid - 74 * K, 350 * K, IconView.PREV, false, new Runnable() { @Override public void run() { MediaHub.prev(); } });
+        playIcon = ctrl(mid - 26 * K, 344 * K, IconView.PLAY, true, new Runnable() {
             @Override public void run() { MediaHub.playPause(); a.refreshSoon(); }
         });
-        ctrl(mid + 30, 350, IconView.NEXT, false, new Runnable() { @Override public void run() { MediaHub.next(); } });
+        ctrl(mid + 30 * K, 350 * K, IconView.NEXT, false, new Runnable() { @Override public void run() { MediaHub.next(); } });
 
         // choix de la source : Radio ou Lecteur audio
         float sw = (cwid - 16) / 2f;
-        srcRadio = source(x0 + 4, 414, sw, "Radio", "radio");
-        srcPlayer = source(x0 + 12 + sw, 414, sw, "Lecteur", "player");
+        srcRadio = source(x0 + 4, 414 * K, sw, "Radio", "radio");
+        srcPlayer = source(x0 + 12 + sw, 414 * K, sw, "Lecteur", "player");
 
         // onglet du bas : état du véhicule
         View dv = new View(a);
@@ -161,8 +162,11 @@ final class MmiHomePage extends Page {
         OrbitSlots.edit(a, slot, new Runnable() { @Override public void run() { a.rebuild(); } });
     }
 
+    /** Facteur d'agrandissement de la colonne horloge / audio. */
+    private static final float COL = 1.10f;
+
     private TextView source(float x, float y, float w, String label, final String value) {
-        TextView t = Ui.place(this, Ui.text(a, label, 14, Ui.TEXT, Ui.MED), x, y, w, 38);
+        TextView t = Ui.place(this, Ui.text(a, label, 14 * COL, Ui.TEXT, Ui.MED), x, y, w, 38 * COL);
         t.setGravity(Gravity.CENTER);
         Ui.onTap(t, new Runnable() {
             @Override public void run() {
@@ -175,7 +179,7 @@ final class MmiHomePage extends Page {
 
     private void styleSource(TextView t, boolean on) {
         GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(Ui.f(19 * Ui.RADIUS));
+        g.setCornerRadius(Ui.f(19 * COL * Ui.RADIUS));
         g.setColor(on ? 0x2EFFFFFF : 0x0FFFFFFF);
         g.setStroke(Math.max(1, Ui.s(on ? 1.5f : 1f)), on ? Ui.AUDI_RED : 0x30FFFFFF);
         t.setBackground(g);
@@ -183,7 +187,7 @@ final class MmiHomePage extends Page {
     }
 
     private IconView ctrl(float x, float y, int icon, boolean big, Runnable r) {
-        float s = big ? 52 : 40;
+        float s = (big ? 52 : 40) * COL;
         FrameLayout b = Ui.place(this, new FrameLayout(a), x, y, s, s);
         GradientDrawable g = new GradientDrawable();
         g.setShape(GradientDrawable.OVAL);
