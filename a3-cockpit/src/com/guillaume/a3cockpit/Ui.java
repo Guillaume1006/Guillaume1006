@@ -34,12 +34,28 @@ final class Ui {
     static int CARD = 0xA617121F, CARD_STROKE = 0x24FFFFFF, CHIP = 0x1CFFFFFF, CHIP_ON = 0x38FFFFFF;
     static final int AUDI_RED = 0xFFD8001E, MMI_BLUE = 0xFF2E9BFF;
 
+    /** Couleur d'ambiance du thème MMI (fond, lueur sous la voiture, boutons). */
+    static final String[] ACCENT_IDS = {"red", "violet", "blue", "green"};
+    static final String[] ACCENT_NAMES = {"Rouge", "Violet", "Bleu", "Vert"};
+    static final int[] ACCENT_COLORS = {0xFFD8001E, 0xFF8E44FF, 0xFF1E8CFF, 0xFF1FBF5A};
+    static int ACCENT = AUDI_RED;
+
+    static int accentIndex() {
+        String id = Prefs.str("accent", "red");
+        for (int i = 0; i < ACCENT_IDS.length; i++) if (ACCENT_IDS[i].equals(id)) return i;
+        return 0;
+    }
+
+    /** Variante plus claire de l'accent (anneau lumineux). */
+    static int accentLight() { return blend(ACCENT, 0xFFFFFFFF, 0.22f); }
+
     /** Thème : "mmi" (noir façon Audi MMI, par défaut) ou "sunset" (coucher de soleil). */
     static boolean MMI = true;
     static float RADIUS = 1f;          // facteur appliqué aux arrondis
 
     static void applyTheme(String name) {
         MMI = !"sunset".equals(name);
+        ACCENT = ACCENT_COLORS[accentIndex()];
         if (MMI) {
             TEXT2 = 0xFFA9ADB3; TEXT3 = 0xFF6C7077;
             CARD = 0xF00B0C0E; CARD_STROKE = 0x26FFFFFF; CHIP = 0x14FFFFFF; CHIP_ON = 0x30FFFFFF;

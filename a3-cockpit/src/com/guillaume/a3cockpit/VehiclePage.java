@@ -75,7 +75,7 @@ final class VehiclePage extends Page {
         if (t < 0 || t > 3) return;
         tab = t;
         for (int i = 0; i < 4; i++) {
-            tabViews[i].setBackground(i == t ? Ui.round(Ui.CHIP_ON, 17) : null);
+            tabViews[i].setBackground(i == t ? Ui.round(Ui.MMI ? Ui.alpha(Ui.ACCENT, 0x70) : Ui.CHIP_ON, 17) : null);
             tabViews[i].setTextColor(i == t ? Ui.TEXT : Ui.TEXT2);
         }
         body.removeAllViews();

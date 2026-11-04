@@ -83,7 +83,7 @@ final class MmiHomePage extends Page {
         final float K = COL;
         float cwid = (w * 0.20f - 4) * K, x0 = w - cwid - 4;
         Ui.place(this, new MmiChrome.Rings(a), x0, 28 * K, cwid, 58 * K);
-        TextView brand = Ui.place(this, Ui.text(a, "Audi", 26 * K, Ui.AUDI_RED, Ui.MED), x0, 92 * K, cwid, 32 * K);
+        TextView brand = Ui.place(this, Ui.text(a, "Audi", 26 * K, Ui.ACCENT, Ui.MED), x0, 92 * K, cwid, 32 * K);
         brand.setGravity(Gravity.CENTER);
         clock = Ui.place(this, Ui.text(a, "", 62 * K, Ui.TEXT, Ui.LIGHT), x0, 150 * K, cwid, 74 * K);
         clock.setGravity(Gravity.CENTER);
@@ -181,7 +181,7 @@ final class MmiHomePage extends Page {
         GradientDrawable g = new GradientDrawable();
         g.setCornerRadius(Ui.f(19 * COL * Ui.RADIUS));
         g.setColor(on ? 0x2EFFFFFF : 0x0FFFFFFF);
-        g.setStroke(Math.max(1, Ui.s(on ? 1.5f : 1f)), on ? Ui.AUDI_RED : 0x30FFFFFF);
+        g.setStroke(Math.max(1, Ui.s(on ? 1.5f : 1f)), on ? Ui.ACCENT : 0x30FFFFFF);
         t.setBackground(g);
         t.setTextColor(on ? Ui.TEXT : Ui.TEXT2);
     }
@@ -191,7 +191,7 @@ final class MmiHomePage extends Page {
         FrameLayout b = Ui.place(this, new FrameLayout(a), x, y, s, s);
         GradientDrawable g = new GradientDrawable();
         g.setShape(GradientDrawable.OVAL);
-        g.setColor(big ? 0x26FFFFFF : 0x00000000);
+        g.setColor(big ? Ui.alpha(Ui.ACCENT, 0x55) : 0x00000000);
         g.setStroke(Math.max(1, Ui.s(1)), 0x40FFFFFF);
         b.setBackground(g);
         IconView iv = Ui.place(b, new IconView(a, icon, Ui.TEXT), s * 0.28f, s * 0.28f, s * 0.44f, s * 0.44f);

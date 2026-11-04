@@ -174,7 +174,7 @@ final class CarSideView extends View {
         float bottom = ty + th * 0.21f;                        // l'arrière repose sur l'anneau
         float gx = tw * 0.60f, gy = th * 0.17f;
         p.setStyle(Paint.Style.FILL);
-        p.setShader(new RadialGradient(0, 0, 1, new int[]{0xB0E0101E, 0x50C8001A, 0x00C8001A},
+        p.setShader(new RadialGradient(0, 0, 1, new int[]{Ui.alpha(Ui.ACCENT, 0xB0), Ui.alpha(Ui.ACCENT, 0x50), Ui.alpha(Ui.ACCENT, 0x00)},
                 new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
         c.save();
         c.translate(cx, ty);
@@ -191,7 +191,7 @@ final class CarSideView extends View {
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(Math.max(1.5f, w / 280f));
         r.set(cx - gx * 0.92f, ty - gy * 0.80f, cx + gx * 0.92f, ty + gy * 0.80f);
-        p.setShader(new LinearGradient(r.left, 0, r.right, 0, new int[]{0x00FF2030, 0xFFFF3040, 0x00FF2030}, null, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(r.left, 0, r.right, 0, new int[]{Ui.alpha(Ui.accentLight(), 0x00), Ui.accentLight(), Ui.alpha(Ui.accentLight(), 0x00)}, null, Shader.TileMode.CLAMP));
         c.drawOval(r, p);
         p.setShader(null);
         p.setStyle(Paint.Style.FILL);

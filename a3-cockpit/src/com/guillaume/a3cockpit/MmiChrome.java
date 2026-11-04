@@ -88,6 +88,10 @@ final class MmiChrome {
         SlotSide(final MainActivity a, float h) {
             super(a);
             setBackground(Ui.gradient(0xFF17181B, 0xFF0B0C0E, 4));
+            View edge = Ui.place(this, new View(a), 82, 0, 2, h);                     // liseré d'ambiance
+            edge.setBackground(new android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{Ui.alpha(Ui.ACCENT, 0x00), Ui.alpha(Ui.ACCENT, 0xB0), Ui.alpha(Ui.ACCENT, 0x00)}));
             int n = OrbitSlots.SIDE_COUNT;
             float cell = h / (n + 1);                       // 5 applis + bouton Menu fixe
             for (int i = 0; i < n; i++) {

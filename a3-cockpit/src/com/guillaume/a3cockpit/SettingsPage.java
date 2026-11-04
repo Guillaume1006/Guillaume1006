@@ -58,6 +58,19 @@ final class SettingsPage extends Page {
             }
         });
 
+        if (Ui.MMI) row(IconView.PALETTE, "Couleur d'ambiance", Ui.ACCENT_NAMES[Ui.accentIndex()], new Runnable() {
+            @Override public void run() {
+                new AlertDialog.Builder(a, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                        .setTitle("Couleur d'ambiance")
+                        .setItems(Ui.ACCENT_NAMES, new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int which) {
+                                Prefs.put("accent", Ui.ACCENT_IDS[which]);
+                                a.rebuild();
+                            }
+                        })
+                        .setNegativeButton("Annuler", null).show();
+            }
+        });
         row(IconView.RADIO, "Source audio de l'accueil", MmiHomePage.player() ? "Lecteur audio" : "Radio", new Runnable() {
             @Override public void run() {
                 Prefs.put("audio_src", MmiHomePage.player() ? "radio" : "player");
