@@ -263,9 +263,11 @@ public class MainActivity extends Activity {
         if (!photoLoaded) {
             photoLoaded = true;
             File f = new File(getFilesDir(), "car.png");
-            String look = Prefs.str("car_look", "photo");
+            String look = Prefs.str("car_look", "studio");
+            int studio = getResources().getIdentifier("car_home", "drawable", getPackageName());
             if ("custom".equals(look) && f.exists()) photo = BitmapFactory.decodeFile(f.getAbsolutePath());
             else if ("vector".equals(look)) photo = null;
+            else if ("studio".equals(look) && studio != 0) photo = BitmapFactory.decodeResource(getResources(), studio);
             else photo = BitmapFactory.decodeResource(getResources(), R.drawable.car_a3);
         }
         return photo;
@@ -296,14 +298,14 @@ public class MainActivity extends Activity {
 
     void clearCarPhoto() {
         new File(getFilesDir(), "car.png").delete();
-        setCarLook("photo");
+        setCarLook("studio");
     }
 
     boolean hasCustomPhoto() {
         return new File(getFilesDir(), "car.png").exists();
     }
 
-    /** "photo" = photo intégrée de l'A3, "vector" = dessin, "custom" = photo choisie. */
+    /** "studio" = rendu gris quasi noir, "photo" = photo de l'A3, "vector" = dessin, "custom" = photo choisie. */
     void setCarLook(String look) {
         Prefs.put("car_look", look);
         photo = null;
