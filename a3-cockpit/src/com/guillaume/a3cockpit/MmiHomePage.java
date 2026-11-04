@@ -41,7 +41,7 @@ final class MmiHomePage extends Page {
         if (withOrbit) {
             // anneau posé au sol, vu en perspective, la voiture se tient dessus
             ox = w * 0.405f;                                    // centre de la zone à gauche de l'horloge
-            oy = h * 0.60f;
+            oy = h * 0.55f;
             rx = w * 0.275f;
             ry = h * 0.25f;
         } else {
@@ -55,9 +55,9 @@ final class MmiHomePage extends Page {
 
         float cw, ch, gx, gy;
         if (withOrbit) {
-            cw = rx * 1.42f;                                    // voiture au centre de l'anneau
+            cw = rx * 1.66f;                                    // voiture au centre de l'anneau
             gx = ox;
-            gy = oy + ry * 0.05f;
+            gy = oy - ry * 0.02f;
         } else {
             cw = rx * 1.55f;                                    // voiture centrée, un peu plus petite
             gx = ox;
@@ -70,7 +70,7 @@ final class MmiHomePage extends Page {
 
         if (withOrbit) {
             // 7 emplacements personnalisables (appui long pour modifier), plus petits au fond
-            float[] angles = {-152, -28, 8, 48, 90, 132, 172};
+            float[] angles = {-160, -20, 14, 52, 90, 128, 166};
             for (int i = 0; i < OrbitSlots.COUNT; i++) item(angles[i], i);
         }
 
@@ -119,20 +119,22 @@ final class MmiHomePage extends Page {
         final String v = OrbitSlots.get(slot);
         double t = Math.toRadians(deg);
         float x = ox + rx * (float) Math.cos(t), y = oy + ry * (float) Math.sin(t);
-        float depth = 0.82f + 0.18f * (float) ((Math.sin(t) + 1) / 2);   // perspective : fond plus petit
-        float d = 40 * depth;
-        boolean left = Math.cos(t) < -0.2;                  // à gauche : nom à gauche de l'icône
-        float bw = 140;
-        float bx = left ? x - bw + d / 2f + 4 : x - d / 2f - 4;
-        FrameLayout b = Ui.place(this, new FrameLayout(a), bx, y - d / 2f - 4, bw, d + 8);
-        float ix = left ? bw - d - 4 : 4;
+        // même style que la barre latérale : icône grise simple, nom en petit dessous
+        float depth = 0.85f + 0.15f * (float) ((Math.sin(t) + 1) / 2);   // perspective : fond plus petit
+        float d = 26 * depth, bw = 92, bh = d + 22;
+        FrameLayout b = Ui.place(this, new FrameLayout(a), x - bw / 2f, y - d / 2f - 2, bw, bh);
         if (OrbitSlots.empty(a, v)) {                       // emplacement libre : petit « + » discret
-            Ui.place(b, new MmiChrome.Orb(a, IconView.PLUS, null, true), ix + d * 0.22f, 4 + d * 0.22f, d * 0.56f, d * 0.56f);
+            Ui.place(b, new IconView(a, IconView.PLUS, 0x55FFFFFF), (bw - d * 0.7f) / 2f, 2 + d * 0.15f, d * 0.7f, d * 0.7f);
         } else {
-            Ui.place(b, new MmiChrome.Orb(a, OrbitSlots.icon(v), OrbitSlots.appIcon(a, v), false), ix, 4, d, d);
-            TextView tl = Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 13, 0xFFB4B8BE, Ui.REG),
-                    left ? 0 : d + 12, d / 2f - 4, bw - d - 16, 17);
-            if (left) tl.setGravity(Gravity.END);
+            android.graphics.drawable.Drawable ic = OrbitSlots.appIcon(a, v);
+            if (ic != null) {
+                android.widget.ImageView iv = Ui.place(b, new android.widget.ImageView(a), (bw - d) / 2f, 2, d, d);
+                iv.setImageDrawable(Ui.grey(ic));
+            } else {
+                Ui.place(b, new IconView(a, OrbitSlots.icon(v), 0xFFB4B8BE), (bw - d) / 2f, 2, d, d);
+            }
+            TextView tl = Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 11, Ui.TEXT2, Ui.REG), 0, d + 6, bw, 14);
+            tl.setGravity(Gravity.CENTER);
         }
         Ui.onTap(b, new Runnable() {
             @Override public void run() {
