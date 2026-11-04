@@ -112,11 +112,12 @@ final class CarSideView extends View {
     /** Photo (vue de 3/4) posée sur le plateau, mise à l'échelle sur toute la zone. */
     private void drawPhotoScene(Canvas c, float w, float h) {
         float ar = photo.getWidth() / (float) photo.getHeight();
-        float th = h * 0.72f, tw = th * ar;
-        if (tw > w * 0.84f) { tw = w * 0.84f; th = tw / ar; }
-        float bottom = h * 0.90f, cx = w / 2f;
-        float ty = bottom - th * 0.09f;                 // ligne de contact des roues
-        float rx = tw * 0.56f, ry = th * 0.15f;
+        float th = h * 0.52f, tw = th * ar;
+        if (tw > w * 0.64f) { tw = w * 0.64f; th = tw / ar; }
+        float cx = w / 2f;
+        float ty = h * 0.70f;                           // centre du plateau = appui des roues
+        float bottom = ty + th * 0.15f;
+        float rx = Math.min(w * 0.47f, tw * 0.74f), ry = rx * 0.22f;
 
         // plateau
         p.setStyle(Paint.Style.FILL);
@@ -141,8 +142,8 @@ final class CarSideView extends View {
         // ombre sous la voiture
         p.setShader(new RadialGradient(0, 0, 1, 0xDD000000, 0x00000000, Shader.TileMode.CLAMP));
         c.save();
-        c.translate(cx, ty - th * 0.03f);
-        c.scale(tw * 0.47f, th * 0.1f);
+        c.translate(cx, ty);
+        c.scale(tw * 0.5f, ry * 0.75f);
         c.drawCircle(0, 0, 1, p);
         c.restore();
         p.setShader(null);
