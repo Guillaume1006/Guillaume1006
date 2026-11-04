@@ -147,10 +147,17 @@ public class MainActivity extends Activity {
         bar = null;
         if (Ui.MMI) {
             bar = Ui.place(stage, new MmiChrome.Bar(this, Ui.W), 0, 0, Ui.W, 40);
-            Ui.place(stage, new MmiChrome.Side(this, Ui.H - 56), 8, 48, 60, Ui.H - 56);
-            cw = Ui.W - 84;
+            float sideW;
+            if (MmiHomePage.orbit()) {
+                sideW = 60;
+                Ui.place(stage, new MmiChrome.Side(this, Ui.H - 56), 8, 48, sideW, Ui.H - 56);
+            } else {
+                sideW = 76;
+                Ui.place(stage, new MmiChrome.SlotSide(this, Ui.H - 56), 8, 48, sideW, Ui.H - 56);
+            }
+            cw = Ui.W - sideW - 24;
             ch = Ui.H - 56;
-            content = Ui.place(stage, new FrameLayout(this), 76, 48, cw, ch);
+            content = Ui.place(stage, new FrameLayout(this), sideW + 16, 48, cw, ch);
             home = new MmiHomePage(this, cw, ch);
         } else {
             dock = Ui.place(stage, new Dock(this, Ui.H - 24), 12, 12, 68, Ui.H - 24);

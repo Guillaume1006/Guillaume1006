@@ -58,7 +58,15 @@ final class SettingsPage extends Page {
             }
         });
 
-        section("Carrousel de l'accueil");
+        row(IconView.HOME, "Disposition de l'accueil", MmiHomePage.orbit() ? "Carrousel autour de la voiture"
+                : "Raccourcis dans la barre latérale", new Runnable() {
+            @Override public void run() {
+                Prefs.put("home_layout", MmiHomePage.orbit() ? "side" : "orbit");
+                a.rebuild();
+            }
+        });
+
+        section(MmiHomePage.orbit() ? "Carrousel de l'accueil" : "Raccourcis de la barre latérale");
         for (int i = 0; i < OrbitSlots.COUNT; i++) {
             final int slot = i;
             String v = OrbitSlots.get(i);
@@ -72,7 +80,7 @@ final class SettingsPage extends Page {
         row(IconView.BACK, "Remettre le carrousel par défaut", "Véhicule, Radio, Réglages…", new Runnable() {
             @Override public void run() { OrbitSlots.reset(); build(); }
         });
-        TextView hint = Ui.text(a, "Astuce : appui long sur une icône du carrousel pour la changer directement.", 12, Ui.TEXT3, Ui.REG);
+        TextView hint = Ui.text(a, "Astuce : appui long sur un raccourci pour le changer directement.", 12, Ui.TEXT3, Ui.REG);
         LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(-1, -2);
         hp.leftMargin = Ui.s(6);
         hp.topMargin = Ui.s(2);

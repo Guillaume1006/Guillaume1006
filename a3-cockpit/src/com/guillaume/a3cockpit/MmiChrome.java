@@ -83,6 +83,71 @@ final class MmiChrome {
         }
     }
 
+    /** Barre latérale « raccourcis » : les 7 emplacements, chacun posé sur une lueur rouge. */
+    static final class SlotSide extends FrameLayout {
+        SlotSide(final MainActivity a, float h) {
+            super(a);
+            setBackground(Ui.gradient(0xFF17181B, 0xFF0B0C0E, 4));
+            float cell = h / OrbitSlots.COUNT;
+            for (int i = 0; i < OrbitSlots.COUNT; i++) {
+                final int slot = i;
+                final String v = OrbitSlots.get(i);
+                boolean empty = OrbitSlots.empty(a, v);
+                FrameLayout b = Ui.place(this, new FrameLayout(a), 0, i * cell, 76, cell);
+                Ui.place(b, new Glow(a), 6, cell * 0.30f, 64, cell * 0.52f);
+                if (empty) {
+                    Ui.place(b, new IconView(a, IconView.PLUS, 0x66FFFFFF), 28, cell * 0.30f, 20, 20);
+                } else {
+                    android.graphics.drawable.Drawable ic = OrbitSlots.appIcon(a, v);
+                    if (ic != null) {
+                        android.widget.ImageView iv = Ui.place(b, new android.widget.ImageView(a), 24, cell * 0.16f, 28, 28);
+                        iv.setImageDrawable(ic);
+                    } else {
+                        Ui.place(b, new IconView(a, OrbitSlots.icon(v), 0xFFE4E6EA), 25, cell * 0.17f, 26, 26);
+                    }
+                    TextView t = Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 10, Ui.TEXT2, Ui.REG), 2, cell * 0.17f + 32, 72, 13);
+                    t.setGravity(Gravity.CENTER);
+                }
+                Ui.onTap(b, new Runnable() {
+                    @Override public void run() {
+                        if (OrbitSlots.empty(a, v)) edit(a, slot);
+                        else OrbitSlots.run(a, v);
+                    }
+                });
+                b.setOnLongClickListener(new View.OnLongClickListener() {
+                    @Override public boolean onLongClick(View view) { edit(a, slot); return true; }
+                });
+                if (i > 0) {
+                    View sep = Ui.place(this, new View(a), 14, i * cell, 48, 1);
+                    sep.setBackgroundColor(0x1CFFFFFF);
+                }
+            }
+        }
+
+        private static void edit(final MainActivity a, int slot) {
+            OrbitSlots.edit(a, slot, new Runnable() { @Override public void run() { a.rebuild(); } });
+        }
+    }
+
+    /** Lueur rouge douce sous une icône. */
+    static final class Glow extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        Glow(Context c) { super(c); }
+
+        @Override protected void onDraw(Canvas c) {
+            float w = getWidth(), h = getHeight();
+            p.setShader(new RadialGradient(0, 0, 1, new int[]{0x90E0101E, 0x30C8001A, 0x00C8001A},
+                    new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+            c.save();
+            c.translate(w / 2f, h * 0.62f);
+            c.scale(w / 2f, h * 0.30f);
+            c.drawCircle(0, 0, 1, p);
+            c.restore();
+            p.setShader(null);
+        }
+    }
+
     /** Icône ronde métallique (style « objet chromé » des menus Audi). */
     static final class Orb extends View {
         private final int icon;
