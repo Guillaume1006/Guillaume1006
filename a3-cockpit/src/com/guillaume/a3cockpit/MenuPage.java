@@ -7,13 +7,12 @@ import android.graphics.Shader;
 import android.view.View;
 import android.widget.FrameLayout;
 
-/** Menu principal en grille façon Audi MMI : tuiles sombres, objet métallique, liseré coloré. */
+/** Menu principal en grille façon Audi MMI : tuiles sombres, objet métallique, liseré à la couleur du thème. */
 final class MenuPage extends Page {
     MenuPage(final MainActivity a, float w, float h) {
         super(a, w, h);
         String[] labels = {"Navigation", "Musique", "Radio", "Téléphone", "Véhicule", "Entretien", "Applications", "Réglages"};
         int[] icons = {IconView.NAV, IconView.MUSIC, IconView.RADIO, IconView.PHONE, IconView.CAR, IconView.WRENCH, IconView.GRID, IconView.GEAR};
-        int[] colors = {0xFF2E9BFF, 0xFFFF8A00, 0xFFFF2D3A, 0xFFB04DFF, 0xFF3DDC84, 0xFFFF453A, 0xFF22D3EE, 0xFFFFD60A};
         Runnable[] acts = {
                 new Runnable() { @Override public void run() { Apps.open(a, Apps.NAV); } },
                 new Runnable() { @Override public void run() { Apps.open(a, Apps.MUSIC); } },
@@ -36,7 +35,7 @@ final class MenuPage extends Page {
             View bar = Ui.place(t, new View(a), 0, th - 4, tw, 4);
             bar.setBackground(new android.graphics.drawable.GradientDrawable(
                     android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                    new int[]{Ui.alpha(colors[i], 0x40), colors[i], Ui.alpha(colors[i], 0x40)}));
+                    new int[]{Ui.alpha(Ui.ACCENT, 0xA0), Ui.ACCENT, Ui.alpha(Ui.ACCENT, 0xA0)}));
             Ui.onTap(t, acts[i]);
         }
         // indicateur de page
