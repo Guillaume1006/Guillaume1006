@@ -166,10 +166,6 @@ final class CarSideView extends View {
     }
 
     /** Thème MMI : voiture posée sur une lueur rouge Audi, sans plateau. */
-    /** Adoucit légèrement les reflets : hautes lumières un peu abaissées. */
-    private static final android.graphics.ColorMatrixColorFilter SOFT = new android.graphics.ColorMatrixColorFilter(
-            new float[]{0.86f, 0, 0, 0, 6, 0, 0.86f, 0, 0, 6, 0, 0, 0.86f, 0, 7, 0, 0, 0, 1, 0});
-
     private void drawPhotoGlow(Canvas c, float w, float h) {
         float ar = photo.getWidth() / (float) photo.getHeight();
         float th = h * 0.78f, tw = th * ar;
@@ -178,7 +174,7 @@ final class CarSideView extends View {
         float bottom = ty + th * 0.21f;                        // l'arrière repose sur l'anneau
         float gx = tw * 0.60f, gy = th * 0.17f;
         p.setStyle(Paint.Style.FILL);
-        p.setShader(new RadialGradient(0, 0, 1, new int[]{0x66C8101E, 0x26B0001A, 0x00B0001A},
+        p.setShader(new RadialGradient(0, 0, 1, new int[]{0xB0E0101E, 0x50C8001A, 0x00C8001A},
                 new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
         c.save();
         c.translate(cx, ty);
@@ -193,16 +189,14 @@ final class CarSideView extends View {
         c.restore();
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1f, w / 420f));
+        p.setStrokeWidth(Math.max(1.5f, w / 280f));
         r.set(cx - gx * 0.92f, ty - gy * 0.80f, cx + gx * 0.92f, ty + gy * 0.80f);
-        p.setShader(new LinearGradient(r.left, 0, r.right, 0, new int[]{0x00D01828, 0x99D01828, 0x00D01828}, null, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(r.left, 0, r.right, 0, new int[]{0x00FF2030, 0xFFFF3040, 0x00FF2030}, null, Shader.TileMode.CLAMP));
         c.drawOval(r, p);
         p.setShader(null);
         p.setStyle(Paint.Style.FILL);
         r.set(cx - tw / 2f, bottom - th, cx + tw / 2f, bottom);
-        p.setColorFilter(SOFT);
         c.drawBitmap(photo, null, r, p);
-        p.setColorFilter(null);
         if (sweep >= 0f) {
             c.save();
             c.clipRect(r);
