@@ -7,7 +7,7 @@ import android.graphics.Shader;
 import android.view.View;
 import android.widget.FrameLayout;
 
-/** Menu principal en grille façon Audi MMI : tuiles sombres, objet métallique, liseré à la couleur du thème. */
+/** Menu principal en grille façon Audi MMI : tuiles sombres, objet métallique, liseré gris foncé, socle à la couleur du thème. */
 final class MenuPage extends Page {
     MenuPage(final MainActivity a, float w, float h) {
         super(a, w, h);
@@ -35,7 +35,7 @@ final class MenuPage extends Page {
             View bar = Ui.place(t, new View(a), 0, th - 4, tw, 4);
             bar.setBackground(new android.graphics.drawable.GradientDrawable(
                     android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                    new int[]{Ui.alpha(Ui.ACCENT, 0xA0), Ui.ACCENT, Ui.alpha(Ui.ACCENT, 0xA0)}));
+                    new int[]{0xFF26282C, 0xFF34373C, 0xFF26282C}));
             Ui.onTap(t, acts[i]);
         }
         // indicateur de page
@@ -59,7 +59,7 @@ final class MenuPage extends Page {
             float w = getWidth(), h = getHeight();
             float cx = w / 2f, cy = h * 0.46f, s = Math.min(w, h) * 0.62f;
             // socle
-            p.setShader(new RadialGradient(cx, h * 0.86f, w * 0.48f, new int[]{0x55FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+            p.setShader(new RadialGradient(cx, h * 0.86f, w * 0.48f, new int[]{Ui.alpha(Ui.blend(Ui.ACCENT, 0xFF000000, 0.25f), 0x90), Ui.alpha(Ui.ACCENT, 0)}, null, Shader.TileMode.CLAMP));
             c.save();
             c.scale(1f, 0.22f, cx, h * 0.86f);
             c.drawCircle(cx, h * 0.86f, w * 0.48f, p);
