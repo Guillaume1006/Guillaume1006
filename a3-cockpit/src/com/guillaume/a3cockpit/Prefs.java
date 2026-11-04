@@ -25,9 +25,9 @@ final class Prefs {
     static void remove(String k) { sp.edit().remove(k).apply(); }
 
     // Raccourcis
-    static String carName() { return str("car_name", "Audi A3"); }
+    static String carName() { return str("car_name", "Audi A3 Sportback"); }
     static boolean fiveDoors() { return "5".equals(str("car_body", "5")); }
-    static int carColor() { return integer("car_color", 0xFFC4C9CF); }
+    static int carColor() { return integer("car_color", 0xFF55595F); }
     static boolean diesel() { return !"essence".equals(str("fuel", "diesel")); }
     static int tank() { return integer("tank", 55); }
 }

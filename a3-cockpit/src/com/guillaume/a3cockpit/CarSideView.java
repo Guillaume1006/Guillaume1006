@@ -11,12 +11,18 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.view.View;
 
-/** Compacte 3/5 portes vue de profil, posée sur un plateau, dessinée en vectoriel. */
+/**
+ * Audi A3 8P Sportback phase 2 (2008-2012) vue de profil, côté droit, posée sur un plateau.
+ * Échelle : 1 unité ≈ 4,5 mm. Longueur 4 292 mm, hauteur 1 423 mm, empattement 2 578 mm,
+ * porte-à-faux AV 893 mm / AR 821 mm, jantes 17" (pneu Ø ≈ 634 mm). Sol à y = 332.
+ */
 final class CarSideView extends View {
+    private static final float RW = 219, FW = 792, WY = 262;   // centres des roues
+
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Path body = new Path(), dlo = new Path(), tmp = new Path();
     private final RectF r = new RectF();
-    private int color = 0xFFC4C9CF;
+    private int color = 0xFF55595F;
     private boolean five = true;
     private Bitmap photo;
     private float sweep = -1f;  // reflet animé
@@ -30,6 +36,7 @@ final class CarSideView extends View {
         this.color = color;
         this.five = five;
         this.photo = photo;
+        buildPaths();
         invalidate();
     }
 
@@ -40,37 +47,48 @@ final class CarSideView extends View {
     }
 
     private void buildPaths() {
-        // Profil de compacte (sol à y = 332, roues r = 70 centrées à y = 262)
         body.reset();
-        body.moveTo(62, 294);
-        body.lineTo(42, 266);
-        body.quadTo(32, 225, 36, 185);
-        body.lineTo(44, 150);
-        body.quadTo(52, 104, 90, 62);
-        body.quadTo(112, 38, 166, 29);
-        body.quadTo(330, 10, 470, 19);
-        body.quadTo(516, 23, 548, 38);
-        body.lineTo(668, 120);
+        body.moveTo(62, 294);                  // bas du bouclier AR
+        body.lineTo(42, 268);
+        body.quadTo(32, 232, 36, 190);
+        body.lineTo(40, 156);                  // haut des feux
+        if (five) {
+            body.quadTo(44, 108, 70, 52);      // hayon peu incliné (Sportback)
+            body.quadTo(80, 34, 108, 30);      // becquet
+            body.quadTo(300, 12, 470, 18);     // pavillon long
+        } else {
+            body.quadTo(50, 104, 92, 58);      // hayon plus fuyant (3 portes)
+            body.quadTo(112, 36, 166, 29);
+            body.quadTo(330, 10, 470, 19);
+        }
+        body.quadTo(516, 22, 548, 38);
+        body.lineTo(668, 120);                 // pare-brise
         body.quadTo(712, 134, 780, 142);
-        body.lineTo(915, 160);
-        body.quadTo(960, 167, 976, 186);
-        body.quadTo(992, 210, 990, 245);
-        body.quadTo(988, 286, 960, 296);
-        body.lineTo(882, 294);
-        r.set(720, 182, 880, 342);
+        body.lineTo(912, 158);                 // capot
+        body.quadTo(962, 166, 980, 188);
+        body.quadTo(996, 212, 994, 250);       // calandre single-frame
+        body.quadTo(992, 286, 962, 296);
+        body.lineTo(874, 294);
+        r.set(FW - 80, WY - 80, FW + 80, WY + 80);
         body.arcTo(r, 0, -180, false);
-        body.lineTo(718, 294);
-        body.lineTo(297, 294);
-        r.set(135, 182, 295, 342);
+        body.lineTo(710, 294);
+        body.lineTo(301, 294);
+        r.set(RW - 80, WY - 80, RW + 80, WY + 80);
         body.arcTo(r, 0, -180, false);
-        body.lineTo(133, 294);
+        body.lineTo(137, 294);
         body.close();
 
         dlo.reset();
-        dlo.moveTo(148, 128);
-        dlo.quadTo(158, 86, 184, 56);
-        dlo.quadTo(198, 43, 226, 41);
-        dlo.quadTo(340, 27, 462, 33);
+        if (five) {
+            dlo.moveTo(126, 128);
+            dlo.quadTo(132, 84, 160, 52);
+            dlo.quadTo(176, 40, 204, 38);
+        } else {
+            dlo.moveTo(148, 128);
+            dlo.quadTo(158, 86, 184, 56);
+            dlo.quadTo(198, 43, 226, 41);
+        }
+        dlo.quadTo(340, 26, 462, 33);
         dlo.quadTo(504, 36, 532, 50);
         dlo.lineTo(640, 130);
         dlo.close();
@@ -81,7 +99,7 @@ final class CarSideView extends View {
         if (w <= 0 || h <= 0) return;
         float k = Math.min(w / 1100f, h / 400f);
         c.save();
-        c.translate(w / 2f - 500 * k, h / 2f - 205 * k);
+        c.translate(w / 2f - 510 * k, h / 2f - 205 * k);
         c.scale(k, k);
         drawTurntable(c);
         if (photo != null) drawPhoto(c);
@@ -96,18 +114,18 @@ final class CarSideView extends View {
     }
 
     private void drawTurntable(Canvas c) {
-        p.setShader(new RadialGradient(500, 344, 540, new int[]{0x99000000, 0x66101018, 0x00000000},
+        p.setShader(new RadialGradient(510, 344, 540, new int[]{0x99000000, 0x66101018, 0x00000000},
                 new float[]{0f, 0.7f, 1f}, Shader.TileMode.CLAMP));
         p.setStyle(Paint.Style.FILL);
-        r.set(-40, 292, 1040, 396);
+        r.set(-30, 292, 1050, 396);
         c.drawOval(r, p);
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(2.5f);
-        p.setShader(new LinearGradient(-40, 0, 1040, 0, new int[]{0x00FFFFFF, 0x66FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(-30, 0, 1050, 0, new int[]{0x00FFFFFF, 0x66FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
         c.drawOval(r, p);
-        r.set(40, 308, 960, 380);
-        p.setShader(new LinearGradient(40, 0, 960, 0, new int[]{0x00FFFFFF, 0x30FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+        r.set(50, 308, 970, 380);
+        p.setShader(new LinearGradient(50, 0, 970, 0, new int[]{0x00FFFFFF, 0x30FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
         c.drawOval(r, p);
         p.setShader(null);
         p.setStyle(Paint.Style.FILL);
@@ -117,244 +135,296 @@ final class CarSideView extends View {
         float maxW = 1000, maxH = 300;
         float s = Math.min(maxW / photo.getWidth(), maxH / photo.getHeight());
         float bw = photo.getWidth() * s, bh = photo.getHeight() * s;
-        r.set(500 - bw / 2, 340 - bh, 500 + bw / 2, 340);
+        r.set(510 - bw / 2, 340 - bh, 510 + bw / 2, 340);
         c.drawBitmap(photo, null, r, p);
     }
 
+    private Path poly(float... xy) {
+        tmp.reset();
+        tmp.moveTo(xy[0], xy[1]);
+        for (int i = 2; i < xy.length; i += 2) tmp.lineTo(xy[i], xy[i + 1]);
+        tmp.close();
+        return tmp;
+    }
+
+    private void stroke(int color, float w) {
+        p.setShader(null);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeWidth(w);
+        p.setColor(color);
+    }
+
+    private void fill(int color) {
+        p.setShader(null);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(color);
+    }
+
     private void drawCar(Canvas c) {
-        int light = Ui.blend(color, 0xFFFFFFFF, 0.38f);
-        int dark = Ui.blend(color, 0xFF000000, 0.5f);
-        int darker = Ui.blend(color, 0xFF000000, 0.72f);
+        int light = Ui.blend(color, 0xFFFFFFFF, 0.42f);
+        int mid = Ui.blend(color, 0xFFFFFFFF, 0.12f);
+        int dark = Ui.blend(color, 0xFF000000, 0.45f);
+        int darker = Ui.blend(color, 0xFF000000, 0.7f);
+        int trim = 0xFF0C0D10;
 
         // Ombre au sol
         p.setShader(new RadialGradient(0, 0, 1, 0xCC000000, 0x00000000, Shader.TileMode.CLAMP));
         c.save();
-        c.translate(500, 334);
+        c.translate(512, 334);
         c.scale(510, 24);
         c.drawCircle(0, 0, 1, p);
         c.restore();
         p.setShader(null);
 
-        // Passages de roue sombres
-        p.setColor(0xFF07070A);
-        r.set(720, 182, 880, 342);
+        // Passages de roue
+        fill(0xFF07070A);
+        r.set(FW - 80, WY - 80, FW + 80, WY + 80);
         c.drawArc(r, 180, 180, true, p);
-        r.set(135, 182, 295, 342);
+        r.set(RW - 80, WY - 80, RW + 80, WY + 80);
         c.drawArc(r, 180, 180, true, p);
 
-        // Carrosserie
+        // Caisse : dégradé métallisé
         p.setShader(new LinearGradient(0, 16, 0, 298,
-                new int[]{light, color, color, dark, darker}, new float[]{0f, 0.4f, 0.58f, 0.86f, 1f}, Shader.TileMode.CLAMP));
+                new int[]{light, mid, color, dark, darker}, new float[]{0f, 0.38f, 0.55f, 0.84f, 1f}, Shader.TileMode.CLAMP));
         c.drawPath(body, p);
         p.setShader(null);
 
         c.save();
         c.clipPath(body);
-        p.setColor(0x55000000);                       // bas de caisse
-        c.drawRect(0, 266, 1000, 300, p);
-        p.setShader(new LinearGradient(0, 140, 0, 178, new int[]{0x00FFFFFF, 0x40FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
-        c.drawRect(0, 140, 1000, 178, p);             // reflet horizontal
+        // Zone sous la ligne tornado légèrement plus sombre (effet d'arête)
+        p.setShader(new LinearGradient(0, 160, 0, 200, new int[]{0x30FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+        c.drawRect(0, 160, 1000, 200, p);
+        p.setShader(new LinearGradient(0, 120, 0, 162, new int[]{0x00FFFFFF, 0x38FFFFFF}, null, Shader.TileMode.CLAMP));
+        c.drawRect(0, 120, 1000, 162, p);
         p.setShader(null);
-        if (sweep >= 0f) {                            // reflet animé
+        // Bas de caisse noir mat
+        fill(0x66000000);
+        c.drawRect(0, 270, 1000, 300, p);
+        // Reflet animé
+        if (sweep >= 0f) {
             float x = -200 + sweep * 1400;
             p.setShader(new LinearGradient(x - 90, 0, x + 90, 0, new int[]{0x00FFFFFF, 0x55FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
-            tmp.reset();
-            tmp.moveTo(x - 60, 0);
-            tmp.lineTo(x + 40, 0);
-            tmp.lineTo(x - 20, 300);
-            tmp.lineTo(x - 120, 300);
-            tmp.close();
-            c.drawPath(tmp, p);
+            c.drawPath(poly(x - 60, 0, x + 40, 0, x - 20, 300, x - 120, 300), p);
             p.setShader(null);
         }
         c.restore();
 
-        // Lunette arrière (vue de biais)
-        tmp.reset();
-        tmp.moveTo(56, 132);
-        tmp.quadTo(66, 92, 100, 62);
-        tmp.lineTo(140, 44);
-        tmp.lineTo(146, 54);
-        tmp.quadTo(108, 74, 90, 104);
-        tmp.lineTo(74, 134);
-        tmp.close();
-        p.setColor(0xFF12161D);
-        c.drawPath(tmp, p);
-
-        // Becquet
-        tmp.reset();
-        tmp.moveTo(166, 29);
-        tmp.quadTo(120, 34, 92, 58);
-        tmp.lineTo(100, 62);
-        tmp.quadTo(124, 42, 168, 36);
-        tmp.close();
-        p.setColor(darker);
-        c.drawPath(tmp, p);
-
-        // Ligne de caisse
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(2.2f);
-        p.setColor(0x55FFFFFF);
-        c.drawLine(40, 164, 945, 174, p);
-        p.setColor(0x40000000);
-        c.drawLine(40, 168, 945, 178, p);
-        p.setStyle(Paint.Style.FILL);
+        // Ligne tornado (du feu AR au phare) + ligne dynamique basse
+        stroke(0x60FFFFFF, 2.4f);
+        c.drawLine(42, 158, 900, 167, p);
+        stroke(0x50000000, 2.4f);
+        c.drawLine(42, 162, 900, 171, p);
+        stroke(0x30FFFFFF, 2f);
+        c.drawLine(304, 250, 708, 238, p);
 
         // Vitrage
+        p.setStyle(Paint.Style.FILL);
         p.setShader(new LinearGradient(0, 32, 0, 130, new int[]{0xFF3A4352, 0xFF141820, 0xFF0B0D12}, null, Shader.TileMode.CLAMP));
         c.drawPath(dlo, p);
         p.setShader(null);
         c.save();
         c.clipPath(dlo);
-        p.setColor(0x1CFFFFFF);
-        tmp.reset();
-        tmp.moveTo(300, 26);
-        tmp.lineTo(384, 26);
-        tmp.lineTo(330, 134);
-        tmp.lineTo(246, 134);
-        tmp.close();
-        c.drawPath(tmp, p);
-        tmp.reset();
-        tmp.moveTo(520, 26);
-        tmp.lineTo(546, 26);
-        tmp.lineTo(492, 134);
-        tmp.lineTo(466, 134);
-        tmp.close();
-        c.drawPath(tmp, p);
+        fill(0x1CFFFFFF);
+        c.drawPath(poly(300, 26, 384, 26, 330, 134, 246, 134), p);
+        c.drawPath(poly(520, 26, 546, 26, 492, 134, 466, 134), p);
         c.restore();
 
-        // Montants
-        p.setColor(darker);
+        // Montants noirs (pied milieu + séparation custode)
+        fill(trim);
+        if (five) {
+            c.drawRect(394, 30, 410, 130, p);
+            c.drawPath(poly(212, 128, 228, 39, 248, 38, 238, 128), p);
+        } else {
+            c.drawPath(poly(296, 128, 314, 37, 336, 36, 326, 128), p);
+        }
+        stroke(trim, 3.5f);                         // encadrement de vitres
+        c.drawPath(dlo, p);
+        stroke(0x55FFFFFF, 1.2f);                   // fin liseré
+        c.drawLine(130, 131, 636, 133, p);
+
+        // Lunette arrière vue de biais + becquet
+        fill(0xFF12161D);
         tmp.reset();
         if (five) {
-            c.drawRect(394, 30, 410, 130, p);            // pied milieu
-            tmp.moveTo(226, 128);                         // custode
-            tmp.lineTo(246, 42);
-            tmp.lineTo(268, 41);
-            tmp.lineTo(256, 128);
+            tmp.moveTo(48, 142);
+            tmp.quadTo(52, 100, 74, 58);
+            tmp.lineTo(100, 46);
+            tmp.lineTo(104, 54);
+            tmp.quadTo(84, 72, 74, 106);
+            tmp.lineTo(64, 144);
         } else {
-            tmp.moveTo(296, 128);
-            tmp.lineTo(314, 37);
-            tmp.lineTo(336, 36);
-            tmp.lineTo(326, 128);
+            tmp.moveTo(56, 132);
+            tmp.quadTo(66, 92, 100, 62);
+            tmp.lineTo(140, 44);
+            tmp.lineTo(146, 54);
+            tmp.quadTo(108, 74, 90, 104);
+            tmp.lineTo(74, 134);
         }
         tmp.close();
         c.drawPath(tmp, p);
-        p.setStyle(Paint.Style.STROKE);                   // joint de vitre
-        p.setStrokeWidth(3);
-        p.setColor(0xFF0A0A0C);
-        c.drawPath(dlo, p);
+        fill(darker);
+        tmp.reset();
+        if (five) {
+            tmp.moveTo(112, 30);
+            tmp.quadTo(84, 33, 68, 52);
+            tmp.lineTo(76, 57);
+            tmp.quadTo(90, 40, 114, 37);
+        } else {
+            tmp.moveTo(166, 29);
+            tmp.quadTo(120, 34, 92, 58);
+            tmp.lineTo(100, 62);
+            tmp.quadTo(124, 42, 168, 36);
+        }
+        tmp.close();
+        c.drawPath(tmp, p);
 
         // Découpes de portes
-        p.setStrokeWidth(2f);
-        p.setColor(0x80000000);
-        c.drawLine(650, 130, 658, 292, p);
+        stroke(0x99000000, 2f);
+        c.drawLine(650, 130, 660, 292, p);
         tmp.reset();
         if (five) {
             c.drawLine(402, 130, 404, 292, p);
-            tmp.moveTo(256, 128);
-            tmp.quadTo(268, 196, 300, 236);
+            tmp.moveTo(238, 128);
+            tmp.quadTo(244, 196, 292, 220);
         } else {
             tmp.moveTo(326, 128);
             tmp.quadTo(336, 200, 330, 276);
         }
         c.drawPath(tmp, p);
-        p.setStyle(Paint.Style.FILL);
+        // Trappe à carburant (côté droit)
+        stroke(0x80000000, 1.6f);
+        r.set(150, 176, 188, 206);
+        c.drawRoundRect(r, 8, 8, p);
 
-        // Poignées
-        p.setColor(Ui.blend(color, 0xFF000000, 0.3f));
-        r.set(566, 150, 602, 158);
+        // Poignées sous la ligne tornado
+        fill(Ui.blend(color, 0xFF000000, 0.35f));
+        r.set(568, 176, 606, 184);
         c.drawRoundRect(r, 4, 4, p);
         if (five) {
-            r.set(330, 148, 364, 156);
+            r.set(336, 174, 372, 182);
             c.drawRoundRect(r, 4, 4, p);
         }
-
-        // Rétroviseur
-        tmp.reset();
-        tmp.moveTo(604, 104);
-        tmp.quadTo(626, 94, 648, 102);
-        tmp.lineTo(654, 126);
-        tmp.lineTo(612, 128);
-        tmp.close();
-        p.setColor(dark);
-        c.drawPath(tmp, p);
-
-        // Phare
-        tmp.reset();
-        tmp.moveTo(882, 160);
-        tmp.lineTo(962, 173);
-        tmp.quadTo(975, 182, 978, 194);
-        tmp.lineTo(896, 186);
-        tmp.close();
-        p.setShader(new LinearGradient(882, 0, 978, 0, new int[]{0xFF9AA4B2, 0xFFEFF4FF}, null, Shader.TileMode.CLAMP));
-        c.drawPath(tmp, p);
-        p.setShader(null);
-        p.setColor(0xFFFFFFFF);
-        p.setStrokeWidth(3);
-        p.setStyle(Paint.Style.STROKE);
-        c.drawLine(900, 182, 964, 188, p);
-        p.setStyle(Paint.Style.FILL);
-
-        // Calandre et entrée d'air
-        tmp.reset();
-        tmp.moveTo(978, 196);
-        tmp.lineTo(992, 212);
-        tmp.lineTo(991, 262);
-        tmp.lineTo(976, 270);
-        tmp.lineTo(966, 238);
-        tmp.close();
-        p.setColor(0xFF101114);
-        c.drawPath(tmp, p);
-        r.set(924, 248, 966, 262);
-        c.drawRoundRect(r, 6, 6, p);
-
-        // Feu arrière
-        tmp.reset();
-        tmp.moveTo(36, 150);
-        tmp.lineTo(92, 145);
-        tmp.lineTo(96, 170);
-        tmp.lineTo(38, 178);
-        tmp.close();
-        p.setShader(new LinearGradient(36, 0, 96, 0, new int[]{0xFF7A0008, 0xFFFF2A2A}, null, Shader.TileMode.CLAMP));
-        c.drawPath(tmp, p);
-        p.setShader(null);
-        p.setColor(0xFFB3001B);
-        r.set(38, 244, 58, 250);
+        fill(0x40FFFFFF);
+        r.set(570, 175, 604, 177);
         c.drawRect(r, p);
 
-        drawWheel(c, 215);
-        drawWheel(c, 800);
-    }
-
-    private void drawWheel(Canvas c, float cx) {
-        float cy = 262;
-        p.setColor(0xFF141416);
-        c.drawCircle(cx, cy, 70, p);
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(3);
-        p.setColor(0xFF26272B);
-        c.drawCircle(cx, cy, 60, p);
-        p.setStyle(Paint.Style.FILL);
-        p.setShader(new RadialGradient(cx - 10, cy - 12, 56, new int[]{0xFFF2F4F7, 0xFFB9BEC6, 0xFF6E737B}, null, Shader.TileMode.CLAMP));
-        c.drawCircle(cx, cy, 49, p);
+        // Rétroviseur avec répétiteur intégré (phase 2)
+        tmp.reset();
+        tmp.moveTo(600, 104);
+        tmp.quadTo(626, 92, 650, 100);
+        tmp.lineTo(656, 126);
+        tmp.lineTo(608, 128);
+        tmp.close();
+        p.setShader(new LinearGradient(0, 94, 0, 128, new int[]{light, dark}, null, Shader.TileMode.CLAMP));
+        c.drawPath(tmp, p);
         p.setShader(null);
-        // Disque de frein visible entre les branches
-        p.setColor(0xFF2B2E34);
-        for (int i = 0; i < 5; i++) {
-            double a0 = Math.toRadians(i * 72 + 36 - 22), a1 = Math.toRadians(i * 72 + 36 + 22);
-            tmp.reset();
-            tmp.moveTo(cx + (float) Math.cos(a0) * 15, cy + (float) Math.sin(a0) * 15);
-            tmp.lineTo(cx + (float) Math.cos(a0) * 44, cy + (float) Math.sin(a0) * 44);
-            tmp.lineTo(cx + (float) Math.cos(a1) * 44, cy + (float) Math.sin(a1) * 44);
-            tmp.lineTo(cx + (float) Math.cos(a1) * 15, cy + (float) Math.sin(a1) * 15);
-            tmp.close();
-            c.drawPath(tmp, p);
-        }
-        p.setColor(0xFFC9CDD3);
-        c.drawCircle(cx, cy, 12, p);
-        p.setColor(0xFF505560);
-        c.drawCircle(cx, cy, 5, p);
+        stroke(0xFFFFA020, 2.5f);
+        c.drawLine(612, 124, 650, 121, p);
+
+        // Phare (feux de jour LED en vague)
+        tmp.reset();
+        tmp.moveTo(858, 152);
+        tmp.lineTo(956, 164);
+        tmp.quadTo(978, 174, 984, 196);
+        tmp.quadTo(940, 202, 894, 192);
+        tmp.quadTo(872, 176, 858, 152);
+        tmp.close();
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new LinearGradient(858, 0, 984, 0, new int[]{0xFF2A2F38, 0xFF8C96A4, 0xFFDDE4EE}, null, Shader.TileMode.CLAMP));
+        c.drawPath(tmp, p);
+        p.setShader(null);
+        stroke(0xFF1A1C20, 1.5f);
+        c.drawPath(tmp, p);
+        fill(0xFF0E1014);
+        c.drawCircle(934, 177, 10, p);
+        fill(0xFFB8C6DA);
+        c.drawCircle(934, 177, 5, p);
+        stroke(0x66FFFFFF, 7f);
+        drawDrl(c);
+        stroke(0xFFFFFFFF, 3f);
+        drawDrl(c);
+
+        // Calandre single-frame (chromée) + antibrouillard
+        fill(0xFF101114);
+        c.drawPath(poly(982, 198, 996, 214, 995, 276, 980, 284, 972, 240), p);
+        stroke(0xFFB8BEC6, 2.5f);
+        c.drawLine(983, 200, 981, 282, p);
+        fill(0xFF141519);
+        r.set(934, 250, 976, 278);
+        c.drawRoundRect(r, 10, 10, p);
+        fill(0xFFDDE3EA);
+        c.drawCircle(958, 264, 7, p);
+        fill(0xFF0E0F12);
+        r.set(890, 286, 990, 296);
+        c.drawRoundRect(r, 4, 4, p);
+
+        // Feu arrière phase 2 (débordant sur l'aile)
+        tmp.reset();
+        tmp.moveTo(36, 150);
+        tmp.lineTo(102, 146);
+        tmp.lineTo(108, 168);
+        tmp.lineTo(40, 178);
+        tmp.close();
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new LinearGradient(36, 0, 108, 0, new int[]{0xFF5A0006, 0xFFD0101C, 0xFFFF3B3B}, null, Shader.TileMode.CLAMP));
+        c.drawPath(tmp, p);
+        p.setShader(null);
+        stroke(0xFFFF8A8A, 2f);
+        c.drawLine(50, 158, 98, 155, p);
+        c.drawLine(50, 166, 100, 163, p);
+        fill(0xFFB3001B);
+        r.set(38, 248, 60, 254);
+        c.drawRect(r, p);
+        fill(0xFF0E0F12);
+        r.set(40, 282, 132, 292);
+        c.drawRoundRect(r, 4, 4, p);
+
+        drawWheel(c, RW);
+        drawWheel(c, FW);
     }
 
+    private void drawDrl(Canvas c) {
+        tmp.reset();
+        tmp.moveTo(896, 190);
+        tmp.quadTo(924, 195, 944, 189);
+        tmp.quadTo(964, 183, 980, 195);
+        c.drawPath(tmp, p);
+    }
+
+    /** Jante 17" à 5 doubles branches. */
+    private void drawWheel(Canvas c, float cx) {
+        float cy = WY;
+        fill(0xFF141416);
+        c.drawCircle(cx, cy, 70, p);
+        stroke(0xFF26272B, 3);
+        c.drawCircle(cx, cy, 61, p);
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new RadialGradient(cx - 12, cy - 14, 58, new int[]{0xFFF2F4F7, 0xFFB9BEC6, 0xFF656A72}, null, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, 51, p);
+        p.setShader(null);
+        fill(0xFF23262B);
+        for (int i = 0; i < 5; i++) {
+            double base = Math.toRadians(i * 72 - 90);
+            wedge(c, cx, cy, base + Math.toRadians(36), Math.toRadians(17), 17, 46);   // grande ouverture
+            wedge(c, cx, cy, base, Math.toRadians(3.2), 22, 44);                        // fente entre 2 branches
+        }
+        stroke(0xFF9CA2AA, 1.5f);
+        c.drawCircle(cx, cy, 47, p);
+        fill(0xFFC9CDD3);
+        c.drawCircle(cx, cy, 14, p);
+        fill(0xFF50555F);
+        c.drawCircle(cx, cy, 6, p);
+    }
+
+    private void wedge(Canvas c, float cx, float cy, double mid, double half, float r0, float r1) {
+        double a0 = mid - half, a1 = mid + half;
+        tmp.reset();
+        tmp.moveTo(cx + (float) Math.cos(a0) * r0, cy + (float) Math.sin(a0) * r0);
+        tmp.lineTo(cx + (float) Math.cos(a0 - half * 0.25) * r1, cy + (float) Math.sin(a0 - half * 0.25) * r1);
+        tmp.lineTo(cx + (float) Math.cos(a1 + half * 0.25) * r1, cy + (float) Math.sin(a1 + half * 0.25) * r1);
+        tmp.lineTo(cx + (float) Math.cos(a1) * r0, cy + (float) Math.sin(a1) * r0);
+        tmp.close();
+        c.drawPath(tmp, p);
+    }
 }

@@ -12,7 +12,7 @@ final class IconView extends View {
     static final int NAV = 1, MUSIC = 2, PHONE = 3, GRID = 4, HOME = 5, RADIO = 6, SOUND = 7, GEAR = 8,
             CAR = 9, DOOR = 10, WRENCH = 11, RADAR = 12, PLAY = 13, PAUSE = 14, PREV = 15, NEXT = 16,
             BT = 17, BACK = 18, THERMO = 19, BATTERY = 20, FUEL = 21, ROAD = 22, GAUGE = 23, CHEVRON = 24,
-            EDIT = 25, CHECK = 26, DROP = 27, INFO = 28, PLUS = 29, PHOTO = 30, PALETTE = 31, TRUNK = 32, HOOD = 33;
+            EDIT = 25, CHECK = 26, DROP = 27, INFO = 28, PLUS = 29, PHOTO = 30, PALETTE = 31, TRUNK = 32, HOOD = 33, CAMERA = 34, EXPAND = 35, CLOSE = 36;
 
     private int kind;
     private int color;
@@ -302,6 +302,27 @@ final class IconView extends View {
                 c.drawCircle(12, 7.5f, 1.6f, P);
                 c.drawCircle(16, 10, 1.6f, P);
                 c.drawCircle(14.5f, 15, 2.2f, P);
+                break;
+            case CAMERA:
+                stroke(color, 2f);
+                R.set(2.5f, 6.5f, 16, 17.5f);
+                c.drawRoundRect(R, 2.5f, 2.5f, P);
+                poly(16, 10.5f, 21.5f, 7, 21.5f, 17, 16, 13.5f);
+                PATH.close();
+                c.drawPath(PATH, fill(color));
+                c.drawCircle(6.5f, 10, 1.4f, P);
+                break;
+            case EXPAND:
+                stroke(color, 2.2f);
+                c.drawPath(poly(4, 9, 4, 4, 9, 4), P);
+                c.drawPath(poly(15, 4, 20, 4, 20, 9), P);
+                c.drawPath(poly(20, 15, 20, 20, 15, 20), P);
+                c.drawPath(poly(9, 20, 4, 20, 4, 15), P);
+                break;
+            case CLOSE:
+                stroke(color, 2.4f);
+                c.drawLine(6, 6, 18, 18, P);
+                c.drawLine(18, 6, 6, 18, P);
                 break;
             default:
         }

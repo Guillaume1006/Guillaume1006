@@ -23,9 +23,9 @@ final class SettingsPage extends Page {
     private final float rw;
     private TextView obdValue;
 
-    static final String[] COLOR_NAMES = {"Argent", "Gris clair", "Gris foncé", "Noir", "Blanc", "Rouge", "Bleu nuit",
+    static final String[] COLOR_NAMES = {"Gris Daytona (gris foncé)", "Argent", "Gris clair", "Gris foncé", "Noir", "Blanc", "Rouge", "Bleu nuit",
             "Bleu vif", "Jaune", "Vert", "Orange", "Lime"};
-    static final int[] COLORS = {0xFFC4C9CF, 0xFF9A9EA4, 0xFF4A4D52, 0xFF1C1D20, 0xFFEDEEF0, 0xFFC8102E, 0xFF22385E,
+    static final int[] COLORS = {0xFF55595F, 0xFFC4C9CF, 0xFF9A9EA4, 0xFF4A4D52, 0xFF1C1D20, 0xFFEDEEF0, 0xFFC8102E, 0xFF22385E,
             0xFF1E5AD8, 0xFFF2C300, 0xFF3F6B3A, 0xFFE8641B, 0xFFC5D92B};
 
     SettingsPage(final MainActivity a, float w, float h) {
@@ -88,8 +88,48 @@ final class SettingsPage extends Page {
             @Override public void run() { info(); }
         });
 
+        section("Caméra de recul");
+        row(IconView.CAMERA, "Méthode d'accès", camApiLabel(), new Runnable() {
+            @Override public void run() {
+                String cur = Prefs.str("cam_api", "auto");
+                Prefs.put("cam_api", cur.equals("auto") ? "camera2" : cur.equals("camera2") ? "camera1" : "auto");
+                build();
+            }
+        });
+        final String[] ids = CameraView.ids(a);
+        row(IconView.CAMERA, "Caméra utilisée", "auto".equals(Prefs.str("cam_id", "auto")) ? "Automatique"
+                : "N° " + Prefs.str("cam_id", "auto"), new Runnable() {
+            @Override public void run() {
+                String cur = Prefs.str("cam_id", "auto");
+                String next = "auto";
+                if (ids.length > 0) {
+                    if (cur.equals("auto")) next = ids[0];
+                    else for (int i = 0; i < ids.length; i++)
+                        if (ids[i].equals(cur)) next = i + 1 < ids.length ? ids[i + 1] : "auto";
+                }
+                Prefs.put("cam_id", next);
+                build();
+            }
+        });
+        toggle(IconView.CAMERA, "Lignes de guidage", "cam_guides", true);
+        toggle(IconView.CAMERA, "Image miroir", "cam_mirror", false);
+        toggle(IconView.EXPAND, "Remplir tout le cadre (rogne les bords)", "cam_fill", false);
+        row(IconView.GRID, "Appli caméra de l'autoradio (secours)", Apps.currentLabel(a, Apps.CAM), new Runnable() {
+            @Override public void run() {
+                Apps.pick(a, Apps.role(Apps.CAM), new Apps.Picked() {
+                    @Override public void on(Apps.App app) {
+                        Prefs.put(Apps.CAM, app.cn.flattenToString());
+                        build();
+                    }
+                });
+            }
+        });
+        row(IconView.INFO, "Caméras détectées", ids.length + " · toucher pour le détail", new Runnable() {
+            @Override public void run() { camInfo(); }
+        });
+
         section("Raccourcis");
-        for (final String key : new String[]{Apps.NAV, Apps.MUSIC, Apps.PHONE, Apps.RADIO, Apps.SOUND}) {
+        for (final String key : new String[]{Apps.NAV, Apps.MUSIC, Apps.PHONE, Apps.SOUND}) {
             row(iconFor(key), Apps.role(key), Apps.currentLabel(a, key), new Runnable() {
                 @Override public void run() {
                     Apps.pick(a, Apps.role(key), new Apps.Picked() {
@@ -103,7 +143,7 @@ final class SettingsPage extends Page {
         }
         row(IconView.BACK, "Réinitialiser les raccourcis", "Détection automatique", new Runnable() {
             @Override public void run() {
-                for (String k : new String[]{Apps.NAV, Apps.MUSIC, Apps.PHONE, Apps.RADIO, Apps.SOUND}) Prefs.remove(k);
+                for (String k : new String[]{Apps.NAV, Apps.MUSIC, Apps.PHONE, Apps.RADIO, Apps.SOUND, Apps.CAM}) Prefs.remove(k);
                 build();
             }
         });
@@ -143,6 +183,31 @@ final class SettingsPage extends Page {
             case Apps.RADIO: return IconView.RADIO;
             default: return IconView.SOUND;
         }
+    }
+
+    private String camApiLabel() {
+        String v = Prefs.str("cam_api", "auto");
+        return v.equals("camera2") ? "Camera2 uniquement" : v.equals("camera1") ? "Camera1 (ancienne API)" : "Automatique";
+    }
+
+    private void toggle(int icon, String title, final String key, final boolean def) {
+        row(icon, title, Prefs.bool(key, def) ? "Oui" : "Non", new Runnable() {
+            @Override public void run() {
+                Prefs.put(key, !Prefs.bool(key, def));
+                build();
+            }
+        });
+    }
+
+    private void camInfo() {
+        new AlertDialog.Builder(a, AlertDialog.THEME_DEVICE_DEFAULT_DARK)
+                .setTitle("Caméras vues par Android")
+                .setMessage(CameraView.describe(a) + "\n\nSi l'image reste noire : essayez une autre caméra ou "
+                        + "la méthode Camera1. Si aucune caméra n'apparaît, l'autoradio réserve l'entrée recul à son "
+                        + "appli d'origine : choisissez-la dans « Appli caméra de l'autoradio ».\n\n"
+                        + "Pour voir l'image en roulant, la caméra doit être alimentée en permanence (+APC), "
+                        + "pas seulement par le feu de recul.")
+                .setPositiveButton("OK", null).show();
     }
 
     private void section(String t) {

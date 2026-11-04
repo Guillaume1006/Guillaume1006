@@ -4,7 +4,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
@@ -16,10 +15,11 @@ import java.util.Locale;
 final class HomePage extends Page {
     private TextView name, status, mediaSrc, mediaTitle, mediaArtist, date, speed, ext, batt;
     private View3 chipDoors, chipMaint, chipRadar;
-    private ImageView art;
     private IconView artIcon, playIcon;
     private GradientDrawable dot;
     private View volBar;
+    private FrameLayout camLayer;
+    private CameraView cam;
     private float volW;
     final CarSideView car;
 
@@ -64,17 +64,20 @@ final class HomePage extends Page {
         float mh = Math.round(h * 0.53f);
         FrameLayout media = Ui.place(this, new FrameLayout(a), rx, 0, rw, mh);
         media.setBackground(Ui.card());
+        // Bouton caméra de recul (à la place de la radio)
         FrameLayout tile = Ui.place(media, new FrameLayout(a), 18, 18, 96, 96);
-        tile.setBackground(Ui.gradient(0xFFFF7A3D, 0xFFE8361E, 22));
+        tile.setBackground(Ui.gradient(0xFF4C8DFF, 0xFF1C3FB0, 22));
         tile.setClipToOutline(true);
-        artIcon = Ui.place(tile, new IconView(a, IconView.RADIO, Ui.TEXT), 26, 26, 44, 44);
-        art = Ui.place(tile, new ImageView(a), 0, 0, 96, 96);
-        art.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        Ui.onTap(tile, new Runnable() { @Override public void run() { a.openMediaApp(); } });
+        artIcon = Ui.place(tile, new IconView(a, IconView.CAMERA, Ui.TEXT), 28, 16, 40, 40);
+        TextView camLbl = Ui.place(tile, Ui.text(a, "Caméra", 13, Ui.TEXT, Ui.MED), 0, 64, 96, 17);
+        camLbl.setGravity(Gravity.CENTER);
+        Ui.onTap(tile, new Runnable() { @Override public void run() { toggleCamera(); } });
 
         mediaSrc = Ui.place(media, Ui.text(a, "", 13, Ui.TEXT2, Ui.REG), 130, 30, rw - 146, 16);
         mediaTitle = Ui.place(media, Ui.text(a, "", 22, Ui.TEXT, Ui.BOLD), 130, 52, rw - 146, 28);
         mediaArtist = Ui.place(media, Ui.text(a, "", 14, Ui.TEXT2, Ui.REG), 130, 86, rw - 146, 18);
+        View mediaHit = Ui.place(media, new View(a), 124, 20, rw - 136, 90);
+        Ui.onTap(mediaHit, new Runnable() { @Override public void run() { a.openMediaApp(); } });
 
         // Volume
         float vy = Math.max(124, (118 + mh - 92) / 2f - 4);
@@ -107,6 +110,26 @@ final class HomePage extends Page {
         Ui.place(next, new IconView(a, IconView.NEXT, Ui.TEXT), 14, 14, 28, 28);
         Ui.onTap(next, new Runnable() { @Override public void run() { MediaHub.next(); } });
 
+        // Caméra en direct, dans le cadre multimédia
+        camLayer = Ui.place(this, new FrameLayout(a), rx, 0, rw, mh);
+        camLayer.setBackground(Ui.round(0xFF000000, 26));
+        camLayer.setClipToOutline(true);
+        cam = Ui.place(camLayer, new CameraView(a), 0, 0, rw, mh);
+        FrameLayout live = Ui.place(camLayer, new FrameLayout(a), 12, 12, 112, 30);
+        live.setBackground(Ui.round(0x99000000, 15));
+        View rec = Ui.place(live, new View(a), 12, 11, 8, 8);
+        rec.setBackground(Ui.round(Ui.RED, 4));
+        Ui.place(live, Ui.text(a, "Recul · direct", 12, Ui.TEXT, Ui.MED), 26, 8, 84, 15);
+        FrameLayout full = Ui.place(camLayer, new FrameLayout(a), rw - 108, 10, 44, 44);
+        full.setBackground(Ui.round(0x99000000, 22));
+        Ui.place(full, new IconView(a, IconView.EXPAND, Ui.TEXT), 12, 12, 20, 20);
+        Ui.onTap(full, new Runnable() { @Override public void run() { a.showCamera(); } });
+        FrameLayout close = Ui.place(camLayer, new FrameLayout(a), rw - 56, 10, 44, 44);
+        close.setBackground(Ui.round(0x99000000, 22));
+        Ui.place(close, new IconView(a, IconView.CLOSE, Ui.TEXT), 12, 12, 20, 20);
+        Ui.onTap(close, new Runnable() { @Override public void run() { toggleCamera(); } });
+        camLayer.setVisibility(GONE);
+
         // ---------- Infos de conduite ----------
         float by = mh + 12, bh = h - by, iw = (rw - 12) / 2f;
         FrameLayout info = Ui.place(this, new FrameLayout(a), rx, by, iw, bh);
@@ -123,8 +146,8 @@ final class HomePage extends Page {
         FrameLayout tiles = Ui.place(this, new FrameLayout(a), rx + iw + 12, by, iw, bh);
         tiles.setBackground(Ui.card());
         float tw = (iw - 16 * 2 - 12) / 2f, th = (bh - 16 * 2 - 12) / 2f;
-        shortcut(tiles, 16, 16, tw, th, IconView.RADIO, 0xFFFF7A3D, 0xFFE8361E, "Radio", new Runnable() {
-            @Override public void run() { Apps.open(a, Apps.RADIO); }
+        shortcut(tiles, 16, 16, tw, th, IconView.CAMERA, 0xFF4C8DFF, 0xFF1C3FB0, "Caméra", new Runnable() {
+            @Override public void run() { toggleCamera(); }
         });
         shortcut(tiles, 16 + tw + 12, 16, tw, th, IconView.SOUND, 0xFF9C86FF, 0xFF5B3FE0, "Son", new Runnable() {
             @Override public void run() { Apps.open(a, Apps.SOUND); }
@@ -137,6 +160,35 @@ final class HomePage extends Page {
         });
 
         reloadCar();
+    }
+
+    /** Affiche / masque la caméra de recul dans le cadre multimédia. */
+    void toggleCamera() {
+        if (camLayer.getVisibility() == VISIBLE) {
+            Prefs.put("cam_on", false);
+            camLayer.setVisibility(GONE);
+            cam.stop();
+        } else {
+            Prefs.put("cam_on", true);
+            showCamera();
+        }
+    }
+
+    private void showCamera() {
+        camLayer.setVisibility(VISIBLE);
+        camLayer.setAlpha(0f);
+        camLayer.animate().alpha(1f).setDuration(180).start();
+        cam.start();
+    }
+
+    /** Libère la caméra sans changer le réglage (reconstruction de l'écran). */
+    void stopCamera() {
+        cam.stop();
+    }
+
+    @Override void onShow() {
+        super.onShow();
+        if (Prefs.bool("cam_on", false) && !cam.running()) showCamera();
     }
 
     void reloadCar() {
@@ -221,18 +273,10 @@ final class HomePage extends Page {
             mediaTitle.setText(MediaHub.title != null ? MediaHub.title : (MediaHub.appLabel != null ? MediaHub.appLabel : "Lecture"));
             mediaArtist.setText(MediaHub.artist != null ? MediaHub.artist : "");
         } else {
-            mediaSrc.setText("Radio");
+            mediaSrc.setText("Multimédia");
             mediaTitle.setText(MediaHub.access ? "Rien en lecture" : "Multimédia");
-            mediaArtist.setText(MediaHub.access ? "Touchez l'icône pour ouvrir" : "Autorisez l'accès aux notifications (Réglages)");
+            mediaArtist.setText(MediaHub.access ? "Touchez ici pour ouvrir la musique" : "Autorisez l'accès aux notifications (Réglages)");
         }
-        if (MediaHub.art != null) {
-            art.setImageBitmap(MediaHub.art);
-            art.setVisibility(VISIBLE);
-        } else {
-            art.setImageDrawable(null);
-            art.setVisibility(GONE);
-        }
-        artIcon.set(MediaHub.pkg != null && !MediaHub.pkg.contains("radio") ? IconView.MUSIC : IconView.RADIO, Ui.TEXT);
         playIcon.set(MediaHub.playing ? IconView.PAUSE : IconView.PLAY, Ui.TEXT);
 
         float vf = MediaHub.volumeFraction();
