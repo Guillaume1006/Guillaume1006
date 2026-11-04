@@ -14,6 +14,8 @@ final class OrbitSlots {
     private OrbitSlots() {}
 
     static final int COUNT = 7;
+    /** Barre latérale : 5 applis maximum (+ bouton Menu fixe). */
+    static final int SIDE_COUNT = 5;
     static final String[] DEFAULTS = {"fn:vehicle", "fn:radio", "fn:settings", "fn:music", "fn:phone", "fn:nav", "fn:menu"};
     static final String[] FN_IDS = {"vehicle", "radio", "music", "phone", "nav", "settings", "menu", "maintenance", "drawer"};
     static final String[] FN_LABELS = {"Véhicule", "Radio", "Musique", "Téléphone", "Navigation", "Réglages", "Menu", "Entretien", "Toutes les applis"};

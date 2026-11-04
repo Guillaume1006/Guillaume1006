@@ -78,8 +78,9 @@ final class SettingsPage extends Page {
             }
         });
 
-        section(MmiHomePage.orbit() ? "Carrousel de l'accueil" : "Raccourcis de la barre latérale");
-        for (int i = 0; i < OrbitSlots.COUNT; i++) {
+        section(MmiHomePage.orbit() ? "Carrousel de l'accueil" : "Raccourcis de la barre latérale (5 maximum)");
+        int slots = MmiHomePage.orbit() ? OrbitSlots.COUNT : OrbitSlots.SIDE_COUNT;
+        for (int i = 0; i < slots; i++) {
             final int slot = i;
             String v = OrbitSlots.get(i);
             String lbl = OrbitSlots.empty(a, v) ? "Vide" : OrbitSlots.label(a, v);

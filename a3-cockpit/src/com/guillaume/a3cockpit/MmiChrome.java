@@ -88,8 +88,9 @@ final class MmiChrome {
         SlotSide(final MainActivity a, float h) {
             super(a);
             setBackground(Ui.gradient(0xFF17181B, 0xFF0B0C0E, 4));
-            float cell = h / OrbitSlots.COUNT;
-            for (int i = 0; i < OrbitSlots.COUNT; i++) {
+            int n = OrbitSlots.SIDE_COUNT;
+            float cell = h / (n + 1);                       // 5 applis + bouton Menu fixe
+            for (int i = 0; i < n; i++) {
                 final int slot = i;
                 final String v = OrbitSlots.get(i);
                 boolean empty = OrbitSlots.empty(a, v);
@@ -121,6 +122,14 @@ final class MmiChrome {
                     sep.setBackgroundColor(0x1CFFFFFF);
                 }
             }
+            // bouton Menu toujours présent en bas
+            View sep = Ui.place(this, new View(a), 16, n * cell, 52, 1);
+            sep.setBackgroundColor(0x1CFFFFFF);
+            FrameLayout m = Ui.place(this, new FrameLayout(a), 0, n * cell, 84, cell);
+            Ui.place(m, new IconView(a, IconView.GRID, 0xFFC4C8CE), 26, cell * 0.13f, 32, 32);
+            TextView mt = Ui.place(m, Ui.text(a, "Menu", 12, 0xFFC4C8CE, Ui.REG), 2, cell * 0.13f + 38, 80, 15);
+            mt.setGravity(Gravity.CENTER);
+            Ui.onTap(m, new Runnable() { @Override public void run() { a.showApps(); } });
         }
 
         private static void edit(final MainActivity a, int slot) {
