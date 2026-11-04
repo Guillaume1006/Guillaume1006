@@ -112,11 +112,11 @@ final class CarSideView extends View {
     /** Photo (vue de 3/4) posée sur le plateau, mise à l'échelle sur toute la zone. */
     private void drawPhotoScene(Canvas c, float w, float h) {
         float ar = photo.getWidth() / (float) photo.getHeight();
-        float th = h * 0.52f, tw = th * ar;
-        if (tw > w * 0.64f) { tw = w * 0.64f; th = tw / ar; }
+        float th = h * 0.57f, tw = th * ar;
+        if (tw > w * 0.70f) { tw = w * 0.70f; th = tw / ar; }
         float cx = w / 2f;
-        float ty = h * 0.70f;                           // centre du plateau = appui des roues
-        float bottom = ty + th * 0.15f;
+        float ty = h * 0.69f;                           // centre du plateau = appui des roues
+        float bottom = ty + th * 0.24f;                 // abaisse la voiture : l'arrière repose sur l'anneau
         float rx = Math.min(w * 0.47f, tw * 0.74f), ry = rx * 0.22f;
 
         // plateau
