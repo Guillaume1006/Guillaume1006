@@ -86,16 +86,32 @@ final class MmiChrome {
     /** Icône ronde métallique (style « objet chromé » des menus Audi). */
     static final class Orb extends View {
         private final int icon;
+        private final android.graphics.drawable.Drawable app;
+        private final boolean ghost;
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        Orb(Context c, int icon) {
+        Orb(Context c, int icon) { this(c, icon, null, false); }
+
+        /** app : icône d'application affichée dans la pastille ; ghost : emplacement libre. */
+        Orb(Context c, int icon, android.graphics.drawable.Drawable app, boolean ghost) {
             super(c);
             this.icon = icon;
+            this.app = app;
+            this.ghost = ghost;
         }
 
         @Override protected void onDraw(Canvas c) {
             float w = getWidth(), h = getHeight(), r = Math.min(w, h) / 2f - 1;
             float cx = w / 2f, cy = h / 2f;
+            if (ghost) {
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(Math.max(1f, r * 0.08f));
+                p.setColor(0x55FFFFFF);
+                c.drawCircle(cx, cy, r, p);
+                p.setStyle(Paint.Style.FILL);
+                IconView.draw(c, icon, 0x88FFFFFF, cx, cy, r * 1.1f);
+                return;
+            }
             p.setShader(new RadialGradient(cx - r * 0.35f, cy - r * 0.45f, r * 1.6f,
                     new int[]{0xFFFFFFFF, 0xFFB7BCC4, 0xFF4A4F57, 0xFF1C1E22}, new float[]{0f, 0.35f, 0.8f, 1f},
                     Shader.TileMode.CLAMP));
@@ -106,7 +122,13 @@ final class MmiChrome {
             p.setColor(0x66FFFFFF);
             c.drawCircle(cx, cy, r - p.getStrokeWidth() / 2f, p);
             p.setStyle(Paint.Style.FILL);
-            IconView.draw(c, icon, 0xFF16181B, cx, cy, r * 1.05f);
+            if (app != null) {                              // icône de l'application dans la pastille
+                int s = Math.round(r * 1.25f);
+                app.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f), Math.round(cx + s / 2f), Math.round(cy + s / 2f));
+                app.draw(c);
+            } else {
+                IconView.draw(c, icon, 0xFF16181B, cx, cy, r * 1.05f);
+            }
         }
     }
 

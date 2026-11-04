@@ -58,6 +58,26 @@ final class SettingsPage extends Page {
             }
         });
 
+        section("Carrousel de l'accueil");
+        for (int i = 0; i < OrbitSlots.COUNT; i++) {
+            final int slot = i;
+            String v = OrbitSlots.get(i);
+            String lbl = OrbitSlots.empty(a, v) ? "Vide" : OrbitSlots.label(a, v);
+            row(OrbitSlots.empty(a, v) ? IconView.PLUS : OrbitSlots.icon(v), "Emplacement " + (i + 1), lbl, new Runnable() {
+                @Override public void run() {
+                    OrbitSlots.edit(a, slot, new Runnable() { @Override public void run() { build(); } });
+                }
+            });
+        }
+        row(IconView.BACK, "Remettre le carrousel par défaut", "Véhicule, Radio, Réglages…", new Runnable() {
+            @Override public void run() { OrbitSlots.reset(); build(); }
+        });
+        TextView hint = Ui.text(a, "Astuce : appui long sur une icône du carrousel pour la changer directement.", 12, Ui.TEXT3, Ui.REG);
+        LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(-1, -2);
+        hp.leftMargin = Ui.s(6);
+        hp.topMargin = Ui.s(2);
+        list.addView(hint, hp);
+
         section("Véhicule");
         row(IconView.EDIT, "Nom affiché", Prefs.carName(), new Runnable() { @Override public void run() { editName(); } });
         row(IconView.CAR, "Carrosserie", Prefs.fiveDoors() ? "Sportback (5 portes)" : "3 portes", new Runnable() {

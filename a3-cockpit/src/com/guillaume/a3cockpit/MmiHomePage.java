@@ -44,14 +44,9 @@ final class MmiHomePage extends Page {
         car = Ui.place(this, new CarSideView(a), ox - rx * 1.06f, oy - ry * 0.64f, cw, ch);
         Ui.onTap(car, new Runnable() { @Override public void run() { car.shine(); } });
 
-        // menu en orbite
-        item(-114, IconView.CAR, "Véhicule", new Runnable() { @Override public void run() { a.showVehicle(-1); } });
-        item(-72, IconView.RADIO, "Radio", new Runnable() { @Override public void run() { Apps.open(a, Apps.RADIO); } });
-        item(-33, IconView.GEAR, "Réglages", new Runnable() { @Override public void run() { a.showSettings(); } });
-        item(6, IconView.MUSIC, "Musique", new Runnable() { @Override public void run() { Apps.open(a, Apps.MUSIC); } });
-        item(44, IconView.PHONE, "Téléphone", new Runnable() { @Override public void run() { Apps.open(a, Apps.PHONE); } });
-        item(84, IconView.NAV, "Navigation", new Runnable() { @Override public void run() { Apps.open(a, Apps.NAV); } });
-        item(140, IconView.GRID, "Applis", new Runnable() { @Override public void run() { a.showApps(); } });
+        // carrousel en orbite : 7 emplacements personnalisables (appui long pour modifier)
+        float[] angles = {-114, -72, -33, 6, 44, 84, 140};
+        for (int i = 0; i < OrbitSlots.COUNT; i++) item(angles[i], i);
 
         // colonne de droite : anneaux, horloge, date, multimédia
         float x0 = w * 0.795f, cwid = w - x0 - 4;
@@ -94,13 +89,30 @@ final class MmiHomePage extends Page {
         car.set(Prefs.carColor(), Prefs.fiveDoors(), a.carPhoto());
     }
 
-    private void item(float deg, int icon, String label, Runnable r) {
+    private void item(float deg, final int slot) {
+        final String v = OrbitSlots.get(slot);
         double t = Math.toRadians(deg);
         float x = ox + rx * (float) Math.cos(t), y = oy + ry * (float) Math.sin(t);
         FrameLayout b = Ui.place(this, new FrameLayout(a), x - 26, y - 26, 150, 52);
-        Ui.place(b, new MmiChrome.Orb(a, icon), 4, 4, 44, 44);
-        Ui.place(b, Ui.text(a, label, 14, 0xFFE4E6EA, Ui.REG), 56, 17, 94, 18);
-        Ui.onTap(b, r);
+        if (OrbitSlots.empty(a, v)) {                       // emplacement libre : petit « + » discret
+            Ui.place(b, new MmiChrome.Orb(a, IconView.PLUS, null, true), 14, 14, 24, 24);
+        } else {
+            Ui.place(b, new MmiChrome.Orb(a, OrbitSlots.icon(v), OrbitSlots.appIcon(a, v), false), 4, 4, 44, 44);
+            Ui.place(b, Ui.text(a, OrbitSlots.label(a, v), 14, 0xFFE4E6EA, Ui.REG), 56, 17, 94, 18);
+        }
+        Ui.onTap(b, new Runnable() {
+            @Override public void run() {
+                if (OrbitSlots.empty(a, v)) editSlot(slot);
+                else OrbitSlots.run(a, v);
+            }
+        });
+        b.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View view) { editSlot(slot); return true; }
+        });
+    }
+
+    private void editSlot(int slot) {
+        OrbitSlots.edit(a, slot, new Runnable() { @Override public void run() { a.rebuild(); } });
     }
 
     private IconView ctrl(float x, float y, int icon, boolean big, Runnable r) {
