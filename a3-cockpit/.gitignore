@@ -4,3 +4,4 @@ build/
 res/drawable-nodpi/car_open.png
 res/drawable-nodpi/car_home.png
 A3Cockpit.apk
+__pycache__/
