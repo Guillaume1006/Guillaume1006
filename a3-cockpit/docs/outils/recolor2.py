@@ -78,8 +78,8 @@ def main(cfg_name, src, out):
 
     # gris quasi noir métallisé (neutre)
     t = clamp((v - 0.42) / 0.58)
-    # A3_TEINTE : 0 = quasi noir (d'origine), 1 = anthracite, 2.2 = gris métal lisible sur l'autoradio (défaut)
-    k = float(os.environ.get("A3_TEINTE", "2.2"))
+    # A3_TEINTE : 0 = quasi noir (d'origine), 1 = anthracite, 2.2 = gris métal (APK 2.4), 3.0 = +15 % (défaut)
+    k = float(os.environ.get("A3_TEINTE", "3.0"))
     dark = np.array([0.036, 0.037, 0.039]) * (1 - k) + np.array([0.085, 0.087, 0.091]) * k
     mid = np.array([0.140, 0.143, 0.148]) * (1 - k) + np.array([0.255, 0.260, 0.268]) * k
     light = np.array([0.40, 0.405, 0.415]) * (1 - k) + np.array([0.53, 0.535, 0.545]) * k   # reflets sobres
