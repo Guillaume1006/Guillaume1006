@@ -1,6 +1,6 @@
 """Repeint la carrosserie blanche en gris quasi noir métallisé, teinte les vitres arrière.
 Usage : python recolor2.py top34|front34 entrée.png sortie.png"""
-import sys, math
+import sys, math, os
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -78,9 +78,11 @@ def main(cfg_name, src, out):
 
     # gris quasi noir métallisé (neutre)
     t = clamp((v - 0.42) / 0.58)
-    dark = np.array([0.036, 0.037, 0.039])
-    mid = np.array([0.140, 0.143, 0.148])
-    light = np.array([0.40, 0.405, 0.415])        # reflets plus sobres (moins « bling »)
+    # A3_TEINTE : 0 = quasi noir (d'origine), 1 = gris anthracite plus lisible sur l'autoradio
+    k = float(os.environ.get("A3_TEINTE", "1"))
+    dark = np.array([0.036, 0.037, 0.039]) * (1 - k) + np.array([0.085, 0.087, 0.091]) * k
+    mid = np.array([0.140, 0.143, 0.148]) * (1 - k) + np.array([0.255, 0.260, 0.268]) * k
+    light = np.array([0.40, 0.405, 0.415]) * (1 - k) + np.array([0.53, 0.535, 0.545]) * k   # reflets sobres
     k1 = t ** 1.25
     k2 = clamp((t - 0.72) / 0.28) ** 2.2
     col = dark * (1 - k1)[..., None] + mid * k1[..., None]
@@ -119,7 +121,6 @@ def main(cfg_name, src, out):
     new = new * (1 - tm)[..., None] + tinted * tm[..., None]
 
     res = Image.fromarray((clamp(np.dstack([new, al])) * 255).astype("uint8"))
-    import os
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from plate import paste_plate
     res = paste_plate(res, cfg["plate_quad"])
