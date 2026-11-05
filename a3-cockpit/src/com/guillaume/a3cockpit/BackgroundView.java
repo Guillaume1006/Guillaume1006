@@ -20,8 +20,8 @@ final class BackgroundView extends View {
         float w = getWidth(), h = getHeight();
         if (Ui.MMI) {                                   // gris un peu plus clair en haut → gris sombre → noir sous les roues
             p.setShader(new LinearGradient(0, 0, 0, h,
-                    new int[]{0xFF4A4C51, 0xFF3A3C40, 0xFF2C2E31, 0xFF111213, 0xFF050506},
-                    new float[]{0f, 0.42f, 0.6f, 0.8f, 1f}, Shader.TileMode.CLAMP));
+                    new int[]{0xFF4A4C51, 0xFF35373B, 0xFF151618, 0xFF08090A, 0xFF050506},
+                    new float[]{0f, 0.45f, 0.62f, 0.8f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(0, 0, w, h, p);
             p.setShader(null);
             return;
