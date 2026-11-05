@@ -20,6 +20,7 @@ CFG = {
             [(115, 195), (150, 180), (210, 172), (330, 232), (318, 335), (290, 325), (120, 215)],  # vitre porte AV
         ],
         "glass_v": 0.55,                                          # ici le verre d'origine est sombre
+        "roof_lift": 0.40,                                        # toit dans l'ombre : l'éclaircir sans toucher aux flancs
     },
     "front34": {
         "rims": [(553, 388, 74, 108, 0), (945, 305, 36, 78, 0)],
@@ -30,12 +31,14 @@ CFG = {
         ],
         "keep_ell": [(343, 405, 34, 24), (100, 281, 46, 22)],                            # antibrouillard, anneaux                                                # antibrouillard
         "tint": [
-            [(792, 20), (866, 28), (902, 108), (816, 124)],                              # vitre porte AR
-            [(868, 34), (902, 44), (944, 106), (906, 110)],                              # custode
+            [(788, 21), (857, 30), (902, 114), (820, 122)],                              # vitre porte AR
+            [(866, 36), (890, 45), (912, 66), (930, 90), (941, 108), (912, 113)],         # custode
         ],
         "front_glass": [
-            [(297, 132), (350, 95), (415, 40), (470, 24), (695, 20), (650, 145), (450, 136)],   # pare-brise
-            [(676, 32), (700, 24), (790, 20), (800, 24), (803, 124), (656, 146), (668, 96)],    # vitre porte AV
+            [(352, 126), (365, 89), (405, 64), (455, 42), (505, 34), (550, 27), (590, 18), (690, 18),
+             (679, 65), (659, 110), (640, 140), (450, 137)],                                   # pare-brise (sans les montants)
+            [(722, 26), (730, 25), (776, 20), (790, 22), (803, 124), (651, 147), (664, 110),
+             (681, 77), (698, 50)],                                                             # vitre porte AV
         ],
         "mirror": (730, 106, 53, 22),
     },
@@ -78,6 +81,7 @@ def main(cfg_name, src, out):
 
     # gris quasi noir métallisé (neutre)
     t = clamp((v - 0.42) / 0.58)
+    t = t + cfg.get("roof_lift", 0.0) * (1 - t) * clamp((0.80 - v) / 0.20)
     # A3_TEINTE : 0 = quasi noir (d'origine), 1 = anthracite, 2.2 = gris métal (APK 2.4), 1.4 = 15 % plus foncé que la 2.4 (défaut)
     k = float(os.environ.get("A3_TEINTE", "1.4"))
     dark = np.array([0.036, 0.037, 0.039]) * (1 - k) + np.array([0.085, 0.087, 0.091]) * k
