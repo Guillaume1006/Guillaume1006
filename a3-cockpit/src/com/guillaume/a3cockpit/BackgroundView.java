@@ -18,9 +18,10 @@ final class BackgroundView extends View {
 
     @Override protected void onDraw(Canvas c) {
         float w = getWidth(), h = getHeight();
-        if (Ui.MMI) {                                   // dégradé gris foncé → noir, sobre
-            p.setShader(new LinearGradient(0, 0, w * 0.35f, h, new int[]{0xFF1E1F22, 0xFF0E0F11, 0xFF000000},
-                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+        if (Ui.MMI) {                                   // gris un peu plus clair en haut → gris sombre → noir sous les roues
+            p.setShader(new LinearGradient(0, 0, 0, h,
+                    new int[]{0xFF4A4C51, 0xFF3A3C40, 0xFF2C2E31, 0xFF111213, 0xFF050506},
+                    new float[]{0f, 0.42f, 0.6f, 0.8f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(0, 0, w, h, p);
             p.setShader(null);
             return;
