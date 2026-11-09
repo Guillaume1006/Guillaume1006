@@ -48,6 +48,7 @@ function demoEntities() {
     { id: 'lock.porte_entree', area: 'entree', state: 'locked', attributes: { friendly_name: 'Porte d’entrée' } },
     { id: 'binary_sensor.entree_porte', area: 'entree', state: 'off', attributes: { friendly_name: 'Entrée Porte', device_class: 'door' } },
     { id: 'binary_sensor.entree_mouvement', area: 'entree', state: 'off', attributes: { friendly_name: 'Entrée Mouvement', device_class: 'motion' } },
+    { id: 'sensor.compteur_linky', area: 'entree', state: '18342.5', attributes: { friendly_name: 'Compteur Linky', device_class: 'energy', state_class: 'total_increasing', unit_of_measurement: 'kWh' } },
     { id: 'sensor.consommation_maison', area: 'entree', state: '640', attributes: { friendly_name: 'Consommation maison', device_class: 'power', unit_of_measurement: 'W' } },
 
     L('light.jardin', 'Extérieur Jardin', 'exterieur', false, { supported_color_modes: ['onoff'], brightness: null }),
@@ -85,6 +86,66 @@ const DEMO_AUTOMATIONS = {
   'automation.arrosage_matin': [['switch', 'turn_on', 'switch.arrosage']],
 };
 
+/* ---------- Consommation simulée ----------
+   Profil horaire moyen d'une maison chauffée à l'électricité (W), avec un aléa
+   reproductible : les mêmes heures donnent toujours les mêmes valeurs. */
+const DEMO_PROFILE = [260, 230, 220, 215, 220, 260, 700, 1350, 1100, 600, 450, 520, 950, 780, 480, 430, 520, 900, 1500, 1750, 1600, 1250, 800, 420];
+const DEMO_METER = 'sensor.compteur_linky';
+const DEMO_POWER = 'sensor.consommation_maison';
+/* [statistique, nom, modulation selon l'heure, part moyenne] — 85 % du total, le reste = « Autres ». */
+const DEMO_DEVICES = [
+  ['sensor.energie_chauffage', 'Chauffage', h => (h < 7 || h >= 17 ? 1.25 : 0.7), 0.36],
+  ['sensor.energie_chauffe_eau', 'Chauffe-eau', h => (h < 6 ? 3 : 0.3), 0.14],
+  ['sensor.energie_cuisson', 'Cuisson', h => ([7, 12, 13, 19, 20].includes(h) ? 3 : 0.3), 0.12],
+  ['sensor.energie_refrigerateur', 'Réfrigérateur', () => 1, 0.07],
+  ['sensor.energie_lave_linge', 'Lave-linge', h => ((h >= 9 && h <= 11) || (h >= 14 && h <= 16) ? 2.5 : 0.4), 0.06],
+  ['sensor.energie_eclairage', 'Éclairage', h => ((h >= 17 && h <= 23) || (h >= 6 && h <= 8) ? 2.2 : 0.2), 0.05],
+  ['sensor.energie_multimedia', 'TV et multimédia', h => (h >= 18 && h <= 23 ? 2.5 : 0.5), 0.05],
+];
+const HOUR = 3600e3;
+
+function hrand(n) {
+  n = (n ^ 61) ^ (n >>> 16);
+  n = Math.imul(n, 9); n ^= n >>> 4;
+  n = Math.imul(n, 0x27d4eb2d); n ^= n >>> 15;
+  return (n >>> 0) / 4294967296;
+}
+
+function demoHourWatts(hi) {
+  const d = new Date(hi * HOUR);
+  const weekend = d.getDay() === 0 || d.getDay() === 6 ? 1.12 : 1;
+  return DEMO_PROFILE[d.getHours()] * weekend * (0.8 + 0.4 * hrand(hi));
+}
+
+function demoHourKwh(hi, id) {
+  const total = demoHourWatts(hi) / 1000;
+  if (id === DEMO_METER) return total;
+  const dev = DEMO_DEVICES.find(d => d[0] === id);
+  if (!dev) return 0;
+  const h = new Date(hi * HOUR).getHours();
+  const norm = DEMO_DEVICES.reduce((sum, d) => sum + d[3] * d[2](h), 0);
+  return total * 0.85 * dev[3] * dev[2](h) / norm;
+}
+
+function demoKwhBetween(startMs, endMs, id = DEMO_METER) {
+  let kwh = 0;
+  for (let hi = Math.floor(startMs / HOUR); hi * HOUR < endMs; hi++) {
+    const from = Math.max(startMs, hi * HOUR), to = Math.min(endMs, (hi + 1) * HOUR);
+    kwh += demoHourKwh(hi, id) * (to - from) / HOUR;
+  }
+  return kwh;
+}
+
+function demoPowerAt(t) {
+  const hi = Math.floor(t / HOUR), f = (t % HOUR) / HOUR;
+  const base = demoHourWatts(hi) * (1 - f) + demoHourWatts(hi + 1) * f; // transition douce entre deux heures
+  const slot = Math.floor(t / 300e3);
+  const spike = hrand(slot + 99) > 0.975 ? 1800 : 0; // bouilloire, four…
+  return Math.round(base * (0.85 + 0.3 * hrand(slot + 7)) + spike);
+}
+
+function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+
 class DemoBackend {
   constructor() {
     this.kind = 'demo';
@@ -109,6 +170,8 @@ class DemoBackend {
       delete e.area;
       this.entities[e.entity_id] = e;
     }
+    this.entities[DEMO_METER].state = (18342.5 + demoKwhBetween(startOfToday(), Date.now())).toFixed(1);
+    this.entities[DEMO_POWER].state = String(demoPowerAt(Date.now()));
     h.onStatus('demo', 'Démo');
     h.onInit({ states: Object.values(this.entities).map(clone), areas: DEMO_AREAS, areaOf });
     this.timers.push(setInterval(() => this._drift(), 8000));
@@ -121,6 +184,48 @@ class DemoBackend {
   }
 
   reset() { localStorage.removeItem(DEMO_KEY); }
+
+  /* Même forme de réponse que Home Assistant (energy/get_prefs). */
+  async energyPrefs() {
+    return {
+      energy_sources: [{ type: 'grid', flow_from: [{ stat_energy_from: DEMO_METER }] }],
+      device_consumption: DEMO_DEVICES.map(([id, name]) => ({ stat_consumption: id, name })),
+    };
+  }
+
+  /* Même forme que recorder/statistics_during_period avec types: ['change']. */
+  async statistics(ids, start, end, period) {
+    await new Promise(r => setTimeout(r, 150));
+    const t0 = new Date(start).getTime(), t1 = Math.min(Date.now(), new Date(end).getTime());
+    const out = {};
+    for (const id of ids) {
+      const rows = new Map();
+      for (let hi = Math.floor(t0 / HOUR); hi * HOUR < t1; hi++) {
+        const from = Math.max(t0, hi * HOUR), to = Math.min(t1, (hi + 1) * HOUR);
+        const kwh = demoHourKwh(hi, id) * (to - from) / HOUR;
+        const d = new Date(hi * HOUR);
+        if (period === 'day') d.setHours(0, 0, 0, 0);
+        const key = d.getTime();
+        rows.set(key, (rows.get(key) || 0) + kwh);
+      }
+      out[id] = [...rows].map(([key, change]) => ({ start: key, end: key + (period === 'day' ? 24 : 1) * HOUR, change: Math.round(change * 1000) / 1000 }));
+    }
+    return out;
+  }
+
+  /* Même forme que history/history_during_period avec minimal_response. */
+  async history(ids, start, end) {
+    const t0 = new Date(start).getTime(), t1 = Math.min(Date.now(), new Date(end).getTime());
+    const out = {};
+    for (const id of ids) {
+      if (id !== DEMO_POWER) { out[id] = []; continue; }
+      const pts = [];
+      for (let t = Math.ceil(t0 / 300e3) * 300e3; t < t1; t += 300e3) pts.push({ s: String(demoPowerAt(t)), lu: t / 1000 });
+      pts.push({ s: this.entities[id].state, lu: t1 / 1000 });
+      out[id] = pts;
+    }
+    return out;
+  }
 
   async call(domain, service, data = {}, entityId) {
     await new Promise(r => setTimeout(r, 120)); // petite latence réaliste
@@ -227,8 +332,9 @@ class DemoBackend {
     const lightsOn = Object.values(E).filter(e => domainOf(e.entity_id) === 'light' && e.state === 'on').length;
     const switchesOn = Object.values(E).filter(e => domainOf(e.entity_id) === 'switch' && e.state === 'on').length;
     const heating = Object.values(E).filter(e => domainOf(e.entity_id) === 'climate' && e.state !== 'off').length;
-    const watts = 180 + lightsOn * 9 + switchesOn * 65 + heating * 220 + Math.round(Math.random() * 40);
-    this._set('sensor.consommation_maison', String(watts));
+    const watts = demoPowerAt(Date.now()) + lightsOn * 9 + switchesOn * 40 + (heating ? 0 : -150);
+    this._set(DEMO_POWER, String(Math.max(120, watts)));
+    this._set(DEMO_METER, (18342.5 + demoKwhBetween(startOfToday(), Date.now())).toFixed(1));
     if (Math.random() < 0.15) {
       this._set('binary_sensor.entree_mouvement', 'on');
       setTimeout(() => this._set('binary_sensor.entree_mouvement', 'off'), 4000);

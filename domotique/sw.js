@@ -1,7 +1,7 @@
 /* Garde l'interface disponible hors ligne (les données viennent toujours de Home Assistant). */
-const CACHE = 'ma-maison-v1';
+const CACHE = 'ma-maison-v2';
 const FILES = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg',
-  'js/icons.js', 'js/format.js', 'js/demo.js', 'js/ha.js', 'js/app.js'];
+  'js/icons.js', 'js/format.js', 'js/demo.js', 'js/ha.js', 'js/energy.js', 'js/app.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

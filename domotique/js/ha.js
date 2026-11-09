@@ -127,6 +127,37 @@ class HABackend {
     }, 30000);
   }
 
+  /* Réglages du tableau de bord Énergie de HA (compteur, appareils suivis). */
+  energyPrefs() {
+    return this._send({ type: 'energy/get_prefs' }).catch(() => null);
+  }
+
+  /* Statistiques long terme (kWh consommés par heure ou par jour). */
+  statistics(ids, start, end, period) {
+    return this._send({
+      type: 'recorder/statistics_during_period',
+      start_time: new Date(start).toISOString(),
+      end_time: new Date(end).toISOString(),
+      statistic_ids: ids,
+      period,
+      types: ['change', 'sum'],
+      units: { energy: 'kWh' },
+    }, 30000);
+  }
+
+  /* Historique brut d'un capteur (courbe de puissance). */
+  history(ids, start, end) {
+    return this._send({
+      type: 'history/history_during_period',
+      start_time: new Date(start).toISOString(),
+      end_time: new Date(end).toISOString(),
+      entity_ids: ids,
+      minimal_response: true,
+      no_attributes: true,
+      significant_changes_only: false,
+    }, 30000);
+  }
+
   call(domain, service, data = {}, entityId) {
     const msg = { type: 'call_service', domain, service, service_data: data };
     if (entityId) msg.target = { entity_id: entityId };

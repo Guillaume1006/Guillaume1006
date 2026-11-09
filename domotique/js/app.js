@@ -14,6 +14,9 @@ const DEFAULT_SETTINGS = {
   url: location.pathname.startsWith('/local/') ? location.origin : '',
   token: '',
   theme: 'auto',
+  price: 0.25,       // €/kWh, pour le coût estimé
+  energyMeter: '',   // vide = tableau Énergie de HA ou détection automatique
+  powerSensor: '',
 };
 
 const S = {
@@ -29,6 +32,7 @@ const S = {
   modalId: null,
   dragging: false,
   pendingTemp: {},
+  energy: { period: store.get('domo.energyPeriod', 'day'), token: 0, key: null, at: 0, data: null, error: null, loadingKey: null },
 };
 
 let backend = null;
@@ -37,9 +41,10 @@ const DOMAIN_ORDER = ['light', 'switch', 'fan', 'input_boolean', 'cover', 'clima
 const NAV = [
   ['home', 'Accueil', 'home'],
   ['rooms', 'Pièces', 'rooms'],
+  ['energy', 'Énergie', 'bolt'],
   ['scenes', 'Scènes', 'sparkle'],
   ['automations', 'Automatismes', 'robot', 'Auto'],
-  ['log', 'Journal', 'list'],
+  ['log', 'Journal', 'list', null, true], // sur mobile : accessible depuis Réglages
   ['settings', 'Réglages', 'gear'],
 ];
 
@@ -48,6 +53,7 @@ const NAV = [
 function startBackend() {
   backend?.disconnect();
   Object.assign(S, { entities: {}, areas: [], areaOf: {}, registry: {}, ready: false });
+  Object.assign(S.energy, { token: S.energy.token + 1, key: null, at: 0, data: null, error: null, loadingKey: null });
   const { mode, url, token } = S.settings;
   if (mode === 'ha' && (!url || !token)) {
     backend = null;
@@ -196,7 +202,7 @@ function render() {
   let html;
   if (r.name === 'settings') html = viewSettings();
   else if (!S.ready) html = viewLoading();
-  else html = { home: viewHome, rooms: viewRooms, room: () => viewRoom(r.arg), scenes: viewScenes, automations: viewAutomations, log: viewLog }[r.name]();
+  else html = { home: viewHome, rooms: viewRooms, room: () => viewRoom(r.arg), energy: viewEnergy, scenes: viewScenes, automations: viewAutomations, log: viewLog }[r.name]();
   // ne pas écraser un formulaire en cours de saisie
   if (r.name === 'settings' && view.dataset.view === 'settings' && view.contains(document.activeElement)) return renderModal();
   if (view.dataset.html !== html) {
@@ -209,8 +215,8 @@ function render() {
 }
 
 function renderNav(active) {
-  document.getElementById('nav').innerHTML = NAV.map(([id, label, ic, short]) =>
-    `<a href="#/${id}" class="nav-item${id === active ? ' active' : ''}"${id === active ? ' aria-current="page"' : ''}>${icon(ic)}<span${short ? ` data-short="${short}"` : ''}>${label}</span></a>`).join('');
+  document.getElementById('nav').innerHTML = NAV.map(([id, label, ic, short, deskOnly]) =>
+    `<a href="#/${id}" class="nav-item${id === active ? ' active' : ''}${deskOnly ? ' desk-only' : ''}"${id === active ? ' aria-current="page"' : ''}>${icon(ic)}<span${short ? ` data-short="${short}"` : ''}>${label}</span></a>`).join('');
 }
 
 function viewLoading() {
@@ -241,7 +247,7 @@ function viewHome() {
   const chips = [];
   if (t.inside != null) chips.push(`<div class="stat"><span class="stat-ic warm">${icon('thermo')}</span><span><b>${fmtNum(t.inside)} °C</b><small>Intérieur</small></span></div>`);
   if (t.outside != null) chips.push(`<div class="stat"><span class="stat-ic cool">${icon('sun')}</span><span><b>${fmtNum(t.outside)} °C</b><small>Extérieur</small></span></div>`);
-  if (power != null) chips.push(`<div class="stat"><span class="stat-ic power">${icon('bolt')}</span><span><b>${power >= 1000 ? fmtNum(power / 1000) + ' kW' : fmtNum(power, 0) + ' W'}</b><small>Consommation</small></span></div>`);
+  if (power != null) chips.push(`<a class="stat" href="#/energy"><span class="stat-ic power">${icon('bolt')}</span><span><b>${power >= 1000 ? fmtNum(power / 1000) + ' kW' : fmtNum(power, 0) + ' W'}</b><small>Consommation · graphiques</small></span></a>`);
   const lightsTotal = ofDomain('light').filter(e => isVisibleDevice(e, S.registry[e.entity_id])).length;
   chips.push(`<div class="stat"><span class="stat-ic ${lightsOn.length ? 'light' : ''}">${icon('bulb')}</span><span><b>${lightsOn.length ? `${lightsOn.length} / ${lightsTotal}` : 'Éteintes'}</b><small>Lumières</small></span>${lightsOn.length ? `<button class="icon-btn small" data-act="all-off" aria-label="Éteindre toutes les lumières" title="Tout éteindre">${icon('power')}</button>` : ''}</div>`);
   // la serrure ouvre son détail plutôt que de basculer : pas de déverrouillage par erreur
@@ -422,11 +428,25 @@ function viewSettings() {
     <div class="form-actions">${S.favs ? '<button class="btn" data-act="reset-favs">Revenir aux favoris suggérés</button>' : ''}</div>
   </div>
 
+  <form class="card form" id="energyForm" autocomplete="off">
+    <h2>Énergie</h2>
+    <label class="field"><span>Prix du kWh (€)</span>
+      <input name="price" type="number" inputmode="decimal" min="0" step="0.0001" value="${esc(s.price)}"></label>
+    <label class="field"><span>Compteur principal (kWh)</span>
+      <select name="energyMeter"><option value="">Automatique (tableau Énergie de Home Assistant)</option>
+        ${energySensors().map(e => `<option value="${esc(e.entity_id)}" ${s.energyMeter === e.entity_id ? 'selected' : ''}>${esc(nameOf(e))} — ${esc(e.entity_id)}</option>`).join('')}</select></label>
+    <label class="field"><span>Capteur de puissance (W)</span>
+      <select name="powerSensor"><option value="">Automatique</option>
+        ${powerSensors().map(e => `<option value="${esc(e.entity_id)}" ${s.powerSensor === e.entity_id ? 'selected' : ''}>${esc(nameOf(e))} — ${esc(e.entity_id)}</option>`).join('')}</select></label>
+    <p class="help">Le prix sert au coût estimé. Tarif réglementé « Base » : environ 0,25 €/kWh.</p>
+    <div class="form-actions"><button class="btn primary" type="submit">Enregistrer</button></div>
+  </form>
+
   <div class="card form">
     <h2>État</h2>
     <p>Source : <b>${s.mode === 'ha' ? 'Home Assistant' : 'Maison de démo'}</b> · ${esc(S.status.text)}</p>
     <p class="muted">${S.ready ? `${devices().length} appareils, ${ofDomain('scene').length} scènes, ${ofDomain('automation').length} automatisations, ${S.areas.length} pièces.` : 'Pas encore de données.'}</p>
-    ${s.mode === 'demo' ? '<div class="form-actions"><button class="btn" data-act="reset-demo">Réinitialiser la maison de démo</button></div>' : ''}
+    <div class="form-actions"><a class="btn" href="#/log">${icon('list')} Journal des changements</a>${s.mode === 'demo' ? '<button class="btn" data-act="reset-demo">Réinitialiser la maison de démo</button>' : ''}</div>
   </div>`;
 }
 
@@ -606,6 +626,12 @@ const ACTIONS = {
     startBackend();
     toast('Maison de démo réinitialisée', 'ok');
   },
+  'energy-period': el => {
+    S.energy.period = el.dataset.period;
+    store.set('domo.energyPeriod', S.energy.period);
+    render();
+  },
+  'energy-reload': () => { loadEnergy(true); toast('Actualisation…', 'ok'); },
   'use-demo': () => { saveSettings({ mode: 'demo' }); location.hash = '#/home'; },
   theme: el => { saveSettings({ theme: el.value }, false); },
 };
@@ -673,6 +699,16 @@ document.addEventListener('pointermove', ev => {
 document.addEventListener('contextmenu', ev => { if (ev.target.closest('[data-press]')) ev.preventDefault(); });
 
 document.addEventListener('submit', ev => {
+  if (ev.target.id === 'energyForm') {
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    const price = Number(String(f.get('price')).replace(',', '.'));
+    document.activeElement?.blur();
+    saveSettings({ price: Number.isFinite(price) && price >= 0 ? price : 0, energyMeter: f.get('energyMeter') || '', powerSensor: f.get('powerSensor') || '' }, false);
+    Object.assign(S.energy, { key: null, data: null });
+    toast('Réglages énergie enregistrés', 'ok');
+    return;
+  }
   if (ev.target.id !== 'settingsForm') return;
   ev.preventDefault();
   const f = new FormData(ev.target);
@@ -693,6 +729,8 @@ document.addEventListener('keydown', ev => {
 
 window.addEventListener('hashchange', () => { closeModal(); window.scrollTo(0, 0); render(); document.getElementById('view').focus({ preventScroll: true }); });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+let resizeTimer;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(scheduleRender, 150); });
 
 /* ---------- Divers ---------- */
 

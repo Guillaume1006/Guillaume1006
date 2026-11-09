@@ -5,6 +5,7 @@ Tableau de bord pour piloter la maison depuis le téléphone, la tablette ou l�
 - **Accueil** : températures intérieure/extérieure, consommation électrique, lumières allumées (bouton « tout éteindre »), état de la serrure, points à vérifier (fenêtre ouverte, fuite, porte déverrouillée), scènes rapides et favoris.
 - **Pièces** : chaque pièce avec ses lumières, prises, volets, thermostats, serrures et capteurs.
 - **Détail d’un appareil** (bouton ⋯ ou appui long) : luminosité, blanc chaud/froid, couleur, position des volets, consigne et mode du chauffage, verrouillage, ajout aux favoris ★.
+- **Énergie** : graphiques de consommation (kWh par heure, sur 7 jours ou 30 jours), courbe de puissance sur 24 h, répartition par appareil, coût estimé et comparaison avec la période précédente.
 - **Scènes** et **scripts** en un geste.
 - **Automatismes** : activer, désactiver ou lancer une automatisation.
 - **Journal** des derniers changements.
@@ -44,7 +45,19 @@ C’est le plus simple et ça évite les problèmes HTTP/HTTPS :
 
 Tu peux aussi l’ajouter dans la barre latérale de HA : **Paramètres → Tableaux de bord → Ajouter un tableau de bord → Page web**, avec l’adresse `/local/domotique/index.html`.
 
-### HTTPS
+### Graphiques de consommation
+
+La page **Énergie** lit les statistiques de Home Assistant, celles de son tableau de bord **Énergie** :
+
+- le **compteur** (ex. Linky via Téléinfo, ou une pince ampèremétrique), avec heures pleines et heures creuses additionnées ;
+- les **appareils suivis** (prises connectées qui mesurent la consommation), pour la répartition par appareil ;
+- un **capteur de puissance** (W ou kW) pour la courbe sur 24 h.
+
+Configure-le dans HA : **Paramètres → Tableaux de bord → Énergie**. Sans ce tableau de bord, l’application cherche toute seule un capteur en kWh. Tu peux aussi choisir les capteurs et le **prix du kWh** dans **Réglages → Énergie**. Le coût est une estimation : prix unique, sans abonnement ni taxes fixes. La production solaire n’est pas déduite.
+
+Les statistiques de HA sont calculées chaque heure : l’heure en cours n’apparaît qu’une fois terminée.
+
+
 
 Un navigateur interdit à une page **HTTPS** de se connecter à une adresse **HTTP**. Si l’application est publiée en HTTPS (GitHub Pages par exemple), Home Assistant doit aussi être en HTTPS (Nabu Casa, DuckDNS + Let’s Encrypt…). L’écran Réglages te prévient si ce n’est pas le cas.
 
@@ -83,6 +96,7 @@ domotique/
     ├── format.js         libellés, états, filtres
     ├── demo.js           maison simulée (mêmes services que HA)
     ├── ha.js             connexion WebSocket à Home Assistant (reconnexion automatique)
+    ├── energy.js         page Énergie : statistiques, graphiques SVG
     └── app.js            interface, navigation, actions
 ```
 
