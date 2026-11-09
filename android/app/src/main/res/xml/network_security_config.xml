@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Autorise http:// et ws:// (Home Assistant en local, ex. http://192.168.1.20:8123).
+     Les certificats HTTPS restent vérifiés normalement. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

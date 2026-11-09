@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Signature de la version « release » : fichier keystore.properties (non versionné) s'il existe,
+// sinon la clé de débogage de la machine. Voir README.md.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) keystorePropsFile.withInputStream { keystoreProps.load(it) }
+
+android {
+    namespace 'com.guillaume1006.maison'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.guillaume1006.maison'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            signingConfig keystorePropsFile.exists() ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    // L'application web (dossier ../domotique) est embarquée telle quelle dans l'APK.
+    sourceSets {
+        main {
+            assets.srcDirs = ['../../domotique']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
