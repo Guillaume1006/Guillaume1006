@@ -27,6 +27,10 @@ python3 -m http.server 8000
 
 Puis ouvre <http://localhost:8000>. Depuis le téléphone, sur le même Wi-Fi : `http://IP_DU_PC:8000`.
 
+## Application Android (APK)
+
+Le dossier [`android/`](../android) contient une application Android qui embarque cette interface : installe l’APK sur le téléphone et l’appli s’ouvre en plein écran, sans navigateur. Voir [`android/README.md`](../android/README.md).
+
 ## Brancher Home Assistant
 
 1. Dans Home Assistant : clique sur ton **profil** (en bas à gauche) → onglet **Sécurité** → **Jetons d’accès longue durée** → **Créer un jeton**. Copie-le.
