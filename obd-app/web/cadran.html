@@ -403,7 +403,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     <!-- Connexion -->
     <section class="view" id="v-conn" aria-label="Connexion" hidden>
       <div class="kinds" role="group" aria-label="Type de boîtier">
-        <button class="kind" type="button" data-kind="bt"><b>Bluetooth</b><small>Boîtier ELM327, recherche et appairage ici</small></button>
+        <button class="kind" type="button" data-kind="bt"><b>Bluetooth</b><small>Boîtier ELM327 classique ou BLE</small></button>
         <button class="kind" type="button" data-kind="wifi"><b>Wi-Fi</b><small>Boîtier qui crée son propre réseau</small></button>
         <button class="kind" type="button" data-kind="demo"><b>Démo</b><small>Voiture simulée, sans boîtier</small></button>
       </div>
@@ -416,7 +416,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
           </div>
           <div class="pinrow">
             <label class="f">Code du boîtier<input type="text" id="pin" inputmode="numeric" maxlength="16" spellcheck="false" autocomplete="off"></label>
-            <p class="hint">Cadran saisit ce code pour vous pendant l'appairage. S'il est refusé, il essaie aussi 1234, 0000, 6789 et 1111.</p>
+            <p class="hint">Pour les boîtiers Bluetooth classiques, Cadran saisit ce code pendant l'appairage, puis essaie 1234, 0000, 6789 et 1111. Les boîtiers BLE n'en ont pas besoin.</p>
           </div>
           <p class="hint" id="scanMsg" hidden></p>
           <div class="devs" id="found"></div>
@@ -633,15 +633,30 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     open(c) {
       return new Promise((res, rej) => {
         if (c.kind === "bt" && !c.addr) return rej(new Error("Choisissez d'abord votre boîtier dans la liste des appareils appairés."));
-        this.wait = { res, rej, kind: c.kind };
-        this.timer = setTimeout(() => { this.wait = null; rej(new Error("Le boîtier ne répond pas. Est-il branché, le contact est-il mis ?")); }, 16000);
-        if (c.kind === "bt") ObdBridge.connectBt(c.addr); else ObdBridge.connectWifi(c.host, parseInt(c.port, 10) || 35000);
+        this.wait = { res, rej, kind: c.kind, ble: !!c.ble };
+        this.c = c;
+        this.arm = () => { clearTimeout(this.timer); this.timer = setTimeout(() => { this.wait = null; rej(new Error("Le boîtier ne répond pas. Est-il branché, le contact est-il mis ?")); }, 16000); };
+        this.arm();
+        if (c.kind === "bt" && c.ble && ObdBridge.connectBle) ObdBridge.connectBle(c.addr);
+        else if (c.kind === "bt") ObdBridge.connectBt(c.addr);
+        else ObdBridge.connectWifi(c.host, parseInt(c.port, 10) || 35000);
       });
     }
     native(st, msg) {
       if (this.wait) {
-        const w = this.wait; this.wait = null; clearTimeout(this.timer);
-        if (st === "connected") w.res(); else if (st === "error") { log("err", msg); w.rej(new Error(w.kind === "bt" ? "Connexion Bluetooth refusée. Le boîtier est-il allumé, appairé, et libre (pas utilisé par une autre application) ?" : "Boîtier Wi-Fi introuvable. L'autoradio est-il connecté au Wi-Fi du boîtier ?")); }
+        const w = this.wait;
+        if (st === "error" && w.kind === "bt" && !w.ble && this.c.dual && ObdBridge.connectBle) {
+          // Boîtier double mode : la liaison classique a échoué, on tente la liaison BLE.
+          log("err", msg); log("info", "Nouvel essai en BLE"); w.ble = true; this.arm(); ObdBridge.connectBle(this.c.addr); return;
+        }
+        this.wait = null; clearTimeout(this.timer);
+        if (st === "connected") w.res();
+        else if (st === "error") {
+          log("err", msg);
+          w.rej(new Error(w.kind === "wifi" ? "Boîtier Wi-Fi introuvable. L'autoradio est-il connecté au Wi-Fi du boîtier ?"
+            : w.ble ? "Connexion BLE impossible. Le boîtier est-il alimenté et libre (pas déjà connecté à un téléphone) ?"
+            : "Connexion Bluetooth refusée. Le boîtier est-il allumé, appairé, et libre (pas utilisé par une autre application) ?"));
+        }
         return;
       }
       if (st === "lost" || st === "error") { log("err", msg); lost("La liaison avec le boîtier a été coupée."); }
@@ -736,7 +751,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     $("btnConnect2").textContent = st === "on" ? "Se reconnecter" : "Se connecter";
     renderTiles(); renderData();
   }
-  const kindLabel = () => (cfg.kind === "demo" ? "Démo · voiture simulée" : cfg.kind === "wifi" ? "Wi-Fi " + cfg.host : cfg.name || "Bluetooth");
+  const kindLabel = () => (cfg.kind === "demo" ? "Démo · voiture simulée" : cfg.kind === "wifi" ? "Wi-Fi " + cfg.host : (cfg.name || "Bluetooth") + (cfg.ble ? " · BLE" : ""));
   function detailLine() {
     const i = C.info, parts = [];
     if (i.proto) parts.push(i.proto);
@@ -1121,8 +1136,9 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     for (const d of devs) {
       const b = document.createElement("button"); b.type = "button"; b.className = "dev"; b.setAttribute("aria-pressed", d.address === cfg.addr);
       b.innerHTML = '<span class="info"><b></b><small></small></span>'; b.querySelector("b").textContent = d.name || "Appareil sans nom"; b.querySelector("small").textContent = d.address;
+      if (d.dtype === 2) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "BLE"; b.appendChild(t); }
       if (looks(d.name)) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "Boîtier OBD probable"; b.appendChild(t); }
-      b.onclick = () => { cfg.addr = d.address; cfg.name = d.name || d.address; saveCfg(); listDevices(); };
+      b.onclick = () => { cfg.addr = d.address; cfg.name = d.name || d.address; cfg.ble = d.dtype === 2; cfg.dual = d.dtype === 3; saveCfg(); listDevices(); };
       box.appendChild(b);
     }
   }
@@ -1238,6 +1254,8 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   const SCAN = { running: false, devs: new Map(), pairing: null, pairMsg: "", pending: false, timer: 0 };
   const looksObd = (n) => /obd|elm|v-?link|vgate|icar|konnwei|veepeak|vlink|scan/i.test(n || "");
   const otherKind = (d) => [0x100, 0x200, 0x400].includes(d.major);
+  // BLE seul : type 2 annoncé par Android, ou vu uniquement par la recherche BLE quand le type est inconnu.
+  const bleOnly = (d) => d.dtype === 2 || ((d.dtype == null || d.dtype === 0) && d.le && !d.classic);
   const bars = (r) => {
     const n = r == null ? 0 : r > -60 ? 4 : r > -70 ? 3 : r > -82 ? 2 : 1;
     return '<svg viewBox="0 0 16 14" width="18" height="16" aria-hidden="true">' + [0, 1, 2, 3].map((i) => '<rect x="' + i * 4 + '" y="' + (10 - i * 3) + '" width="3" height="' + (4 + i * 3) + '" rx="1" fill="' + (i < n ? "currentColor" : "var(--line)") + '"/>').join("") + "</svg>";
@@ -1269,7 +1287,10 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     if (e.type === "done") { scanDone(); return; }
     if (e.type !== "found" || !e.address) return;
     const prev = SCAN.devs.get(e.address) || {};
-    SCAN.devs.set(e.address, Object.assign(prev, e, { name: e.name || prev.name || "", rssi: e.rssi != null ? e.rssi : prev.rssi }));
+    SCAN.devs.set(e.address, Object.assign(prev, e, {
+      name: e.name || prev.name || "", rssi: e.rssi != null ? e.rssi : prev.rssi,
+      le: !!(prev.le || e.ble), classic: !!(prev.classic || !e.ble), bonded: !!(prev.bonded || e.bonded),
+    }));
     renderFound();
   }
   function renderFound() {
@@ -1284,17 +1305,21 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
       row.querySelector("b").textContent = d.name || "Appareil sans nom";
       row.querySelector("small").textContent = d.address + (SCAN.pairing === d.address ? " · " + SCAN.pairMsg : d.bonded ? " · appairé" : "");
       const acts = row.querySelector(".acts");
+      const ble = bleOnly(d), ready = d.bonded || ble;
+      if (ble) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "BLE"; acts.appendChild(t); }
       if (looksObd(d.name)) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "Boîtier OBD probable"; acts.appendChild(t); }
       const btn = document.createElement("button"); btn.type = "button";
-      btn.className = "btn" + (d.bonded ? " primary" : "");
-      btn.textContent = SCAN.pairing === d.address ? "Appairage…" : d.bonded ? (d.address === cfg.addr ? "Choisi" : "Utiliser") : "Appairer";
-      btn.disabled = !!SCAN.pairing || (d.bonded && d.address === cfg.addr);
-      btn.onclick = () => (d.bonded ? useDevice(d) : pairDevice(d));
+      btn.className = "btn" + (ready ? " primary" : "");
+      btn.textContent = SCAN.pairing === d.address ? "Appairage…" : ready ? (d.address === cfg.addr ? "Choisi" : "Utiliser") : "Appairer";
+      btn.disabled = !!SCAN.pairing || (ready && d.address === cfg.addr);
+      btn.onclick = () => (ready ? useDevice(d) : pairDevice(d));
       acts.appendChild(btn); box.appendChild(row);
     }
   }
   function useDevice(d, quiet) {
-    cfg.addr = d.address; cfg.name = d.name || d.address; saveCfg();
+    cfg.addr = d.address; cfg.name = d.name || d.address;
+    cfg.ble = bleOnly(d); cfg.dual = d.dtype === 3 || !!(d.le && d.classic);
+    saveCfg();
     listDevices(); renderFound();
     if (!quiet) toast("Boîtier choisi : " + cfg.name + ". Touchez Se connecter.");
   }

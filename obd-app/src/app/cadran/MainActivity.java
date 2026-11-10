@@ -3,6 +3,15 @@ package app.cadran;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothClass;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanRecord;
+import android.bluetooth.le.ScanResult;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
@@ -34,6 +43,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
@@ -57,6 +67,10 @@ public class MainActivity extends Activity {
     private volatile boolean fullscreen;
     private final Handler main = new Handler(Looper.getMainLooper());
     private BroadcastReceiver scanRx;
+    private ScanCallback leScan;
+    private volatile boolean classicScanning;
+    private volatile boolean leScanning;
+    private volatile BleLink ble;
     private BroadcastReceiver pairRx;
     private volatile String pairAddr;
     private String[] pairPins = new String[0];
@@ -134,7 +148,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static String deviceJson(String type, BluetoothDevice d, Intent i) {
+    private static String deviceJson(String type, BluetoothDevice d, String nameHint, int rssi, boolean le) {
         try {
             JSONObject o = new JSONObject();
             o.put("type", type);
@@ -143,11 +157,15 @@ public class MainActivity extends Activity {
                 name = d.getName();
             } catch (SecurityException ignored) {
             }
-            if (name == null && i != null) name = i.getStringExtra(BluetoothDevice.EXTRA_NAME);
+            if (name == null) name = nameHint;
             o.put("name", name == null ? "" : name);
             o.put("address", d.getAddress());
-            short rssi = i == null ? Short.MIN_VALUE : i.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
-            if (rssi != Short.MIN_VALUE) o.put("rssi", rssi);
+            if (rssi != Integer.MIN_VALUE) o.put("rssi", rssi);
+            o.put("ble", le);
+            try {
+                o.put("dtype", d.getType());
+            } catch (SecurityException ignored) {
+            }
             int bond = BluetoothDevice.BOND_NONE;
             try {
                 bond = d.getBondState();
@@ -174,10 +192,12 @@ public class MainActivity extends Activity {
                 if (BluetoothDevice.ACTION_FOUND.equals(a) || BluetoothDevice.ACTION_NAME_CHANGED.equals(a)) {
                     BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     if (d == null) return;
-                    String js = deviceJson("found", d, i);
+                    short rssi = i.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
+                    String js = deviceJson("found", d, i.getStringExtra(BluetoothDevice.EXTRA_NAME), rssi == Short.MIN_VALUE ? Integer.MIN_VALUE : rssi, false);
                     if (js != null) emit("scan", js, null);
                 } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(a)) {
-                    emit("scan", "{\"type\":\"done\"}", null);
+                    classicScanning = false;
+                    scanFinished();
                 }
             }
         };
@@ -186,6 +206,175 @@ public class MainActivity extends Activity {
         f.addAction(BluetoothDevice.ACTION_NAME_CHANGED);
         f.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         registerReceiver(scanRx, f);
+    }
+
+    private void scanFinished() {
+        if (!classicScanning && !leScanning) emit("scan", "{\"type\":\"done\"}", null);
+    }
+
+    /** Recherche des boîtiers BLE, en parallèle de la recherche classique, pendant 12 secondes. */
+    private boolean startLeScan(BluetoothAdapter ad) {
+        try {
+            BluetoothLeScanner sc = ad.getBluetoothLeScanner();
+            if (sc == null) return false;
+            stopLeScan(ad);
+            leScan = new ScanCallback() {
+                @Override
+                public void onScanResult(int callbackType, ScanResult r) {
+                    BluetoothDevice d = r.getDevice();
+                    if (d == null) return;
+                    ScanRecord rec = r.getScanRecord();
+                    String js = deviceJson("found", d, rec == null ? null : rec.getDeviceName(), r.getRssi(), true);
+                    if (js != null) emit("scan", js, null);
+                }
+
+                @Override
+                public void onScanFailed(int errorCode) {
+                    leScanning = false;
+                    scanFinished();
+                }
+            };
+            sc.startScan(leScan);
+            leScanning = true;
+            main.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    BluetoothAdapter a = BluetoothAdapter.getDefaultAdapter();
+                    if (a != null) stopLeScan(a);
+                    leScanning = false;
+                    scanFinished();
+                }
+            }, 12000);
+            return true;
+        } catch (Exception e) {
+            leScanning = false;
+            return false;
+        }
+    }
+
+    private void stopLeScan(BluetoothAdapter ad) {
+        try {
+            BluetoothLeScanner sc = ad.getBluetoothLeScanner();
+            if (sc != null && leScan != null) sc.stopScan(leScan);
+        } catch (Exception ignored) {
+        }
+        leScan = null;
+    }
+
+    private static UUID u16(String x) {
+        return UUID.fromString("0000" + x + "-0000-1000-8000-00805f9b34fb");
+    }
+
+    private static final UUID CCCD = u16("2902");
+    // Canaux série connus des boîtiers ELM327 BLE : service, réception (notification), émission.
+    private static final String[][] KNOWN = {{"fff0", "fff1", "fff2"}, {"ffe0", "ffe1", "ffe1"}, {"18f0", "2af0", "2af1"}};
+
+    /** Liaison BLE : réception par notifications, émission découpée en paquets écrits l'un après l'autre. */
+    private class BleLink implements Closeable {
+        final BluetoothGatt gatt;
+        BluetoothGattCharacteristic rx;
+        BluetoothGattCharacteristic tx;
+        int payload = 20;
+        boolean ready;
+        boolean writing;
+        final ArrayDeque<byte[]> queue = new ArrayDeque<byte[]>();
+
+        BleLink(BluetoothGatt g) {
+            gatt = g;
+        }
+
+        boolean pick() {
+            for (String[] k : KNOWN) {
+                BluetoothGattService sv = gatt.getService(u16(k[0]));
+                if (sv == null) continue;
+                BluetoothGattCharacteristic n = sv.getCharacteristic(u16(k[1])), w = sv.getCharacteristic(u16(k[2]));
+                if (n != null && w != null) {
+                    rx = n;
+                    tx = w;
+                    return true;
+                }
+            }
+            // Sinon : premier service non standard qui offre une réception et une émission.
+            for (BluetoothGattService sv : gatt.getServices()) {
+                String id = sv.getUuid().toString();
+                if (id.startsWith("00001800") || id.startsWith("00001801") || id.startsWith("0000180a") || id.startsWith("0000180f")) continue;
+                BluetoothGattCharacteristic n = null, w = null;
+                for (BluetoothGattCharacteristic c : sv.getCharacteristics()) {
+                    int p = c.getProperties();
+                    if (n == null && (p & (BluetoothGattCharacteristic.PROPERTY_NOTIFY | BluetoothGattCharacteristic.PROPERTY_INDICATE)) != 0) n = c;
+                    if (w == null && (p & (BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)) != 0) w = c;
+                }
+                if (n != null && w != null) {
+                    rx = n;
+                    tx = w;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void send(byte[] data) {
+            synchronized (queue) {
+                for (int i = 0; i < data.length; i += payload) {
+                    int n = Math.min(payload, data.length - i);
+                    byte[] c = new byte[n];
+                    System.arraycopy(data, i, c, 0, n);
+                    queue.add(c);
+                }
+            }
+            pump();
+        }
+
+        void pump() {
+            synchronized (queue) {
+                if (writing || queue.isEmpty() || tx == null) return;
+                byte[] c = queue.poll();
+                tx.setValue(c);
+                tx.setWriteType((tx.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0
+                        ? BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT : BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                try {
+                    writing = gatt.writeCharacteristic(tx);
+                } catch (SecurityException e) {
+                    writing = false;
+                }
+                if (!writing) {
+                    queue.addFirst(c);
+                    main.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            pump();
+                        }
+                    }, 30);
+                }
+            }
+        }
+
+        void written() {
+            synchronized (queue) {
+                writing = false;
+            }
+            pump();
+        }
+
+        @Override
+        public void close() {
+            try {
+                gatt.disconnect();
+                gatt.close();
+            } catch (SecurityException ignored) {
+            }
+        }
+    }
+
+    private void bleReady(int g, BleLink l, String label) {
+        synchronized (lock) {
+            if (g != gen || l.ready) return;
+            l.ready = true;
+            ble = l;
+            link = l;
+            out = null;
+        }
+        emit("state", "connected", label);
     }
 
     /** Appairage : répond aux demandes de code PIN avec la liste fournie, un code par tentative. */
@@ -272,6 +461,7 @@ public class MainActivity extends Activity {
             }
             link = null;
             out = null;
+            ble = null;
         }
     }
 
@@ -325,6 +515,15 @@ public class MainActivity extends Activity {
         return s;
     }
 
+    private static String nameOf(BluetoothDevice d) {
+        try {
+            String n = d.getName();
+            return n == null ? d.getAddress() : n;
+        } catch (SecurityException e) {
+            return d.getAddress();
+        }
+    }
+
     @Override
     protected void onDestroy() {
         try {
@@ -354,6 +553,7 @@ public class MainActivity extends Activity {
                         JSONObject o = new JSONObject();
                         o.put("name", d.getName() == null ? "" : d.getName());
                         o.put("address", d.getAddress());
+                        o.put("dtype", d.getType());
                         arr.put(o);
                     }
                 }
@@ -389,7 +589,9 @@ public class MainActivity extends Activity {
                 registerScanReceiver();
                 registerPairReceiver();
                 if (ad.isDiscovering()) ad.cancelDiscovery();
-                return ad.startDiscovery() ? "ok" : "failed";
+                classicScanning = ad.startDiscovery();
+                boolean le = startLeScan(ad);
+                return classicScanning || le ? "ok" : "failed";
             } catch (SecurityException e) {
                 return "permission";
             }
@@ -400,8 +602,128 @@ public class MainActivity extends Activity {
             try {
                 BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
                 if (ad != null && ad.isDiscovering()) ad.cancelDiscovery();
+                if (ad != null) stopLeScan(ad);
             } catch (SecurityException ignored) {
             }
+            classicScanning = false;
+            leScanning = false;
+        }
+
+        /** Connexion à un boîtier BLE : services, canal série, notifications, puis taille de paquet. */
+        @JavascriptInterface
+        public void connectBle(final String address) {
+            final int g = ++gen;
+            closeLink();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
+                        if (ad == null || !ad.isEnabled()) throw new IOException("Bluetooth indisponible ou désactivé");
+                        stopLeScan(ad);
+                        final BluetoothDevice d = ad.getRemoteDevice(address);
+                        final BleLink[] holder = new BleLink[1];
+                        BluetoothGattCallback cb = new BluetoothGattCallback() {
+                            @Override
+                            public void onConnectionStateChange(BluetoothGatt gt, int status, int state) {
+                                if (g != gen) {
+                                    try { gt.close(); } catch (SecurityException ignored) { }
+                                    return;
+                                }
+                                if (state == BluetoothGatt.STATE_CONNECTED) {
+                                    try {
+                                        gt.discoverServices();
+                                    } catch (SecurityException e) {
+                                        emit("state", "error", reason(e));
+                                    }
+                                } else if (state == BluetoothGatt.STATE_DISCONNECTED) {
+                                    boolean wasReady = holder[0] != null && holder[0].ready;
+                                    try { gt.close(); } catch (SecurityException ignored) { }
+                                    emit("state", wasReady ? "lost" : "error", "GATT déconnecté (état " + status + ")");
+                                }
+                            }
+
+                            @Override
+                            public void onServicesDiscovered(BluetoothGatt gt, int status) {
+                                if (g != gen) return;
+                                final BleLink l = holder[0];
+                                if (l == null) return;
+                                if (status != BluetoothGatt.GATT_SUCCESS || !l.pick()) {
+                                    emit("state", "error", "Aucun canal série ELM327 trouvé sur ce boîtier BLE");
+                                    l.close();
+                                    return;
+                                }
+                                try {
+                                    gt.setCharacteristicNotification(l.rx, true);
+                                    BluetoothGattDescriptor ds = l.rx.getDescriptor(CCCD);
+                                    if (ds != null) {
+                                        ds.setValue((l.rx.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0
+                                                ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
+                                        if (gt.writeDescriptor(ds)) return;
+                                    }
+                                } catch (SecurityException e) {
+                                    emit("state", "error", reason(e));
+                                    return;
+                                }
+                                askMtu(gt, l);
+                            }
+
+                            @Override
+                            public void onDescriptorWrite(BluetoothGatt gt, BluetoothGattDescriptor ds, int status) {
+                                if (g == gen && holder[0] != null) askMtu(gt, holder[0]);
+                            }
+
+                            void askMtu(BluetoothGatt gt, final BleLink l) {
+                                boolean asked = false;
+                                try {
+                                    asked = gt.requestMtu(185);
+                                } catch (SecurityException ignored) {
+                                }
+                                if (!asked) {
+                                    bleReady(g, l, nameOf(d));
+                                    return;
+                                }
+                                main.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        bleReady(g, l, nameOf(d));
+                                    }
+                                }, 1500);
+                            }
+
+                            @Override
+                            public void onMtuChanged(BluetoothGatt gt, int mtu, int status) {
+                                BleLink l = holder[0];
+                                if (l == null) return;
+                                if (status == BluetoothGatt.GATT_SUCCESS) l.payload = Math.max(20, Math.min(180, mtu - 3));
+                                bleReady(g, l, nameOf(d));
+                            }
+
+                            @Override
+                            public void onCharacteristicChanged(BluetoothGatt gt, BluetoothGattCharacteristic c) {
+                                if (g != gen) return;
+                                byte[] v = c.getValue();
+                                if (v == null || v.length == 0) return;
+                                try {
+                                    emit("data", new String(v, "ISO-8859-1"), null);
+                                } catch (IOException ignored) {
+                                }
+                            }
+
+                            @Override
+                            public void onCharacteristicWrite(BluetoothGatt gt, BluetoothGattCharacteristic c, int status) {
+                                BleLink l = holder[0];
+                                if (l != null) l.written();
+                            }
+                        };
+                        BluetoothGatt gt = d.connectGatt(MainActivity.this, false, cb, BluetoothDevice.TRANSPORT_LE);
+                        if (gt == null) throw new IOException("Connexion BLE impossible");
+                        holder[0] = new BleLink(gt);
+                    } catch (Exception e) {
+                        if (g == gen) emit("state", "error", reason(e));
+                    }
+                }
+            });
         }
 
         /** Appaire le boîtier en essayant les codes donnés, séparés par des virgules. */
@@ -506,6 +828,14 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void write(String cmd) {
+            BleLink l = ble;
+            if (l != null) {
+                try {
+                    l.send((cmd + "\r").getBytes("US-ASCII"));
+                } catch (IOException ignored) {
+                }
+                return;
+            }
             OutputStream o;
             synchronized (lock) {
                 o = out;
