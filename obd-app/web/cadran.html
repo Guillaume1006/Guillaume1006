@@ -1,0 +1,975 @@
+<title>Cadran OBD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Mise en page : tableau de bord de voiture, sombre par choix (lisible de nuit, sans éblouir).
+   Écran large (autoradio en paysage) : rail de navigation à gauche, vue principale à droite.
+   Écran étroit (téléphone) : barre d'état en haut, navigation en bas. Teinte unique : laiton. */
+:root {
+  color-scheme: dark;
+  --bg: #0c0e0f;
+  --surface: #15181a;
+  --surface-2: #1c2023;
+  --line: #272c30;
+  --ink: #eaece7;
+  --muted: #879096;
+  --accent: #d4ad6f;
+  --accent-ink: #17130c;
+  --accent-soft: #2b2419;
+  --ok: #5fc48a;
+  --warn: #e9b44c;
+  --bad: #f06a55;
+  --cold: #6cb2e6;
+  --font-body: "Geist", "Helvetica Neue", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.app { height: 100%; display: grid; grid-template-columns: 96px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.rail {
+  grid-row: 1 / -1; display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  padding: 14px 10px; padding-left: max(10px, env(safe-area-inset-left, 0px));
+  background: var(--surface); border-right: 1px solid var(--line);
+}
+.logo { display: flex; justify-content: center; margin-bottom: 14px; }
+.logo svg { width: 44px; height: 44px; color: var(--accent); background: var(--bg); border-radius: 13px; padding: 9px; }
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav button {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; background: transparent; border: 0;
+  border-radius: 14px; padding: 11px 4px; color: var(--muted); font-size: 11.5px; font-weight: 500; letter-spacing: .01em;
+  transition: background .15s, color .15s;
+}
+.nav button svg { width: 24px; height: 24px; }
+.nav button:hover { color: var(--ink); }
+.nav button[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+
+.bar {
+  display: flex; align-items: center; gap: 14px; min-width: 0;
+  padding-block: 12px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line);
+}
+.status { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 20%, transparent); }
+.dot.busy { background: var(--warn); animation: pulse 1s ease-in-out infinite; }
+.dot.err { background: var(--bad); }
+@keyframes pulse { 50% { opacity: .35; } }
+.status b { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status small { display: block; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status > div { min-width: 0; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 10px 18px; min-height: 44px;
+  font-weight: 500; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { border-color: color-mix(in srgb, var(--bad) 55%, transparent); color: var(--bad); }
+.btn.danger.armed { background: var(--bad); color: #1a0d0a; border-color: var(--bad); }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.btn svg { width: 18px; height: 18px; }
+
+main { overflow: auto; min-height: 0; padding-block: 18px 24px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.view { display: flex; flex-direction: column; gap: 16px; max-width: 1280px; }
+h2 { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.lead { margin: 0; color: var(--muted); font-size: 14px; max-width: 62ch; }
+
+/* Tableau de bord */
+.gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.gauge { position: relative; background: var(--surface); border-radius: 22px; aspect-ratio: 1.45; max-width: 100%; min-height: 0; overflow: hidden; }
+.gauge canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gauge .read { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-38%); text-align: center; pointer-events: none; }
+.gauge .val { font-size: clamp(44px, 7.4vw, 92px); font-weight: 300; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.gauge .unit { color: var(--muted); font-size: 13px; margin-top: 4px; letter-spacing: .04em; }
+.gauge .name { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tile .lbl { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .v { font-size: 30px; font-weight: 400; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.tile .v small { font-size: 14px; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+.tile .st { font-size: 12px; display: flex; align-items: center; gap: 6px; color: var(--muted); min-height: 18px; }
+.tile .st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.tile .st:empty::before { display: none; }
+.st.ok { color: var(--ok); } .st.warn { color: var(--warn); } .st.bad { color: var(--bad); } .st.cold { color: var(--cold); }
+.banner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: var(--surface); border: 1px dashed var(--line); border-radius: 18px; padding: 14px 18px; }
+.banner p { margin: 0; flex: 1 1 260px; color: var(--muted); }
+.banner p b { color: var(--ink); font-weight: 500; }
+
+/* Diagnostic */
+.mil { display: flex; align-items: center; gap: 16px; background: var(--surface); border-radius: 18px; padding: 16px 18px; flex-wrap: wrap; }
+.mil svg { width: 40px; height: 40px; flex: none; color: var(--muted); }
+.mil.lit svg { color: var(--warn); }
+.mil.clear svg { color: var(--ok); }
+.mil > div { flex: 1 1 220px; min-width: 0; }
+.mil b { font-size: 17px; font-weight: 500; display: block; }
+.mil small { color: var(--muted); font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.dtcs { display: flex; flex-direction: column; gap: 8px; }
+.dtc { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; background: var(--surface); border-radius: 16px; padding: 12px 16px; }
+.dtc .code { font-family: var(--font-mono); font-size: 16px; font-weight: 500; background: var(--surface-2); border-radius: 10px; padding: 6px 10px; color: var(--warn); }
+.dtc.pending .code { color: var(--muted); }
+.dtc b { font-weight: 500; display: block; }
+.dtc small { color: var(--muted); font-size: 12.5px; }
+.empty { color: var(--muted); border: 1px dashed var(--line); border-radius: 16px; padding: 18px; text-align: center; }
+.warnbox { color: var(--warn); font-size: 13px; }
+.vin { font-size: 13px; color: var(--muted); }
+.vin b { color: var(--ink); font-weight: 500; letter-spacing: .06em; }
+
+/* Données */
+.tablewrap { overflow-x: auto; background: var(--surface); border-radius: 18px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+td.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 15px; }
+td.pid { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+
+/* Terminal */
+.term { background: #08090a; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; height: min(52vh, 420px); overflow: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-all; }
+.term .out { color: var(--accent); } .term .in { color: var(--ink); } .term .err { color: var(--bad); } .term .info { color: var(--muted); }
+.cmdline { display: flex; gap: 8px; }
+.cmdline input { flex: 1 1 auto; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; font-family: var(--font-mono); text-transform: uppercase; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+.chips button:hover { color: var(--ink); border-color: var(--muted); }
+
+/* Connexion */
+.kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.kind { background: var(--surface); border: 1.5px solid transparent; border-radius: 18px; padding: 14px 16px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.kind b { font-weight: 500; font-size: 15px; }
+.kind small { color: var(--muted); font-size: 12.5px; }
+.kind[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.card { background: var(--surface); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.devs { display: flex; flex-direction: column; gap: 6px; }
+.dev { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1.5px solid transparent; border-radius: 14px; padding: 10px 14px; text-align: left; }
+.dev[aria-pressed="true"] { border-color: var(--accent); }
+.dev span { flex: 1 1 auto; min-width: 0; }
+.dev b { font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev small { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+.tag { font-size: 11px; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+label.f input, label.f select { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; color: var(--ink); font-size: 15px; min-width: 0; }
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.seg2 { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); border-radius: 999px; padding: 3px; }
+.seg2 button { background: transparent; border: 0; border-radius: 999px; padding: 8px; color: var(--muted); font-weight: 500; }
+.seg2 button[aria-pressed="true"] { background: var(--bg); color: var(--ink); }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 14px; cursor: pointer; }
+.switch small { display: block; color: var(--muted); font-size: 12.5px; }
+.switch input { -webkit-appearance: none; appearance: none; width: 44px; height: 26px; border-radius: 999px; background: var(--line); position: relative; flex: none; margin: 0; cursor: pointer; transition: background .18s; }
+.switch input::before { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--muted); transition: transform .18s, background .18s; }
+.switch input:checked { background: var(--accent); }
+.switch input:checked::before { transform: translateX(18px); background: var(--accent-ink); }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+
+#toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); border-radius: 999px; padding: 10px 18px; font-size: 14px; max-width: min(90vw, 560px); z-index: 30; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+
+/* Écran étroit : navigation en bas */
+@media (max-width: 719px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  .rail { grid-row: 3; flex-direction: row; padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); }
+  .logo { display: none; }
+  .nav { flex-direction: row; flex: 1 1 auto; }
+  .nav button { flex: 1 1 0; padding: 8px 2px; font-size: 10.5px; }
+  .nav button svg { width: 22px; height: 22px; }
+  .bar { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .gauges { gap: 10px; }
+  .gauge { aspect-ratio: 1.05; border-radius: 18px; }
+  .gauge .val { font-size: 38px; }
+  .gauge .unit { font-size: 11.5px; margin-top: 2px; }
+  .gauge .name { font-size: 10.5px; bottom: 10px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .tile .v { font-size: 26px; }
+  .kinds { grid-template-columns: 1fr; }
+  .fields { grid-template-columns: 1fr; }
+  #toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+}
+/* Autoradio bas (600 px) : compteurs plus plats */
+@media (min-width: 720px) and (max-height: 640px) {
+  main { padding-block: 12px 16px; }
+  .view { gap: 12px; }
+  .gauge { aspect-ratio: 1.75; }
+  .tile { padding: 10px 14px; }
+  .tile .v { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app" id="app">
+  <aside class="rail">
+    <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="M12 15l4.5-5"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor"/></svg></div>
+    <nav class="nav" aria-label="Sections">
+      <button type="button" data-view="dash" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/></svg>Tableau</button>
+      <button type="button" data-view="diag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>Diagnostic</button>
+      <button type="button" data-view="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 6h14M5 12h14M5 18h9"/></svg>Mesures</button>
+      <button type="button" data-view="term"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7l5 5-5 5M12 17h7"/></svg>Terminal</button>
+      <button type="button" data-view="conn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/></svg>Connexion</button>
+    </nav>
+  </aside>
+
+  <header class="bar">
+    <div class="status">
+      <span class="dot" id="dot"></span>
+      <div><b id="stText">Déconnecté</b><small id="stDetail">Choisissez votre boîtier dans Connexion</small></div>
+    </div>
+    <button class="btn primary" id="btnConn" type="button">Se connecter</button>
+  </header>
+
+  <main id="main">
+    <!-- Tableau de bord -->
+    <section class="view" id="v-dash" aria-label="Tableau de bord">
+      <div class="banner" id="dashHint" hidden>
+        <p><b>Aucun boîtier connecté.</b> Branchez le boîtier sur la prise OBD, mettez le contact, puis connectez-vous. Vous pouvez aussi essayer la démo.</p>
+        <button class="btn" type="button" id="btnDemo">Essayer la démo</button>
+        <button class="btn primary" type="button" id="btnGoConn">Connexion</button>
+      </div>
+      <div class="gauges">
+        <div class="gauge"><canvas id="gRpm"></canvas><div class="read"><div class="val" id="gRpmV">—</div><div class="unit">tr/min</div></div><div class="name">Régime moteur</div></div>
+        <div class="gauge"><canvas id="gSpd"></canvas><div class="read"><div class="val" id="gSpdV">—</div><div class="unit">km/h</div></div><div class="name">Vitesse</div></div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <!-- Diagnostic -->
+    <section class="view" id="v-diag" aria-label="Diagnostic" hidden>
+      <div class="mil" id="mil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M4 10h2l1-2h5l1 2h3l2-2h2v8h-2l-2-2h-1l-2 3H7l-1-2H4z"/><path d="M8 8V6h4v2"/></svg>
+        <div><b id="milText">Codes défaut non lus</b><small id="milSub">Lisez les codes pour connaître l'état du voyant moteur.</small></div>
+        <div class="row">
+          <button class="btn primary" type="button" id="btnRead">Lire les codes</button>
+          <button class="btn danger" type="button" id="btnClear">Effacer les codes</button>
+        </div>
+      </div>
+      <p class="warnbox" id="clearWarn" hidden>Effacer éteint le voyant et remet à zéro les tests antipollution. Faites-le moteur arrêté, contact mis, et seulement après avoir réparé la cause. Appuyez à nouveau pour confirmer.</p>
+      <div class="dtcs" id="dtcs"><div class="empty">Lancez une lecture pour voir les codes enregistrés par le calculateur.</div></div>
+      <div class="vin" id="vin"></div>
+    </section>
+
+    <!-- Mesures -->
+    <section class="view" id="v-data" aria-label="Mesures" hidden>
+      <p class="lead" id="dataLead">Toutes les mesures que votre voiture fournit, mises à jour en continu.</p>
+      <div class="tablewrap"><table><thead><tr><th>Mesure</th><th style="text-align:right">Valeur</th><th>Unité</th><th>PID</th></tr></thead><tbody id="dataRows"></tbody></table></div>
+    </section>
+
+    <!-- Terminal -->
+    <section class="view" id="v-term" aria-label="Terminal" hidden>
+      <p class="lead">Envoyez des commandes au boîtier. Le journal montre aussi tout l'échange depuis la connexion, utile pour diagnostiquer un boîtier récalcitrant.</p>
+      <div class="term" id="term" tabindex="0"></div>
+      <form class="cmdline" id="cmdForm" autocomplete="off">
+        <input id="cmd" type="text" placeholder="Commande, par exemple ATRV ou 010C" spellcheck="false" aria-label="Commande">
+        <button class="btn primary" type="submit">Envoyer</button>
+      </form>
+      <div class="row" style="justify-content:space-between">
+        <div class="chips" id="chips">
+          <button type="button">ATI</button><button type="button">ATRV</button><button type="button">ATDP</button><button type="button">0100</button><button type="button">010C</button><button type="button">03</button><button type="button">0902</button>
+        </div>
+        <div class="row"><button class="btn" type="button" id="btnCopyLog">Copier le journal</button><button class="btn" type="button" id="btnClearLog">Vider</button></div>
+      </div>
+    </section>
+
+    <!-- Connexion -->
+    <section class="view" id="v-conn" aria-label="Connexion" hidden>
+      <div class="kinds" role="group" aria-label="Type de boîtier">
+        <button class="kind" type="button" data-kind="bt"><b>Bluetooth</b><small>Boîtier ELM327 appairé</small></button>
+        <button class="kind" type="button" data-kind="wifi"><b>Wi-Fi</b><small>Boîtier qui crée son propre réseau</small></button>
+        <button class="kind" type="button" data-kind="demo"><b>Démo</b><small>Voiture simulée, sans boîtier</small></button>
+      </div>
+
+      <div class="card" id="kindBt">
+        <div class="row" style="justify-content:space-between"><h2>Appareils appairés</h2><button class="btn" type="button" id="btnRefresh">Actualiser</button></div>
+        <div class="devs" id="devs"></div>
+        <p class="hint">Appairez d'abord le boîtier dans les réglages Bluetooth de l'autoradio. Le code est souvent 1234 ou 0000.</p>
+      </div>
+      <div class="card" id="kindWifi" hidden>
+        <div class="fields">
+          <label class="f">Adresse du boîtier<input type="text" id="host" inputmode="decimal" spellcheck="false"></label>
+          <label class="f">Port<input type="text" id="port" inputmode="numeric"></label>
+        </div>
+        <p class="hint">Connectez d'abord l'autoradio au Wi-Fi du boîtier (souvent nommé WiFi_OBDII ou V-LINK). L'adresse habituelle est 192.168.0.10, port 35000.</p>
+      </div>
+      <div class="card" id="kindDemo" hidden>
+        <p class="hint">Une voiture simulée qui roule en ville : idéal pour découvrir l'application. Elle a deux codes défaut enregistrés, que vous pouvez lire puis effacer.</p>
+      </div>
+
+      <div class="settings">
+        <div class="card">
+          <h2>Carburant</h2>
+          <div class="seg2" id="fuel"><button type="button" data-v="essence">Essence</button><button type="button" data-v="diesel">Diesel</button></div>
+          <p class="hint">Sert au calcul de la consommation et à la zone rouge du compte-tours.</p>
+        </div>
+        <div class="card">
+          <h2>Protocole</h2>
+          <label class="f"><select id="proto" aria-label="Protocole OBD">
+            <option value="0">Automatique (recommandé)</option>
+            <option value="6">ISO 15765-4 CAN, 11 bits, 500 kb/s</option>
+            <option value="7">ISO 15765-4 CAN, 29 bits, 500 kb/s</option>
+            <option value="8">ISO 15765-4 CAN, 11 bits, 250 kb/s</option>
+            <option value="9">ISO 15765-4 CAN, 29 bits, 250 kb/s</option>
+            <option value="5">ISO 14230-4 KWP, init rapide</option>
+            <option value="4">ISO 14230-4 KWP, init 5 bauds</option>
+            <option value="3">ISO 9141-2</option>
+            <option value="2">SAE J1850 VPW</option>
+            <option value="1">SAE J1850 PWM</option>
+          </select></label>
+          <p class="hint">À changer seulement si la détection automatique échoue.</p>
+        </div>
+        <div class="card">
+          <label class="switch"><span>Connexion automatique<small>Se reconnecte au démarrage et après une coupure</small></span><input type="checkbox" id="auto"></label>
+        </div>
+      </div>
+      <div class="row"><button class="btn primary" type="button" id="btnConnect2">Se connecter</button></div>
+    </section>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const NATIVE = typeof window.ObdBridge !== "undefined";
+
+  // ---------- réglages ----------
+  const DEF = { kind: NATIVE ? "bt" : "demo", addr: "", name: "", host: "192.168.0.10", port: "35000", proto: "0", fuel: "essence", auto: true };
+  const cfg = (() => { try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem("cadran.v1") || "{}")); } catch { return Object.assign({}, DEF); } })();
+  if (!NATIVE) cfg.kind = "demo";
+  const saveCfg = () => { try { localStorage.setItem("cadran.v1", JSON.stringify(cfg)); } catch {} };
+
+  let toastT = 0;
+  const toast = (m) => { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 4200); };
+  const num = (v, d = 0) => (v == null || !isFinite(v) ? "—" : v.toFixed(d).replace(".", ",").replace("-", "−"));
+
+  // ---------- mesures OBD (mode 01) ----------
+  const PIDS = {
+    "04": { n: "Charge moteur", u: "%", d: 0, f: (a) => (a * 100) / 255 },
+    "05": { n: "Liquide de refroidissement", u: "°C", d: 0, f: (a) => a - 40 },
+    "06": { n: "Correction carburant court terme", u: "%", d: 1, f: (a) => ((a - 128) * 100) / 128 },
+    "07": { n: "Correction carburant long terme", u: "%", d: 1, f: (a) => ((a - 128) * 100) / 128 },
+    "0A": { n: "Pression carburant", u: "kPa", d: 0, f: (a) => a * 3 },
+    "0B": { n: "Pression d'admission", u: "kPa", d: 0, f: (a) => a },
+    "0C": { n: "Régime moteur", u: "tr/min", d: 0, f: (a, b) => (a * 256 + b) / 4 },
+    "0D": { n: "Vitesse", u: "km/h", d: 0, f: (a) => a },
+    "0E": { n: "Avance à l'allumage", u: "°", d: 1, f: (a) => a / 2 - 64 },
+    "0F": { n: "Température d'admission", u: "°C", d: 0, f: (a) => a - 40 },
+    "10": { n: "Débit d'air (MAF)", u: "g/s", d: 1, f: (a, b) => (a * 256 + b) / 100 },
+    "11": { n: "Papillon", u: "%", d: 0, f: (a) => (a * 100) / 255 },
+    "1F": { n: "Temps depuis le démarrage", u: "s", d: 0, f: (a, b) => a * 256 + b },
+    "21": { n: "Distance avec voyant allumé", u: "km", d: 0, f: (a, b) => a * 256 + b },
+    "23": { n: "Pression rampe (diesel)", u: "kPa", d: 0, f: (a, b) => (a * 256 + b) * 10 },
+    "2C": { n: "Commande EGR", u: "%", d: 0, f: (a) => (a * 100) / 255 },
+    "2F": { n: "Niveau de carburant", u: "%", d: 0, f: (a) => (a * 100) / 255 },
+    "31": { n: "Distance depuis effacement", u: "km", d: 0, f: (a, b) => a * 256 + b },
+    "33": { n: "Pression atmosphérique", u: "kPa", d: 0, f: (a) => a },
+    "42": { n: "Tension calculateur", u: "V", d: 2, f: (a, b) => (a * 256 + b) / 1000 },
+    "43": { n: "Charge absolue", u: "%", d: 0, f: (a, b) => ((a * 256 + b) * 100) / 255 },
+    "44": { n: "Richesse commandée", u: "λ", d: 3, f: (a, b) => (a * 256 + b) / 32768 },
+    "45": { n: "Papillon relatif", u: "%", d: 0, f: (a) => (a * 100) / 255 },
+    "46": { n: "Température extérieure", u: "°C", d: 0, f: (a) => a - 40 },
+    "49": { n: "Pédale d'accélérateur", u: "%", d: 0, f: (a) => (a * 100) / 255 },
+    "4C": { n: "Papillon commandé", u: "%", d: 0, f: (a) => (a * 100) / 255 },
+    "5C": { n: "Température d'huile", u: "°C", d: 0, f: (a) => a - 40 },
+    "5E": { n: "Débit de carburant", u: "L/h", d: 1, f: (a, b) => (a * 256 + b) / 20 },
+  };
+  const FAST = new Set(["0C", "0D"]);
+  const DASH = ["0C", "0D", "05", "04", "11", "0F", "10", "5E", "2F", "0B", "5C", "46"];
+
+  // ---------- codes défaut ----------
+  const DTC_TXT = {
+    P0100: "Débitmètre d'air : circuit défaillant", P0101: "Débitmètre d'air : valeur incohérente", P0102: "Débitmètre d'air : signal trop faible", P0103: "Débitmètre d'air : signal trop fort",
+    P0110: "Sonde de température d'air : circuit défaillant", P0115: "Sonde de température moteur : circuit défaillant", P0117: "Sonde de température moteur : signal trop faible", P0118: "Sonde de température moteur : signal trop fort",
+    P0120: "Capteur de papillon : circuit défaillant", P0128: "Thermostat : moteur trop lent à chauffer",
+    P0130: "Sonde lambda amont (rangée 1) : circuit défaillant", P0133: "Sonde lambda amont (rangée 1) : réponse lente", P0136: "Sonde lambda aval (rangée 1) : circuit défaillant", P0141: "Sonde lambda aval : chauffage défaillant",
+    P0171: "Mélange trop pauvre (rangée 1)", P0172: "Mélange trop riche (rangée 1)", P0174: "Mélange trop pauvre (rangée 2)", P0175: "Mélange trop riche (rangée 2)",
+    P0087: "Pression de rampe carburant trop basse", P0088: "Pression de rampe carburant trop haute", P0234: "Suralimentation turbo excessive", P0299: "Suralimentation turbo insuffisante",
+    P0300: "Ratés d'allumage aléatoires ou multiples", P0301: "Ratés d'allumage, cylindre 1", P0302: "Ratés d'allumage, cylindre 2", P0303: "Ratés d'allumage, cylindre 3", P0304: "Ratés d'allumage, cylindre 4", P0305: "Ratés d'allumage, cylindre 5", P0306: "Ratés d'allumage, cylindre 6",
+    P0325: "Capteur de cliquetis : circuit défaillant", P0335: "Capteur de vilebrequin : circuit défaillant", P0340: "Capteur d'arbre à cames : circuit défaillant", P0380: "Bougies de préchauffage : circuit défaillant",
+    P0400: "Recirculation des gaz (EGR) : débit défaillant", P0401: "Recirculation des gaz (EGR) : débit insuffisant", P0403: "Vanne EGR : circuit défaillant",
+    P0420: "Catalyseur (rangée 1) : efficacité insuffisante", P0430: "Catalyseur (rangée 2) : efficacité insuffisante",
+    P0440: "Système anti-évaporation : défaut", P0442: "Système anti-évaporation : petite fuite", P0455: "Système anti-évaporation : grosse fuite (bouchon de réservoir ?)", P0456: "Système anti-évaporation : très petite fuite",
+    P0500: "Capteur de vitesse du véhicule : défaut", P0505: "Régulation du ralenti : défaut", P0507: "Régime de ralenti trop élevé",
+    P0562: "Tension batterie trop basse", P0563: "Tension batterie trop haute", P0600: "Calculateur : défaut de communication interne", P0601: "Calculateur : erreur mémoire",
+    P0700: "Boîte de vitesses : défaut signalé par son calculateur", P2002: "Filtre à particules : efficacité insuffisante", P2463: "Filtre à particules : encrassement excessif",
+  };
+  const DTC_FAMILY = (c) => {
+    const L = c[0], g = c.slice(1, 3);
+    if (L === "B") return "Carrosserie"; if (L === "C") return "Châssis"; if (L === "U") return "Réseau de communication";
+    const fam = { "01": "Mesure air et carburant", "02": "Injection", "03": "Allumage, ratés", "04": "Antipollution", "05": "Vitesse, ralenti", "06": "Calculateur", "07": "Boîte de vitesses", "08": "Boîte de vitesses", "20": "Antipollution", "21": "Injection", "22": "Antipollution", "24": "Antipollution" }[g];
+    return (c[1] === "1" || c[1] === "3" ? "Code constructeur · " : "") + (fam || "Moteur");
+  };
+
+  // ---------- journal ----------
+  const LOG = [];
+  function log(kind, text) {
+    const line = { kind, text: String(text).replace(/\r/g, "⏎").replace(/\n/g, "") };
+    LOG.push(line); if (LOG.length > 600) LOG.splice(0, LOG.length - 600);
+    if (view === "term") appendLog(line, true);
+  }
+  function appendLog(l, scroll) {
+    const el = $("term"), d = document.createElement("div");
+    d.className = l.kind; d.textContent = (l.kind === "out" ? "› " : l.kind === "in" ? "‹ " : "· ") + l.text;
+    el.appendChild(d); if (scroll) el.scrollTop = el.scrollHeight;
+  }
+
+  // ---------- transports ----------
+  // Voiture simulée : répond comme un ELM327 branché sur une voiture essence qui roule en ville.
+  class SimTransport {
+    constructor(fuel) {
+      this.fuel = fuel; this.t0 = performance.now(); this.last = this.t0;
+      this.s = { thr: 0, rpm: 820, spd: 0, cool: 34, iat: 22, fuelLvl: 63, volt: 14.2, phase: 0 };
+      this.dtcs = ["0171", "0300"]; this.timers = new Set();
+      this.sup = ["01", "04", "05", "06", "07", "0B", "0C", "0D", "0E", "0F", "10", "11", "1F", "20", "21", "2F", "31", "33", "40", "42", "46", "49", "5C"];
+    }
+    open() { return sleep(350); }
+    close() { this.timers.forEach(clearTimeout); this.timers.clear(); }
+    write(cmd) {
+      const t = setTimeout(() => { this.timers.delete(t); this.onData && this.onData(this.reply(cmd.replace(/\s/g, "").toUpperCase()) + "\r\r>"); }, 22 + Math.random() * 26);
+      this.timers.add(t);
+    }
+    step() {
+      const now = performance.now(), dt = Math.min(0.5, (now - this.last) / 1000), s = this.s; this.last = now;
+      const T = (now - this.t0) / 1000, cyc = T % 34;
+      const target = cyc < 4 ? 0 : cyc < 13 ? 0.62 : cyc < 21 ? 0.3 : cyc < 27 ? 0.55 : 0;
+      s.thr += (target + (Math.random() - 0.5) * 0.06 - s.thr) * Math.min(1, dt * 2.2);
+      const vmax = 30 + s.thr * 110;
+      s.spd += ((s.thr > 0.05 ? vmax : 0) - s.spd) * Math.min(1, dt * (s.thr > 0.05 ? 0.35 : 0.6));
+      const bands = [[0, 12, 0], [12, 28, 1], [28, 48, 2], [48, 70, 3], [70, 999, 4]], ratio = [95, 58, 40, 31, 25];
+      const g = bands.find(([a, b]) => s.spd >= a && s.spd < b)[2];
+      const max = this.fuel === "diesel" ? 4500 : 6500;
+      s.rpm += (Math.min(max, Math.max(800, s.spd * ratio[g] + s.thr * 900)) - s.rpm) * Math.min(1, dt * 4);
+      s.cool += (90 - s.cool) * dt * 0.035; s.iat += (31 - s.iat) * dt * 0.01; s.fuelLvl -= dt * 0.004;
+      s.volt = 14.1 + Math.sin(T / 3) * 0.08;
+    }
+    reply(c) {
+      this.step(); const s = this.s, h2 = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).toUpperCase().padStart(2, "0");
+      const w = (v) => h2(Math.floor(v / 256)) + h2(v % 256);
+      if (c.startsWith("AT")) {
+        if (c === "ATZ" || c === "ATWS") return "\r\rELM327 v1.5";
+        if (c === "ATI") return "ELM327 v1.5";
+        if (c === "ATRV") return s.volt.toFixed(1) + "V";
+        if (c === "ATDPN") return "A6";
+        if (c === "ATDP") return "AUTO, ISO 15765-4 (CAN 11/500)";
+        if (/^AT(E|L|S|H|AT|SP|ST|M)/.test(c)) return "OK";
+        return "?";
+      }
+      if (c === "03") return "43" + h2(this.dtcs.length) + this.dtcs.join("");
+      if (c === "07") return "4700";
+      if (c === "04") { this.dtcs = []; return "44"; }
+      if (c === "0902") {
+        const vin = "VF1DEMO0BD2000042", bytes = [0x49, 0x02, 0x01, ...[...vin].map((ch) => ch.charCodeAt(0))].map(h2);
+        return "014\r0:" + bytes.slice(0, 6).join("") + "\r1:" + bytes.slice(6, 13).join("") + "\r2:" + bytes.slice(13).join("");
+      }
+      const m = c.match(/^01([0-9A-F]{2})$/); if (!m) return "?";
+      const p = m[1];
+      if (["00", "20", "40"].includes(p)) {
+        const base = parseInt(p, 16); let bits = 0n;
+        for (const q of this.sup) { const n = parseInt(q, 16) - base; if (n >= 1 && n <= 32) bits |= 1n << BigInt(32 - n); }
+        return "41" + p + bits.toString(16).toUpperCase().padStart(8, "0");
+      }
+      if (!this.sup.includes(p)) return "NO DATA";
+      const T = Math.floor((performance.now() - this.t0) / 1000), val = {
+        "01": h2((this.dtcs.length ? 0x80 : 0) | this.dtcs.length) + "076500",
+        "04": h2(20 + s.thr * 200), "05": h2(s.cool + 40), "06": h2(128 + (Math.random() - 0.5) * 8), "07": h2(134),
+        "0B": h2(30 + s.thr * 70), "0C": w(Math.round(s.rpm * 4)), "0D": h2(s.spd), "0E": h2((12 + s.thr * 20 + 64) * 2),
+        "0F": h2(s.iat + 40), "10": w(Math.round((2.2 + s.rpm / 1000 * 3.2 * (0.35 + s.thr)) * 100)), "11": h2(15 + s.thr * 200),
+        "1F": w(T), "21": "0000", "2F": h2(s.fuelLvl * 2.55), "31": w(1840), "33": h2(101), "42": w(Math.round(s.volt * 1000)),
+        "46": h2(14 + 40), "49": h2(s.thr * 255), "5C": h2(s.cool - 6 + 40),
+      }[p];
+      return val == null ? "NO DATA" : "41" + p + val;
+    }
+  }
+
+  // Boîtier réel : le code Android ouvre la liaison Bluetooth ou Wi-Fi et relaie les octets.
+  class NativeTransport {
+    open(c) {
+      return new Promise((res, rej) => {
+        if (c.kind === "bt" && !c.addr) return rej(new Error("Choisissez d'abord votre boîtier dans la liste des appareils appairés."));
+        this.wait = { res, rej, kind: c.kind };
+        this.timer = setTimeout(() => { this.wait = null; rej(new Error("Le boîtier ne répond pas. Est-il branché, le contact est-il mis ?")); }, 16000);
+        if (c.kind === "bt") ObdBridge.connectBt(c.addr); else ObdBridge.connectWifi(c.host, parseInt(c.port, 10) || 35000);
+      });
+    }
+    native(st, msg) {
+      if (this.wait) {
+        const w = this.wait; this.wait = null; clearTimeout(this.timer);
+        if (st === "connected") w.res(); else if (st === "error") { log("err", msg); w.rej(new Error(w.kind === "bt" ? "Connexion Bluetooth refusée. Le boîtier est-il allumé, appairé, et libre (pas utilisé par une autre application) ?" : "Boîtier Wi-Fi introuvable. L'autoradio est-il connecté au Wi-Fi du boîtier ?")); }
+        return;
+      }
+      if (st === "lost" || st === "error") { log("err", msg); lost("La liaison avec le boîtier a été coupée."); }
+    }
+    write(s) { ObdBridge.write(s); }
+    close() { try { ObdBridge.disconnect(); } catch {} }
+  }
+  window.obdNative = {
+    data: (s) => { if (C.t && C.t.onData) C.t.onData(s); },
+    state: (st, msg) => { if (C.t && C.t.native) C.t.native(st, msg); },
+    perm: () => listDevices(),
+  };
+
+  // ---------- dialogue ELM327 ----------
+  class Elm {
+    constructor(t) { this.t = t; this.buf = ""; this.pending = null; this.chain = Promise.resolve(); this.alive = true; t.onData = (s) => this.feed(s); }
+    feed(s) {
+      this.buf += s;
+      const i = this.buf.indexOf(">");
+      if (i < 0 || !this.pending) return;
+      const r = this.buf.slice(0, i); this.buf = this.buf.slice(i + 1);
+      const p = this.pending; this.pending = null; clearTimeout(p.timer);
+      log("in", r.trim() || "(vide)"); p.res(r);
+    }
+    send(cmd, timeout = 3000) {
+      const run = () => new Promise((res, rej) => {
+        if (!this.alive) return rej(new Error("fermé"));
+        this.buf = "";
+        const timer = setTimeout(() => { this.pending = null; log("err", cmd + " : pas de réponse"); rej(new Error("timeout")); }, timeout);
+        this.pending = { res, timer };
+        log("out", cmd);
+        try { this.t.write(cmd); } catch (e) { clearTimeout(timer); this.pending = null; rej(e); }
+      });
+      const p = this.chain.then(run, run);
+      this.chain = p.catch(() => {});
+      return p;
+    }
+  }
+  const lines = (r) => r.split(/[\r\n]+/).map((l) => l.trim()).filter((l) => l && !/^SEARCHING/i.test(l) && !/^BUS INIT/i.test(l));
+  function parsePid(r, pid) {
+    for (const l of lines(r)) {
+      const s = l.replace(/\s/g, "").toUpperCase();
+      if (s.startsWith("41" + pid) && /^[0-9A-F]+$/.test(s)) {
+        const out = []; for (let i = 4; i + 2 <= s.length; i += 2) out.push(parseInt(s.substr(i, 2), 16));
+        return out.length ? out : null;
+      }
+    }
+    return null;
+  }
+  // Regroupe les trames : une ligne « n: … » prolonge le message en cours, sinon nouveau message.
+  function messages(r) {
+    const out = []; let cur = null;
+    for (const l of lines(r)) {
+      const s = l.replace(/\s/g, "").toUpperCase();
+      if (/^[0-9A-F]{3}$/.test(s)) { cur = null; continue; }
+      const m = s.match(/^([0-9A-F]):(.*)$/);
+      if (m) { if (m[1] === "0" || !cur) { cur = { hex: "" }; out.push(cur); } cur.hex += m[2]; }
+      else { cur = null; if (/^[0-9A-F]+$/.test(s)) out.push({ hex: s }); }
+    }
+    return out.map((m) => m.hex);
+  }
+  const decodeDtc = (h) => { const f = parseInt(h[0], 16); return "PCBU"[f >> 2] + (f & 3) + h.slice(1); };
+  function parseDtcs(r, head, can) {
+    const codes = [];
+    for (const m of messages(r)) {
+      if (!m.startsWith(head)) continue;
+      let body = m.slice(2);
+      if (can) { const n = parseInt(body.slice(0, 2), 16); body = body.slice(2, 2 + n * 4); }
+      for (let i = 0; i + 4 <= body.length; i += 4) { const c = body.substr(i, 4); if (c !== "0000") codes.push(decodeDtc(c)); }
+    }
+    return [...new Set(codes)];
+  }
+  function parseVin(r) {
+    const m = messages(r).join(""), i = m.indexOf("4902");
+    if (i < 0) return "";
+    let s = ""; for (let k = i + 6; k + 2 <= m.length; k += 2) { const c = parseInt(m.substr(k, 2), 16); if (c >= 48 && c <= 90) s += String.fromCharCode(c); }
+    return s.slice(-17);
+  }
+  const PROTO = { 1: "SAE J1850 PWM", 2: "SAE J1850 VPW", 3: "ISO 9141-2", 4: "ISO 14230-4 KWP", 5: "ISO 14230-4 KWP rapide", 6: "CAN 11 bits 500k", 7: "CAN 29 bits 500k", 8: "CAN 11 bits 250k", 9: "CAN 29 bits 250k", A: "SAE J1939 CAN" };
+
+  // ---------- connexion ----------
+  const C = { st: "off", t: null, elm: null, gen: 0, sup: new Set(), vals: {}, info: {}, busy: false, rate: 0, manual: false, retryT: 0 };
+  function setStatus(st, text, detail) {
+    C.st = st; $("dot").className = "dot " + st; $("stText").textContent = text;
+    $("stDetail").textContent = detail != null ? detail : "";
+    const b = $("btnConn");
+    b.textContent = st === "on" ? "Déconnecter" : st === "busy" ? "Annuler" : "Se connecter";
+    b.classList.toggle("primary", st !== "on" && st !== "busy");
+    $("dashHint").hidden = st === "on" || st === "busy";
+    $("btnConnect2").textContent = st === "on" ? "Se reconnecter" : "Se connecter";
+    renderTiles(); renderData();
+  }
+  const kindLabel = () => (cfg.kind === "demo" ? "Démo · voiture simulée" : cfg.kind === "wifi" ? "Wi-Fi " + cfg.host : cfg.name || "Bluetooth");
+  function detailLine() {
+    const i = C.info, parts = [];
+    if (i.proto) parts.push(i.proto);
+    if (i.volt != null) parts.push(num(i.volt, 1) + " V");
+    if (C.rate) parts.push(num(C.rate, 0) + " mesures/s");
+    return parts.join(" · ") || i.version || "";
+  }
+  async function disconnect(silent) {
+    C.gen++; clearTimeout(C.retryT);
+    if (C.elm) C.elm.alive = false;
+    if (C.t) { try { C.t.close(); } catch {} }
+    C.t = null; C.elm = null; C.vals = {}; C.rate = 0; C.busy = false;
+    if (!silent) setStatus("off", "Déconnecté", "Choisissez votre boîtier dans Connexion");
+  }
+  function explain(r) {
+    if (/UNABLE TO CONNECT/i.test(r)) return "Le boîtier répond, mais pas la voiture. Mettez le contact puis réessayez.";
+    if (/NO DATA/i.test(r)) return "La voiture ne répond pas. Le contact est-il mis ?";
+    if (/ERROR/i.test(r)) return "Erreur sur la prise OBD. Essayez de choisir le protocole à la main dans Connexion.";
+    if (/\?/.test(r)) return "Le boîtier n'a pas compris la commande. Est-ce bien un ELM327 ?";
+    return "Réponse inattendue du boîtier : " + r.replace(/\s+/g, " ").trim().slice(0, 60);
+  }
+  async function connect() {
+    C.manual = false;
+    await disconnect(true);
+    const g = ++C.gen;
+    setStatus("busy", "Connexion…", kindLabel());
+    log("info", "Connexion : " + kindLabel());
+    try {
+      if (cfg.kind !== "demo" && !NATIVE) throw new Error("Le Bluetooth et le Wi-Fi fonctionnent dans l'application Android. Ici, choisissez la démo.");
+      const t = cfg.kind === "demo" ? new SimTransport(cfg.fuel) : new NativeTransport();
+      C.t = t; C.elm = new Elm(t); C.info = {}; C.sup = new Set();
+      await t.open(cfg);
+      if (g !== C.gen) return;
+      const elm = C.elm;
+      setStatus("busy", "Initialisation du boîtier…", kindLabel());
+      const z = await elm.send("ATZ", 6000).catch(() => "");
+      C.info.version = (z.match(/ELM327\s*v?[\d.]+/i) || ["ELM327"])[0];
+      for (const c of ["ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP" + cfg.proto]) { if (g !== C.gen) return; await elm.send(c, 2500).catch(() => ""); }
+      setStatus("busy", "Recherche du protocole de la voiture…", C.info.version);
+      const r = await elm.send("0100", 15000);
+      if (g !== C.gen) return;
+      const b0 = parsePid(r, "00");
+      if (!b0) throw new Error(explain(r));
+      let bits = b0, base = 0;
+      while (bits && bits.length >= 4) {
+        for (let i = 0; i < 32; i++) if (bits[i >> 3] & (0x80 >> (i & 7))) C.sup.add((base + i + 1).toString(16).toUpperCase().padStart(2, "0"));
+        const next = (base + 32).toString(16).toUpperCase().padStart(2, "0");
+        if (!C.sup.has(next) || base >= 64) break;
+        base += 32; bits = parsePid(await elm.send("01" + next, 4000).catch(() => ""), next);
+      }
+      const dpn = (await elm.send("ATDPN", 2500).catch(() => "")).replace(/[^0-9A-C]/gi, "").toUpperCase().replace(/^A/, "");
+      C.info.proto = PROTO[dpn] || "";
+      C.info.can = /^[6-9A-C]$/.test(dpn) || dpn === "";
+      await readVolt();
+      if (g !== C.gen) return;
+      const n = [...C.sup].filter((p) => PIDS[p]).length;
+      setStatus("on", kindLabel(), detailLine());
+      toast("Connecté. La voiture fournit " + n + " mesures.");
+      log("info", "Mesures disponibles : " + [...C.sup].join(" "));
+      poll(g);
+    } catch (e) {
+      if (g !== C.gen) return;
+      await disconnect(true);
+      setStatus("err", "Connexion impossible", e.message || "Erreur inconnue.");
+      log("err", e.message);
+      scheduleRetry();
+    }
+  }
+  function scheduleRetry() {
+    clearTimeout(C.retryT);
+    if (!cfg.auto || C.manual || cfg.kind === "demo") return;
+    C.retryT = setTimeout(() => { if (C.st === "err" || C.st === "off") connect(); }, 8000);
+  }
+  function lost(msg) {
+    if (C.st !== "on" && C.st !== "busy") return;
+    disconnect(true);
+    setStatus("err", "Connexion perdue", msg + (cfg.auto && cfg.kind !== "demo" ? " Nouvelle tentative dans 8 s." : ""));
+    scheduleRetry();
+  }
+  async function readVolt() {
+    if (!C.elm) return;
+    const v = (await C.elm.send("ATRV", 2500).catch(() => "")).match(/(\d+[.,]\d+)\s*V/i);
+    if (v) C.info.volt = parseFloat(v[1].replace(",", "."));
+  }
+  function wanted() {
+    const list = view === "data" ? Object.keys(PIDS) : DASH;
+    return list.filter((p) => C.sup.has(p) && PIDS[p]);
+  }
+  async function poll(g) {
+    let i = 0, fails = 0, count = 0, cycle = 0, t0 = performance.now();
+    const nodata = {};
+    while (g === C.gen) {
+      if (C.busy) { await sleep(120); continue; }
+      const list = wanted(), fast = list.filter((p) => FAST.has(p)), slow = list.filter((p) => !FAST.has(p));
+      const batch = fast.slice();
+      for (let k = 0; k < (slow.length > 6 ? 3 : 1) && slow.length; k++) batch.push(slow[i++ % slow.length]);
+      if (!batch.length) { await sleep(300); continue; }
+      for (const pid of batch) {
+        if (g !== C.gen || C.busy) break;
+        try {
+          const r = await C.elm.send("01" + pid, 2500);
+          const b = parsePid(r, pid);
+          if (b && b.length >= PIDS[pid].f.length) { C.vals[pid] = PIDS[pid].f(...b); fails = 0; count++; }
+          else if (/NO DATA/i.test(r) && (nodata[pid] = (nodata[pid] || 0) + 1) >= 3) C.sup.delete(pid);
+        } catch (e) {
+          if (g !== C.gen) return;
+          if (++fails >= 4) { lost("Le boîtier ne répond plus."); return; }
+        }
+      }
+      if (++cycle % 30 === 0) await readVolt();
+      const now = performance.now();
+      if (now - t0 > 1500) { C.rate = (count * 1000) / (now - t0); count = 0; t0 = now; if (C.st === "on") $("stDetail").textContent = detailLine(); }
+    }
+  }
+  async function exclusive(fn) {
+    if (C.st !== "on" || !C.elm) { toast("Connectez-vous d'abord au boîtier."); return; }
+    C.busy = true;
+    try { await sleep(50); await C.elm.chain; return await fn(C.elm); }
+    catch (e) { toast("Le boîtier n'a pas répondu à temps."); }
+    finally { C.busy = false; }
+  }
+
+  // ---------- compteurs ----------
+  class Gauge {
+    constructor(cv, valEl, o) { this.cv = cv; this.val = valEl; this.o = o; this.shown = 0; this.target = null; this.text = ""; new ResizeObserver(() => this.size()).observe(cv); }
+    size() { const r = this.cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; this.w = r.width; this.h = r.height; this.cv.width = Math.max(1, r.width * d); this.cv.height = Math.max(1, r.height * d); this.d = d; this.dirty = true; }
+    frame() {
+      const tgt = this.target == null ? 0 : this.target, prev = this.shown;
+      this.shown += (tgt - this.shown) * 0.2;
+      if (Math.abs(tgt - this.shown) < 0.05) this.shown = tgt;
+      const t = this.target == null ? "—" : num(this.o.round ? Math.round(this.shown / this.o.round) * this.o.round : this.shown, 0);
+      if (t !== this.text) { this.text = t; this.val.textContent = t; }
+      if (this.dirty || Math.abs(prev - this.shown) > 0.01) this.draw();
+    }
+    draw() {
+      this.dirty = false;
+      const g = this.cv.getContext("2d"), o = this.o, W = this.w, H = this.h;
+      if (!W) return;
+      g.setTransform(this.d, 0, 0, this.d, 0, 0); g.clearRect(0, 0, W, H);
+      const cx = W / 2, cy = H * 0.55, r = Math.max(20, Math.min(W / 2 - 26, cy - 18, (H - 38 - cy) / 0.588));
+      const a0 = Math.PI * 0.8, a1 = Math.PI * 2.2, ang = (v) => a0 + (a1 - a0) * Math.max(0, Math.min(1, v / o.max));
+      const css = getComputedStyle(document.documentElement), col = (n) => css.getPropertyValue(n).trim();
+      g.lineCap = "round";
+      g.lineWidth = Math.max(8, r * 0.075); g.strokeStyle = col("--surface-2");
+      g.beginPath(); g.arc(cx, cy, r, a0, a1); g.stroke();
+      if (o.red) { g.strokeStyle = col("--bad"); g.globalAlpha = 0.45; g.lineWidth = Math.max(3, r * 0.025); g.beginPath(); g.arc(cx, cy, r + r * 0.085, ang(o.red), a1); g.stroke(); g.globalAlpha = 1; }
+      if (this.target != null && this.shown > 0) {
+        g.lineWidth = Math.max(8, r * 0.075);
+        g.strokeStyle = o.red && this.shown >= o.red ? col("--bad") : col("--accent");
+        g.beginPath(); g.arc(cx, cy, r, a0, ang(this.shown)); g.stroke();
+      }
+      g.fillStyle = col("--muted"); g.strokeStyle = col("--line"); g.lineWidth = 1.5;
+      g.font = Math.max(10, Math.round(r * 0.075)) + "px " + col("--font-mono"); g.textAlign = "center"; g.textBaseline = "middle";
+      for (let v = 0; v <= o.max; v += o.step) {
+        const a = ang(v), ri = r - r * 0.13, ro = r - r * 0.07;
+        g.beginPath(); g.moveTo(cx + Math.cos(a) * ri, cy + Math.sin(a) * ri); g.lineTo(cx + Math.cos(a) * ro, cy + Math.sin(a) * ro); g.stroke();
+        const rl = r - r * 0.24; g.fillText(o.label(v), cx + Math.cos(a) * rl, cy + Math.sin(a) * rl);
+      }
+    }
+  }
+  const gR = new Gauge($("gRpm"), $("gRpmV"), { max: 8000, step: 1000, red: 6500, round: 10, label: (v) => String(v / 1000) });
+  const gS = new Gauge($("gSpd"), $("gSpdV"), { max: 240, step: 40, label: (v) => String(v) });
+  function applyFuel() {
+    const dz = cfg.fuel === "diesel";
+    gR.o.max = dz ? 6000 : 8000; gR.o.red = dz ? 4500 : 6500; gR.dirty = true;
+  }
+
+  // ---------- tuiles ----------
+  const consumption = () => {
+    const v = C.vals, spd = v["0D"];
+    let lph = v["5E"];
+    if (lph == null && v["10"] != null) lph = v["10"] * (cfg.fuel === "diesel" ? 3600 / (14.5 * 832) : 3600 / (14.7 * 745));
+    if (lph == null) return null;
+    return spd > 4 ? { v: (lph * 100) / spd, u: "L/100", d: 1 } : { v: lph, u: "L/h", d: 1 };
+  };
+  const TILES = [
+    { id: "05", l: "Liquide de refroidissement", st: (v) => (v < 60 ? ["cold", "Froid"] : v > 112 ? ["bad", "Surchauffe"] : v > 104 ? ["warn", "Chaud"] : ["ok", "Normal"]) },
+    { id: "RV", l: "Batterie", u: "V", d: 1, get: () => C.info.volt, st: (v) => (v < 11.8 ? ["bad", "Faible"] : v < 12.4 ? ["warn", "Moteur arrêté ?"] : v > 15 ? ["bad", "Surcharge"] : v >= 13.2 ? ["ok", "En charge"] : ["ok", "Normal"]) },
+    { id: "CO", l: "Consommation instantanée", need: ["10", "5E"] },
+    { id: "04", l: "Charge moteur" },
+    { id: "11", l: "Papillon" },
+    { id: "0F", l: "Air d'admission" },
+    { id: "2F", l: "Carburant", st: (v) => (v < 12 ? ["warn", "Réserve"] : ["", ""]) },
+    { id: "5C", l: "Huile", st: (v) => (v < 60 ? ["cold", "Froide"] : v > 130 ? ["bad", "Trop chaude"] : ["ok", "Normale"]) },
+    { id: "0B", l: "Pression d'admission" },
+    { id: "46", l: "Température extérieure" },
+  ];
+  let tileEls = [];
+  function renderTiles() {
+    const on = C.st === "on";
+    const list = TILES.filter((t) => !on || t.id === "RV" || (t.need ? t.need.some((p) => C.sup.has(p)) : C.sup.has(t.id))).slice(0, 8);
+    const key = list.map((t) => t.id).join();
+    if ($("tiles").dataset.key === key) return;
+    $("tiles").dataset.key = key; $("tiles").textContent = "";
+    tileEls = list.map((t) => {
+      const el = document.createElement("div"); el.className = "tile";
+      el.innerHTML = '<span class="lbl"></span><span class="v"><span class="n">—</span><small></small></span><span class="st"></span>';
+      el.querySelector(".lbl").textContent = t.l;
+      $("tiles").appendChild(el);
+      return { t, n: el.querySelector(".n"), u: el.querySelector("small"), s: el.querySelector(".st"), last: "" };
+    });
+  }
+  function frameTiles() {
+    for (const e of tileEls) {
+      const t = e.t; let v, u, d;
+      if (t.id === "CO") { const c = consumption(); v = c && c.v; u = c ? c.u : "L/100"; d = 1; }
+      else if (t.get) { v = t.get(); u = t.u; d = t.d; }
+      else { v = C.vals[t.id]; u = PIDS[t.id].u; d = PIDS[t.id].d; }
+      if (C.st !== "on") v = null;
+      const s = v == null ? ["", ""] : t.st ? t.st(v) : ["", ""];
+      const key = num(v, d) + u + s.join();
+      if (key === e.last) continue;
+      e.last = key; e.n.textContent = num(v, d); e.u.textContent = u; e.s.className = "st " + s[0]; e.s.textContent = s[1];
+    }
+  }
+
+  // ---------- vue Mesures ----------
+  let dataEls = [];
+  function renderData() {
+    const on = C.st === "on", ids = on ? Object.keys(PIDS).filter((p) => C.sup.has(p)) : [];
+    const key = ids.join();
+    if ($("dataRows").dataset.key === key && dataEls.length === ids.length) return;
+    $("dataRows").dataset.key = key; $("dataRows").textContent = "";
+    $("dataLead").textContent = on ? "Votre voiture fournit " + ids.length + " mesures. Elles sont mises à jour en continu tant que cette page est ouverte." : "Connectez-vous pour voir toutes les mesures que votre voiture fournit.";
+    dataEls = ids.map((p) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = "<td></td><td class=\"num\">—</td><td></td><td class=\"pid\"></td>";
+      tr.children[0].textContent = PIDS[p].n; tr.children[2].textContent = PIDS[p].u; tr.children[3].textContent = "01 " + p;
+      $("dataRows").appendChild(tr);
+      return { p, td: tr.children[1], last: "" };
+    });
+  }
+  function frameData() {
+    for (const e of dataEls) { const t = num(C.vals[e.p], PIDS[e.p].d); if (t !== e.last) { e.last = t; e.td.textContent = t; } }
+  }
+
+  // ---------- diagnostic ----------
+  async function readCodes() {
+    $("btnRead").disabled = true; $("btnRead").textContent = "Lecture…";
+    await exclusive(async (elm) => {
+      const s = parsePid(await elm.send("0101", 4000), "01");
+      const conf = parseDtcs(await elm.send("03", 6000), "43", C.info.can);
+      const pend = parseDtcs(await elm.send("07", 6000).catch(() => ""), "47", C.info.can).filter((c) => !conf.includes(c));
+      const mil = s ? !!(s[0] & 0x80) : null;
+      const box = $("mil");
+      box.classList.toggle("lit", !!mil); box.classList.toggle("clear", mil === false && !conf.length);
+      $("milText").textContent = mil ? "Voyant moteur allumé" : "Voyant moteur éteint";
+      $("milSub").textContent = conf.length || pend.length
+        ? conf.length + (conf.length > 1 ? " codes confirmés" : " code confirmé") + (pend.length ? ", " + pend.length + " en attente" : "")
+        : "Aucun code enregistré. Tout va bien côté moteur.";
+      const list = $("dtcs"); list.textContent = "";
+      if (!conf.length && !pend.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Aucun code défaut."; list.appendChild(e); }
+      for (const [code, pending] of [...conf.map((c) => [c, false]), ...pend.map((c) => [c, true])]) {
+        const el = document.createElement("div"); el.className = "dtc" + (pending ? " pending" : "");
+        el.innerHTML = '<span class="code"></span><div><b></b><small></small></div>';
+        el.querySelector(".code").textContent = code;
+        el.querySelector("b").textContent = DTC_TXT[code] || "Code " + code;
+        el.querySelector("small").textContent = (pending ? "En attente de confirmation" : "Confirmé") + " · " + DTC_FAMILY(code);
+        list.appendChild(el);
+      }
+      if (!C.info.vin) C.info.vin = parseVin(await elm.send("0902", 6000).catch(() => ""));
+      $("vin").innerHTML = C.info.vin ? "Numéro de série (VIN) : <b></b>" : "";
+      if (C.info.vin) $("vin").querySelector("b").textContent = C.info.vin;
+    });
+    $("btnRead").disabled = false; $("btnRead").textContent = "Relire les codes";
+  }
+  let armT = 0;
+  async function clearCodes() {
+    const b = $("btnClear");
+    if (!b.classList.contains("armed")) {
+      b.classList.add("armed"); b.textContent = "Confirmer l'effacement"; $("clearWarn").hidden = false;
+      clearTimeout(armT); armT = setTimeout(disarm, 6000); return;
+    }
+    disarm();
+    await exclusive(async (elm) => {
+      const r = await elm.send("04", 8000);
+      if (/44/.test(r.replace(/\s/g, ""))) toast("Codes effacés."); else toast("Le calculateur a refusé l'effacement. Arrêtez le moteur, laissez le contact mis.");
+    });
+    readCodes();
+  }
+  function disarm() { const b = $("btnClear"); b.classList.remove("armed"); b.textContent = "Effacer les codes"; $("clearWarn").hidden = true; }
+
+  // ---------- connexion : écran ----------
+  function renderConn() {
+    document.querySelectorAll(".kind").forEach((k) => k.setAttribute("aria-pressed", k.dataset.kind === cfg.kind));
+    $("kindBt").hidden = cfg.kind !== "bt"; $("kindWifi").hidden = cfg.kind !== "wifi"; $("kindDemo").hidden = cfg.kind !== "demo";
+    document.querySelectorAll("#fuel button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === cfg.fuel));
+    $("proto").value = cfg.proto; $("auto").checked = cfg.auto; $("host").value = cfg.host; $("port").value = cfg.port;
+    if (cfg.kind === "bt") listDevices();
+  }
+  function listDevices() {
+    const box = $("devs"); box.textContent = "";
+    const msg = (t, btn) => { const p = document.createElement("div"); p.className = "empty"; p.textContent = t; if (btn) { const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.style.marginTop = "10px"; b.textContent = btn[0]; b.onclick = btn[1]; p.appendChild(document.createElement("br")); p.appendChild(b); } box.appendChild(p); };
+    if (!NATIVE) { msg("Le Bluetooth fonctionne dans l'application Android installée sur l'autoradio. Ici, essayez la démo."); return; }
+    let res; try { res = JSON.parse(ObdBridge.devices()); } catch { res = { error: "Lecture impossible" }; }
+    if (res.error === "permission") { msg("L'application a besoin de l'autorisation « Appareils à proximité » pour voir vos boîtiers.", ["Autoriser", () => ObdBridge.requestPermissions()]); return; }
+    if (res.error) { msg(res.error); return; }
+    const looks = (n) => /obd|elm|v-?link|vgate|icar|konnwei|veepeak|vlink|scan/i.test(n || "");
+    const devs = (res.devices || []).sort((a, b) => looks(b.name) - looks(a.name));
+    if (!devs.length) { msg("Aucun appareil appairé. Appairez le boîtier dans les réglages Bluetooth, puis touchez Actualiser."); return; }
+    for (const d of devs) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "dev"; b.setAttribute("aria-pressed", d.address === cfg.addr);
+      b.innerHTML = "<span><b></b><small></small></span>"; b.querySelector("b").textContent = d.name || "Appareil sans nom"; b.querySelector("small").textContent = d.address;
+      if (looks(d.name)) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "Boîtier OBD probable"; b.appendChild(t); }
+      b.onclick = () => { cfg.addr = d.address; cfg.name = d.name || d.address; saveCfg(); listDevices(); };
+      box.appendChild(b);
+    }
+  }
+
+  // ---------- navigation ----------
+  let view = "dash";
+  function show(v) {
+    view = v;
+    document.querySelectorAll(".nav button").forEach((b) => (b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+    for (const id of ["dash", "diag", "data", "term", "conn"]) $("v-" + id).hidden = id !== v;
+    if (v === "term") { const el = $("term"); el.textContent = ""; LOG.forEach((l) => appendLog(l, false)); el.scrollTop = el.scrollHeight; }
+    if (v === "conn") renderConn();
+    if (v === "data") renderData();
+    $("main").scrollTop = 0;
+  }
+
+  // ---------- événements ----------
+  document.querySelectorAll(".nav button").forEach((b) => b.addEventListener("click", () => show(b.dataset.view)));
+  $("btnConn").addEventListener("click", () => {
+    if (C.st === "on" || C.st === "busy") { C.manual = true; disconnect(false); log("info", "Déconnecté"); }
+    else connect();
+  });
+  $("btnConnect2").addEventListener("click", () => { cfg.host = $("host").value.trim() || DEF.host; cfg.port = $("port").value.trim() || DEF.port; saveCfg(); show("dash"); connect(); });
+  $("btnDemo").addEventListener("click", () => { cfg.kind = "demo"; saveCfg(); connect(); });
+  $("btnGoConn").addEventListener("click", () => show("conn"));
+  document.querySelectorAll(".kind").forEach((k) => k.addEventListener("click", () => { cfg.kind = k.dataset.kind; saveCfg(); renderConn(); }));
+  document.querySelectorAll("#fuel button").forEach((b) => b.addEventListener("click", () => { cfg.fuel = b.dataset.v; saveCfg(); applyFuel(); renderConn(); }));
+  $("proto").addEventListener("change", (e) => { cfg.proto = e.target.value; saveCfg(); });
+  $("auto").addEventListener("change", (e) => { cfg.auto = e.target.checked; saveCfg(); });
+  ["host", "port"].forEach((id) => $(id).addEventListener("change", (e) => { cfg[id] = e.target.value.trim(); saveCfg(); }));
+  $("btnRefresh").addEventListener("click", listDevices);
+  $("btnRead").addEventListener("click", readCodes);
+  $("btnClear").addEventListener("click", clearCodes);
+  $("cmdForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const c = $("cmd").value.trim().toUpperCase(); if (!c) return;
+    if (!C.elm || (C.st !== "on" && C.st !== "busy")) { log("err", "Pas connecté : connectez-vous d'abord."); return; }
+    $("cmd").value = "";
+    await C.elm.send(c, 6000).catch(() => {});
+  });
+  $("chips").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; $("cmd").value = b.textContent; $("cmdForm").requestSubmit(); });
+  $("btnClearLog").addEventListener("click", () => { LOG.length = 0; $("term").textContent = ""; });
+  $("btnCopyLog").addEventListener("click", () => {
+    const text = LOG.map((l) => (l.kind === "out" ? "> " : l.kind === "in" ? "< " : "# ") + l.text).join("\n");
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents($("term")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Journal sélectionné : copiez-le avec le menu."); };
+    try { navigator.clipboard.writeText(text).then(() => toast("Journal copié."), fallback); } catch { fallback(); }
+  });
+
+  // ---------- boucle d'affichage ----------
+  function loop() {
+    gR.target = C.st === "on" && C.vals["0C"] != null ? C.vals["0C"] : null;
+    gS.target = C.st === "on" && C.vals["0D"] != null ? C.vals["0D"] : null;
+    if (view === "dash") { gR.frame(); gS.frame(); frameTiles(); }
+    if (view === "data") frameData();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- démarrage ----------
+  applyFuel();
+  setStatus("off", "Déconnecté", NATIVE ? "Choisissez votre boîtier dans Connexion" : "");
+  requestAnimationFrame(loop);
+  if (!NATIVE) connect();
+  else if (cfg.auto && ((cfg.kind === "bt" && cfg.addr) || cfg.kind === "wifi" || cfg.kind === "demo")) setTimeout(connect, 500);
+  else show("conn");
+  window.__cadran = { C, cfg, parsePid, parseDtcs, parseVin, messages };
+})();
+</script>
