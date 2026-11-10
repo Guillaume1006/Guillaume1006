@@ -2,11 +2,20 @@ package app.cadran;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.Settings;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -25,6 +34,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,6 +45,8 @@ import java.util.UUID;
 public class MainActivity extends Activity {
     private static final UUID SPP = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     private static final String PERM_CONNECT = "android.permission.BLUETOOTH_CONNECT";
+    private static final String PERM_SCAN = "android.permission.BLUETOOTH_SCAN";
+    private static final String PERM_FINE = "android.permission.ACCESS_FINE_LOCATION";
     private static final int REQ_PERM = 7;
 
     private WebView web;
@@ -43,6 +55,12 @@ public class MainActivity extends Activity {
     private Closeable link;
     private OutputStream out;
     private volatile boolean fullscreen;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private BroadcastReceiver scanRx;
+    private BroadcastReceiver pairRx;
+    private volatile String pairAddr;
+    private String[] pairPins = new String[0];
+    private int pairIdx;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -87,6 +105,141 @@ public class MainActivity extends Activity {
 
     private void askPermission() {
         if (needsPermission()) requestPermissions(new String[]{PERM_CONNECT}, REQ_PERM);
+    }
+
+    private boolean granted(String p) {
+        return checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** Autorisations nécessaires pour rechercher des appareils Bluetooth (la recherche classique exige la localisation). */
+    private String[] scanPermissionsMissing() {
+        ArrayList<String> l = new ArrayList<String>();
+        if (Build.VERSION.SDK_INT >= 31) {
+            if (!granted(PERM_SCAN)) l.add(PERM_SCAN);
+            if (!granted(PERM_CONNECT)) l.add(PERM_CONNECT);
+        }
+        if (!granted(PERM_FINE)) {
+            l.add(PERM_FINE);
+            l.add("android.permission.ACCESS_COARSE_LOCATION");
+        }
+        return l.toArray(new String[0]);
+    }
+
+    private boolean locationOn() {
+        try {
+            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            return lm == null || lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private static String deviceJson(String type, BluetoothDevice d, Intent i) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("type", type);
+            String name = null;
+            try {
+                name = d.getName();
+            } catch (SecurityException ignored) {
+            }
+            if (name == null && i != null) name = i.getStringExtra(BluetoothDevice.EXTRA_NAME);
+            o.put("name", name == null ? "" : name);
+            o.put("address", d.getAddress());
+            short rssi = i == null ? Short.MIN_VALUE : i.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
+            if (rssi != Short.MIN_VALUE) o.put("rssi", rssi);
+            int bond = BluetoothDevice.BOND_NONE;
+            try {
+                bond = d.getBondState();
+            } catch (SecurityException ignored) {
+            }
+            o.put("bonded", bond == BluetoothDevice.BOND_BONDED);
+            try {
+                BluetoothClass bc = d.getBluetoothClass();
+                o.put("major", bc == null ? -1 : bc.getMajorDeviceClass());
+            } catch (SecurityException ignored) {
+            }
+            return o.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void registerScanReceiver() {
+        if (scanRx != null) return;
+        scanRx = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                String a = i.getAction();
+                if (BluetoothDevice.ACTION_FOUND.equals(a) || BluetoothDevice.ACTION_NAME_CHANGED.equals(a)) {
+                    BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    if (d == null) return;
+                    String js = deviceJson("found", d, i);
+                    if (js != null) emit("scan", js, null);
+                } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(a)) {
+                    emit("scan", "{\"type\":\"done\"}", null);
+                }
+            }
+        };
+        IntentFilter f = new IntentFilter();
+        f.addAction(BluetoothDevice.ACTION_FOUND);
+        f.addAction(BluetoothDevice.ACTION_NAME_CHANGED);
+        f.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+        registerReceiver(scanRx, f);
+    }
+
+    /** Appairage : répond aux demandes de code PIN avec la liste fournie, un code par tentative. */
+    private void registerPairReceiver() {
+        if (pairRx != null) return;
+        pairRx = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                final String addr = pairAddr;
+                if (d == null || addr == null || !addr.equalsIgnoreCase(d.getAddress())) return;
+                String a = i.getAction();
+                if (BluetoothDevice.ACTION_PAIRING_REQUEST.equals(a)) {
+                    int variant = i.getIntExtra(BluetoothDevice.EXTRA_PAIRING_VARIANT, -1);
+                    if (variant == BluetoothDevice.PAIRING_VARIANT_PIN || variant == 7) {
+                        String pin = pairPins[Math.min(pairIdx, pairPins.length - 1)];
+                        try {
+                            if (d.setPin(pin.getBytes("UTF-8")) && isOrderedBroadcast()) abortBroadcast();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                } else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(a)) {
+                    int st = i.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1);
+                    int prev = i.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1);
+                    if (st == BluetoothDevice.BOND_BONDED) {
+                        pairAddr = null;
+                        emit("pair", "{\"type\":\"bonded\",\"address\":" + JSONObject.quote(addr) + "}", null);
+                    } else if (st == BluetoothDevice.BOND_NONE && prev == BluetoothDevice.BOND_BONDING) {
+                        pairIdx++;
+                        if (pairIdx < pairPins.length) {
+                            emit("pair", "{\"type\":\"progress\",\"pin\":" + JSONObject.quote(pairPins[pairIdx]) + "}", null);
+                            final BluetoothDevice dev = d;
+                            main.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        if (pairAddr != null) dev.createBond();
+                                    } catch (SecurityException ignored) {
+                                    }
+                                }
+                            }, 1500);
+                        } else {
+                            pairAddr = null;
+                            emit("pair", "{\"type\":\"failed\"}", null);
+                        }
+                    }
+                }
+            }
+        };
+        IntentFilter f = new IntentFilter();
+        f.addAction(BluetoothDevice.ACTION_PAIRING_REQUEST);
+        f.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        f.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY - 1);
+        registerReceiver(pairRx, f);
     }
 
     @Override
@@ -174,6 +327,11 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        try {
+            if (scanRx != null) unregisterReceiver(scanRx);
+            if (pairRx != null) unregisterReceiver(pairRx);
+        } catch (Exception ignored) {
+        }
         gen++;
         closeLink();
         web.destroy();
@@ -212,7 +370,92 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    askPermission();
+                    String[] missing = scanPermissionsMissing();
+                    if (missing.length > 0) MainActivity.this.requestPermissions(missing, REQ_PERM);
+                    else askPermission();
+                }
+            });
+        }
+
+        /** Lance la recherche. Renvoie ok, permission, location, btoff, nobt ou failed. */
+        @JavascriptInterface
+        public String startScan() {
+            BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
+            if (ad == null) return "nobt";
+            if (!ad.isEnabled()) return "btoff";
+            if (scanPermissionsMissing().length > 0) return "permission";
+            if (!locationOn()) return "location";
+            try {
+                registerScanReceiver();
+                registerPairReceiver();
+                if (ad.isDiscovering()) ad.cancelDiscovery();
+                return ad.startDiscovery() ? "ok" : "failed";
+            } catch (SecurityException e) {
+                return "permission";
+            }
+        }
+
+        @JavascriptInterface
+        public void stopScan() {
+            try {
+                BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
+                if (ad != null && ad.isDiscovering()) ad.cancelDiscovery();
+            } catch (SecurityException ignored) {
+            }
+        }
+
+        /** Appaire le boîtier en essayant les codes donnés, séparés par des virgules. */
+        @JavascriptInterface
+        public String pair(String address, String pins) {
+            try {
+                BluetoothAdapter ad = BluetoothAdapter.getDefaultAdapter();
+                if (ad == null || !ad.isEnabled()) return "btoff";
+                if (needsPermission()) return "permission";
+                try {
+                    ad.cancelDiscovery();
+                } catch (SecurityException ignored) {
+                }
+                BluetoothDevice d = ad.getRemoteDevice(address);
+                registerPairReceiver();
+                if (d.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    emit("pair", "{\"type\":\"bonded\",\"address\":" + JSONObject.quote(address) + "}", null);
+                    return "ok";
+                }
+                ArrayList<String> l = new ArrayList<String>();
+                for (String p : pins.split(",")) if (p.trim().length() > 0) l.add(p.trim());
+                if (l.isEmpty()) l.add("1234");
+                pairPins = l.toArray(new String[0]);
+                pairIdx = 0;
+                pairAddr = address;
+                emit("pair", "{\"type\":\"progress\",\"pin\":" + JSONObject.quote(pairPins[0]) + "}", null);
+                if (!d.createBond()) {
+                    pairAddr = null;
+                    return "failed";
+                }
+                return "ok";
+            } catch (SecurityException e) {
+                return "permission";
+            } catch (Exception e) {
+                return "failed";
+            }
+        }
+
+        /** Ouvre un écran des réglages Android : location, bluetooth ou enableBt. */
+        @JavascriptInterface
+        public void openSettings(final String which) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        if ("location".equals(which)) startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        else if ("enableBt".equals(which)) startActivity(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE));
+                        else startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+                    } catch (Exception e) {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_SETTINGS));
+                        } catch (Exception ignored) {
+                        }
+                    }
                 }
             });
         }

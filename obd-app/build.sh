@@ -35,7 +35,7 @@ open(sys.argv[2], "w", encoding="utf8").write(s)
 PY
 
 aapt package -f -M "$HERE/AndroidManifest.xml" -S "$HERE/res" -A "$OUT/assets" -I "$ANDROID_JAR" \
-  --min-sdk-version 23 --target-sdk-version 34 --version-code 2 --version-name 1.1 \
+  --min-sdk-version 23 --target-sdk-version 34 --version-code 3 --version-name 1.2 \
   -0 arsc -0 woff2 -F "$OUT/unsigned.apk"
 javac -nowarn -source 8 -target 8 -bootclasspath "$ANDROID_JAR" -d "$OUT/classes" "$HERE"/src/app/cadran/*.java 2>&1 | grep -v -i "warning" || true
 dalvik-exchange --dex --min-sdk-version=23 --output="$OUT/classes.dex" "$OUT/classes"

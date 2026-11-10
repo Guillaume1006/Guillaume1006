@@ -210,7 +210,14 @@ td.pid { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
 .devs { display: flex; flex-direction: column; gap: 6px; }
 .dev { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1.5px solid transparent; border-radius: 14px; padding: 10px 14px; text-align: left; }
 .dev[aria-pressed="true"] { border-color: var(--accent); }
-.dev span { flex: 1 1 auto; min-width: 0; }
+.dev .info { flex: 1 1 auto; min-width: 0; }
+.dev .bars { flex: none; color: var(--accent); display: grid; place-items: center; }
+.dev .acts { flex: none; display: flex; align-items: center; gap: 8px; }
+.dev .acts .btn { min-height: 38px; padding: 7px 14px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.pinrow { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; align-items: end; }
+.pinrow input { font-family: var(--font-mono); letter-spacing: .12em; }
+#scanMsg { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--warn); }
 .dev b { font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dev small { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
 .tag { font-size: 11px; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
@@ -256,6 +263,8 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   #btnFull { display: none; }
   .nav button { font-size: 9.5px; }
   .fields { grid-template-columns: 1fr; }
+  .pinrow { grid-template-columns: 1fr; }
+  .dev .acts .tag { display: none; }
   #toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
 }
 /* Autoradio bas (600 px) : compteurs plus plats */
@@ -394,15 +403,28 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     <!-- Connexion -->
     <section class="view" id="v-conn" aria-label="Connexion" hidden>
       <div class="kinds" role="group" aria-label="Type de boîtier">
-        <button class="kind" type="button" data-kind="bt"><b>Bluetooth</b><small>Boîtier ELM327 appairé</small></button>
+        <button class="kind" type="button" data-kind="bt"><b>Bluetooth</b><small>Boîtier ELM327, recherche et appairage ici</small></button>
         <button class="kind" type="button" data-kind="wifi"><b>Wi-Fi</b><small>Boîtier qui crée son propre réseau</small></button>
         <button class="kind" type="button" data-kind="demo"><b>Démo</b><small>Voiture simulée, sans boîtier</small></button>
       </div>
 
-      <div class="card" id="kindBt">
-        <div class="row" style="justify-content:space-between"><h2>Appareils appairés</h2><button class="btn" type="button" id="btnRefresh">Actualiser</button></div>
-        <div class="devs" id="devs"></div>
-        <p class="hint">Appairez d'abord le boîtier dans les réglages Bluetooth de l'autoradio. Le code est souvent 1234 ou 0000.</p>
+      <div class="stack" id="kindBt">
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div><h2>Rechercher un boîtier</h2><p class="hint" style="margin-top:4px">Branchez le boîtier et mettez le contact : il doit être alimenté pour être visible.</p></div>
+            <button class="btn primary" type="button" id="btnScan">Rechercher</button>
+          </div>
+          <div class="pinrow">
+            <label class="f">Code du boîtier<input type="text" id="pin" inputmode="numeric" maxlength="16" spellcheck="false" autocomplete="off"></label>
+            <p class="hint">Cadran saisit ce code pour vous pendant l'appairage. S'il est refusé, il essaie aussi 1234, 0000, 6789 et 1111.</p>
+          </div>
+          <p class="hint" id="scanMsg" hidden></p>
+          <div class="devs" id="found"></div>
+        </div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between"><h2>Appareils appairés</h2><button class="btn" type="button" id="btnRefresh">Actualiser</button></div>
+          <div class="devs" id="devs"></div>
+        </div>
       </div>
       <div class="card" id="kindWifi" hidden>
         <div class="fields">
@@ -458,7 +480,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   const NATIVE = typeof window.ObdBridge !== "undefined";
 
   // ---------- réglages ----------
-  const DEF = { kind: NATIVE ? "bt" : "demo", addr: "", name: "", host: "192.168.0.10", port: "35000", proto: "0", fuel: "essence", auto: true, full: false, price: "1,85" };
+  const DEF = { kind: NATIVE ? "bt" : "demo", addr: "", name: "", host: "192.168.0.10", port: "35000", proto: "0", fuel: "essence", auto: true, full: false, price: "1,85", pin: "1234" };
   const cfg = (() => { try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem("cadran.v1") || "{}")); } catch { return Object.assign({}, DEF); } })();
   if (!NATIVE) cfg.kind = "demo";
   const saveCfg = () => { try { localStorage.setItem("cadran.v1", JSON.stringify(cfg)); } catch {} };
@@ -630,7 +652,9 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   window.obdNative = {
     data: (s) => { if (C.t && C.t.onData) C.t.onData(s); },
     state: (st, msg) => { if (C.t && C.t.native) C.t.native(st, msg); },
-    perm: () => listDevices(),
+    perm: () => { listDevices(); if (SCAN.pending) { SCAN.pending = false; startScan(); } },
+    scan: (js) => onScan(js),
+    pair: (js) => onPair(js),
   };
 
   // ---------- dialogue ELM327 ----------
@@ -1080,6 +1104,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     document.querySelectorAll(".kind").forEach((k) => k.setAttribute("aria-pressed", k.dataset.kind === cfg.kind));
     $("kindBt").hidden = cfg.kind !== "bt"; $("kindWifi").hidden = cfg.kind !== "wifi"; $("kindDemo").hidden = cfg.kind !== "demo";
     document.querySelectorAll("#fuel button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === cfg.fuel));
+    $("pin").value = cfg.pin;
     $("proto").value = cfg.proto; $("auto").checked = cfg.auto; $("host").value = cfg.host; $("port").value = cfg.port;
     if (cfg.kind === "bt") listDevices();
   }
@@ -1095,7 +1120,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     if (!devs.length) { msg("Aucun appareil appairé. Appairez le boîtier dans les réglages Bluetooth, puis touchez Actualiser."); return; }
     for (const d of devs) {
       const b = document.createElement("button"); b.type = "button"; b.className = "dev"; b.setAttribute("aria-pressed", d.address === cfg.addr);
-      b.innerHTML = "<span><b></b><small></small></span>"; b.querySelector("b").textContent = d.name || "Appareil sans nom"; b.querySelector("small").textContent = d.address;
+      b.innerHTML = '<span class="info"><b></b><small></small></span>'; b.querySelector("b").textContent = d.name || "Appareil sans nom"; b.querySelector("small").textContent = d.address;
       if (looks(d.name)) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "Boîtier OBD probable"; b.appendChild(t); }
       b.onclick = () => { cfg.addr = d.address; cfg.name = d.name || d.address; saveCfg(); listDevices(); };
       box.appendChild(b);
@@ -1209,6 +1234,99 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   }
   document.addEventListener("fullscreenchange", () => { if (!NATIVE && !document.fullscreenElement && cfg.full) { cfg.full = false; saveCfg(); reflectFull(false); } });
 
+  // ---------- recherche et appairage Bluetooth ----------
+  const SCAN = { running: false, devs: new Map(), pairing: null, pairMsg: "", pending: false, timer: 0 };
+  const looksObd = (n) => /obd|elm|v-?link|vgate|icar|konnwei|veepeak|vlink|scan/i.test(n || "");
+  const otherKind = (d) => [0x100, 0x200, 0x400].includes(d.major);
+  const bars = (r) => {
+    const n = r == null ? 0 : r > -60 ? 4 : r > -70 ? 3 : r > -82 ? 2 : 1;
+    return '<svg viewBox="0 0 16 14" width="18" height="16" aria-hidden="true">' + [0, 1, 2, 3].map((i) => '<rect x="' + i * 4 + '" y="' + (10 - i * 3) + '" width="3" height="' + (4 + i * 3) + '" rx="1" fill="' + (i < n ? "currentColor" : "var(--line)") + '"/>').join("") + "</svg>";
+  };
+  function scanMsg(text, btn) {
+    const p = $("scanMsg"); p.textContent = text || ""; p.hidden = !text;
+    if (text && btn) { const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = btn[0]; b.onclick = btn[1]; p.appendChild(b); }
+  }
+  function startScan() {
+    if (!NATIVE || !ObdBridge.startScan) { scanMsg("La recherche Bluetooth fonctionne dans l'application Android installée sur l'autoradio."); return; }
+    const r = ObdBridge.startScan();
+    log("info", "Recherche Bluetooth : " + r);
+    if (r === "ok") { SCAN.running = true; SCAN.devs.clear(); scanMsg(""); clearTimeout(SCAN.timer); SCAN.timer = setTimeout(scanDone, 25000); renderFound(); return; }
+    if (r === "permission") { SCAN.pending = true; scanMsg("Cadran a besoin de l'autorisation de rechercher les appareils à proximité. Android l'appelle parfois « localisation ».", ["Autoriser", () => ObdBridge.requestPermissions()]); ObdBridge.requestPermissions(); return; }
+    if (r === "location") { scanMsg("Android exige que la localisation soit activée pour rechercher des appareils Bluetooth.", ["Activer la localisation", () => ObdBridge.openSettings("location")]); return; }
+    if (r === "btoff") { scanMsg("Le Bluetooth est désactivé.", ["Activer le Bluetooth", () => ObdBridge.openSettings("enableBt")]); return; }
+    if (r === "nobt") { scanMsg("Cet autoradio ne donne pas accès à son Bluetooth aux applications. Il est souvent réservé au téléphone : un boîtier Wi-Fi fonctionnera à coup sûr."); return; }
+    scanMsg("La recherche n'a pas pu démarrer. Réessayez dans quelques secondes.");
+  }
+  function scanDone() {
+    clearTimeout(SCAN.timer);
+    if (!SCAN.running) return;
+    SCAN.running = false;
+    if (!SCAN.devs.size) scanMsg("Aucun appareil trouvé. Vérifiez que le boîtier est branché et le contact mis, puis relancez la recherche.");
+    renderFound();
+  }
+  function onScan(js) {
+    let e; try { e = JSON.parse(js); } catch { return; }
+    if (e.type === "done") { scanDone(); return; }
+    if (e.type !== "found" || !e.address) return;
+    const prev = SCAN.devs.get(e.address) || {};
+    SCAN.devs.set(e.address, Object.assign(prev, e, { name: e.name || prev.name || "", rssi: e.rssi != null ? e.rssi : prev.rssi }));
+    renderFound();
+  }
+  function renderFound() {
+    $("btnScan").textContent = SCAN.running ? "Arrêter" : SCAN.devs.size ? "Relancer" : "Rechercher";
+    const box = $("found"); box.textContent = "";
+    if (SCAN.running && !SCAN.devs.size) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Recherche en cours…"; box.appendChild(e); return; }
+    const list = [...SCAN.devs.values()].sort((a, b) => looksObd(b.name) - looksObd(a.name) || otherKind(a) - otherKind(b) || (b.rssi != null ? b.rssi : -999) - (a.rssi != null ? a.rssi : -999));
+    for (const d of list) {
+      const row = document.createElement("div"); row.className = "dev"; row.setAttribute("aria-pressed", d.address === cfg.addr);
+      row.innerHTML = '<span class="bars"></span><span class="info"><b></b><small></small></span><span class="acts"></span>';
+      row.querySelector(".bars").innerHTML = bars(d.rssi);
+      row.querySelector("b").textContent = d.name || "Appareil sans nom";
+      row.querySelector("small").textContent = d.address + (SCAN.pairing === d.address ? " · " + SCAN.pairMsg : d.bonded ? " · appairé" : "");
+      const acts = row.querySelector(".acts");
+      if (looksObd(d.name)) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "Boîtier OBD probable"; acts.appendChild(t); }
+      const btn = document.createElement("button"); btn.type = "button";
+      btn.className = "btn" + (d.bonded ? " primary" : "");
+      btn.textContent = SCAN.pairing === d.address ? "Appairage…" : d.bonded ? (d.address === cfg.addr ? "Choisi" : "Utiliser") : "Appairer";
+      btn.disabled = !!SCAN.pairing || (d.bonded && d.address === cfg.addr);
+      btn.onclick = () => (d.bonded ? useDevice(d) : pairDevice(d));
+      acts.appendChild(btn); box.appendChild(row);
+    }
+  }
+  function useDevice(d, quiet) {
+    cfg.addr = d.address; cfg.name = d.name || d.address; saveCfg();
+    listDevices(); renderFound();
+    if (!quiet) toast("Boîtier choisi : " + cfg.name + ". Touchez Se connecter.");
+  }
+  function pairDevice(d) {
+    const own = $("pin").value.replace(/\s/g, "");
+    cfg.pin = own || DEF.pin; saveCfg();
+    const pins = [own, "1234", "0000", "6789", "1111"].filter((v, i, a) => v && a.indexOf(v) === i);
+    if (SCAN.running) { ObdBridge.stopScan(); SCAN.running = false; clearTimeout(SCAN.timer); }
+    scanMsg("");
+    const r = ObdBridge.pair(d.address, pins.join(","));
+    log("info", "Appairage de " + (d.name || d.address) + " : " + r);
+    if (r === "permission") { ObdBridge.requestPermissions(); toast("Autorisez l'accès aux appareils à proximité, puis réessayez."); return; }
+    if (r !== "ok") { toast("L'appairage n'a pas pu démarrer. Rapprochez-vous du boîtier et réessayez."); return; }
+    SCAN.pairing = d.address; if (!SCAN.pairMsg) SCAN.pairMsg = "appairage…";
+    renderFound();
+  }
+  function onPair(js) {
+    let e; try { e = JSON.parse(js); } catch { return; }
+    if (e.type === "progress") { SCAN.pairMsg = "essai du code " + e.pin + "…"; log("info", "Appairage : essai du code " + e.pin); }
+    else if (e.type === "bonded") {
+      const addr = e.address || SCAN.pairing; SCAN.pairing = null; SCAN.pairMsg = "";
+      const d = SCAN.devs.get(addr) || { address: addr, name: "" };
+      d.bonded = true; useDevice(d, true);
+      toast("Boîtier appairé. Touchez Se connecter."); log("info", "Appairage réussi");
+    } else if (e.type === "failed") {
+      SCAN.pairing = null; SCAN.pairMsg = "";
+      scanMsg("Le boîtier a refusé tous les codes essayés. Entrez le code indiqué sur sa notice ou son étiquette, puis touchez Appairer.");
+      log("err", "Appairage refusé");
+    }
+    renderFound();
+  }
+
   // ---------- navigation ----------
   let view = "dash";
   function show(v) {
@@ -1237,6 +1355,8 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   $("auto").addEventListener("change", (e) => { cfg.auto = e.target.checked; saveCfg(); });
   ["host", "port"].forEach((id) => $(id).addEventListener("change", (e) => { cfg[id] = e.target.value.trim(); saveCfg(); }));
   $("btnRefresh").addEventListener("click", listDevices);
+  $("btnScan").addEventListener("click", () => { if (SCAN.running) { try { ObdBridge.stopScan(); } catch {} scanDone(); } else startScan(); });
+  $("pin").addEventListener("change", (e) => { cfg.pin = e.target.value.replace(/\s/g, "") || DEF.pin; e.target.value = cfg.pin; saveCfg(); });
   $("btnFull").addEventListener("click", () => setFull(!cfg.full, true));
   $("full").addEventListener("change", (e) => setFull(e.target.checked, true));
   $("btnTripReset").addEventListener("click", resetTrip);
