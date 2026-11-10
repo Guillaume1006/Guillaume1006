@@ -90,14 +90,23 @@ h2 { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-t
 
 /* Tableau de bord */
 .gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.gauge { position: relative; background: var(--surface); border-radius: 22px; aspect-ratio: 1.45; max-width: 100%; min-height: 0; overflow: hidden; }
+.gauge { position: relative; background: radial-gradient(110% 85% at 50% 100%, color-mix(in srgb, var(--accent) 9%, var(--surface)) 0%, var(--surface) 62%); border-radius: 22px; aspect-ratio: 1.45; max-width: 100%; min-height: 0; overflow: hidden; }
 .gauge canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .gauge .read { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-38%); text-align: center; pointer-events: none; }
 .gauge .val { font-size: clamp(44px, 7.4vw, 92px); font-weight: 300; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .gauge .unit { color: var(--muted); font-size: 13px; margin-top: 4px; letter-spacing: .04em; }
 .gauge .name { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.tile { background: var(--surface); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tile { background: var(--surface); border-radius: 18px; padding: 12px 14px 12px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); grid-template-rows: auto 1fr auto; column-gap: 8px; min-width: 0; }
+.tile .head { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; min-width: 0; margin-bottom: 4px; }
+.tile .ico { width: 28px; height: 28px; border-radius: 9px; background: var(--surface-2); color: var(--accent); display: grid; place-items: center; flex: none; transition: color .3s, background .3s; }
+.tile .ico svg { width: 16px; height: 16px; }
+.tile[data-s="warn"] .ico { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--surface-2)); }
+.tile[data-s="bad"] .ico { color: var(--bad); background: color-mix(in srgb, var(--bad) 16%, var(--surface-2)); }
+.tile[data-s="cold"] .ico { color: var(--cold); background: color-mix(in srgb, var(--cold) 14%, var(--surface-2)); }
+.tile[data-s="ok"] .ico { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--surface-2)); }
+.tile .v, .tile .st { grid-column: 1; }
+.tile canvas.spark { grid-column: 2; grid-row: 2 / 4; width: 100%; height: 100%; min-height: 36px; display: block; }
 .tile .lbl { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile .v { font-size: 30px; font-weight: 400; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .tile .v small { font-size: 14px; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
@@ -110,6 +119,28 @@ h2 { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-t
 .banner p b { color: var(--ink); font-weight: 500; }
 
 /* Diagnostic */
+.carviz { display: grid; grid-template-columns: minmax(220px, 380px) minmax(0, 1fr); gap: 8px 24px; align-items: center; background: radial-gradient(90% 120% at 25% 100%, color-mix(in srgb, var(--accent) 7%, var(--surface)) 0%, var(--surface) 60%); border-radius: 22px; padding: 18px 22px; }
+.car { width: 100%; height: auto; display: block; }
+.car .body { fill: var(--surface-2); stroke: color-mix(in srgb, var(--ink) 22%, transparent); stroke-width: 1.5; }
+.car .glass { fill: color-mix(in srgb, var(--cold) 12%, var(--bg)); }
+.car .line { fill: none; stroke: color-mix(in srgb, var(--ink) 14%, transparent); stroke-width: 1.2; }
+.car .wheel { fill: #070809; stroke: color-mix(in srgb, var(--ink) 20%, transparent); stroke-width: 3; }
+.car .hub { fill: var(--surface-2); }
+.car .light { fill: var(--accent); opacity: .85; }
+.car .shadow { fill: #000; opacity: .45; }
+.spot circle { fill: var(--muted); transition: fill .3s; }
+.spot .halo { opacity: .18; }
+.spot.ok circle { fill: var(--ok); } .spot.warn circle { fill: var(--warn); } .spot.bad circle { fill: var(--bad); } .spot.cold circle { fill: var(--cold); }
+.spot.warn .halo, .spot.bad .halo { animation: halo 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes halo { 50% { opacity: .38; transform: scale(1.35); } }
+.carinfo { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.carinfo b.big { font-size: 20px; font-weight: 500; }
+.carinfo small { color: var(--muted); font-size: 13.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; background: var(--surface-2); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; color: var(--muted); }
+.legend span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.legend span.ok::before { background: var(--ok); } .legend span.warn::before { background: var(--warn); } .legend span.bad::before { background: var(--bad); } .legend span.cold::before { background: var(--cold); }
+.legend b { color: var(--ink); font-weight: 500; }
 .mil { display: flex; align-items: center; gap: 16px; background: var(--surface); border-radius: 18px; padding: 16px 18px; flex-wrap: wrap; }
 .mil svg { width: 40px; height: 40px; flex: none; color: var(--muted); }
 .mil.lit svg { color: var(--warn); }
@@ -190,17 +221,18 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .gauges { gap: 10px; }
   .gauge { aspect-ratio: 1.05; border-radius: 18px; }
-  .gauge .val { font-size: 38px; }
+  .gauge .val { font-size: 34px; }
   .gauge .unit { font-size: 11.5px; margin-top: 2px; }
   .gauge .name { font-size: 10.5px; bottom: 10px; }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .tile .v { font-size: 26px; }
   .kinds { grid-template-columns: 1fr; }
+  .carviz { grid-template-columns: 1fr; padding: 16px; }
   .fields { grid-template-columns: 1fr; }
   #toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
 }
 /* Autoradio bas (600 px) : compteurs plus plats */
-@media (min-width: 720px) and (max-height: 640px) {
+@media (min-width: 720px) and (max-height: 820px) {
   main { padding-block: 12px 16px; }
   .view { gap: 12px; }
   .gauge { aspect-ratio: 1.75; }
@@ -247,12 +279,27 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
 
     <!-- Diagnostic -->
     <section class="view" id="v-diag" aria-label="Diagnostic" hidden>
-      <div class="mil" id="mil">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M4 10h2l1-2h5l1 2h3l2-2h2v8h-2l-2-2h-1l-2 3H7l-1-2H4z"/><path d="M8 8V6h4v2"/></svg>
-        <div><b id="milText">Codes défaut non lus</b><small id="milSub">Lisez les codes pour connaître l'état du voyant moteur.</small></div>
-        <div class="row">
-          <button class="btn primary" type="button" id="btnRead">Lire les codes</button>
-          <button class="btn danger" type="button" id="btnClear">Effacer les codes</button>
+      <div class="carviz" id="mil">
+        <svg class="car" viewBox="0 0 320 132" role="img" aria-label="Schéma de la voiture avec l'état du moteur, de la batterie et du refroidissement">
+          <ellipse class="shadow" cx="164" cy="118" rx="146" ry="7"/>
+          <path class="body" d="M16 94 L16 82 C16 74 24 69 38 67 L92 61 L120 39 C127 34 135 32 145 32 L196 32 C210 32 221 36 231 44 L254 61 L288 65 C300 67 306 73 306 83 L306 94 C306 98 303 100 299 100 L273 100 A24 24 0 0 0 225 100 L107 100 A24 24 0 0 0 59 100 L22 100 C18 100 16 98 16 94 Z"/>
+          <path class="glass" d="M101 61 L125 42 C130 38 136 37 142 37 L165 37 L165 61 Z"/>
+          <path class="glass" d="M173 37 L196 37 C206 37 214 40 222 47 L238 61 L173 61 Z"/>
+          <path class="line" d="M169 37 L169 96 M101 61 L254 61 M128 74 L146 74 M196 74 L214 74"/>
+          <path class="light" d="M296 70 L306 73 L306 79 L294 77 Z"/>
+          <circle class="wheel" cx="83" cy="100" r="19"/><circle class="hub" cx="83" cy="100" r="7"/>
+          <circle class="wheel" cx="249" cy="100" r="19"/><circle class="hub" cx="249" cy="100" r="7"/>
+          <g class="spot" id="spCool"><circle class="halo" cx="292" cy="86" r="11"/><circle cx="292" cy="86" r="4"/></g>
+          <g class="spot" id="spEngine"><circle class="halo" cx="270" cy="72" r="14"/><circle cx="270" cy="72" r="5.5"/></g>
+          <g class="spot" id="spBatt"><circle class="halo" cx="242" cy="72" r="11"/><circle cx="242" cy="72" r="4"/></g>
+        </svg>
+        <div class="carinfo">
+          <div><b class="big" id="milText">Codes défaut non lus</b><br><small id="milSub">Lisez les codes pour connaître l'état du voyant moteur.</small></div>
+          <div class="legend" id="legend"></div>
+          <div class="row">
+            <button class="btn primary" type="button" id="btnRead">Lire les codes</button>
+            <button class="btn danger" type="button" id="btnClear">Effacer les codes</button>
+          </div>
         </div>
       </div>
       <p class="warnbox" id="clearWarn" hidden>Effacer éteint le voyant et remet à zéro les tests antipollution. Faites-le moteur arrêté, contact mis, et seulement après avoir réparé la cause. Appuyez à nouveau pour confirmer.</p>
@@ -724,6 +771,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   }
 
   // ---------- compteurs ----------
+  const hexA0 = (hex, a) => { const h = hex.replace("#", ""), n = parseInt(h.length === 3 ? h.replace(/./g, "$&$&") : h, 16); return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")"; };
   class Gauge {
     constructor(cv, valEl, o) { this.cv = cv; this.val = valEl; this.o = o; this.shown = 0; this.target = null; this.text = ""; new ResizeObserver(() => this.size()).observe(cv); }
     size() { const r = this.cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; this.w = r.width; this.h = r.height; this.cv.width = Math.max(1, r.width * d); this.cv.height = Math.max(1, r.height * d); this.d = d; this.dirty = true; }
@@ -743,20 +791,39 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
       const cx = W / 2, cy = H * 0.55, r = Math.max(20, Math.min(W / 2 - 26, cy - 18, (H - 38 - cy) / 0.588));
       const a0 = Math.PI * 0.8, a1 = Math.PI * 2.2, ang = (v) => a0 + (a1 - a0) * Math.max(0, Math.min(1, v / o.max));
       const css = getComputedStyle(document.documentElement), col = (n) => css.getPropertyValue(n).trim();
+      const lw = Math.max(9, r * 0.085), acc = col("--accent"), bad = col("--bad");
       g.lineCap = "round";
-      g.lineWidth = Math.max(8, r * 0.075); g.strokeStyle = col("--surface-2");
+      g.lineWidth = lw; g.strokeStyle = col("--surface-2");
       g.beginPath(); g.arc(cx, cy, r, a0, a1); g.stroke();
-      if (o.red) { g.strokeStyle = col("--bad"); g.globalAlpha = 0.45; g.lineWidth = Math.max(3, r * 0.025); g.beginPath(); g.arc(cx, cy, r + r * 0.085, ang(o.red), a1); g.stroke(); g.globalAlpha = 1; }
+      // graduations fines sur l'anneau extérieur
+      g.strokeStyle = col("--line"); g.lineWidth = 1;
+      for (let k = 0, n = Math.round(o.max / o.step) * 5; k <= n; k++) {
+        const a = a0 + ((a1 - a0) * k) / n, r1 = r + lw * 0.95, r2 = r1 + (k % 5 ? 3 : 7);
+        g.beginPath(); g.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); g.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); g.stroke();
+      }
+      if (o.red) { g.strokeStyle = hexA0(bad, 0.55); g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, r + lw * 0.95 + 9, ang(o.red), a1); g.stroke(); }
       if (this.target != null && this.shown > 0) {
-        g.lineWidth = Math.max(8, r * 0.075);
-        g.strokeStyle = o.red && this.shown >= o.red ? col("--bad") : col("--accent");
-        g.beginPath(); g.arc(cx, cy, r, a0, ang(this.shown)); g.stroke();
+        const span = (a1 - a0) / (Math.PI * 2);
+        let stroke = acc;
+        if (g.createConicGradient) {
+          stroke = g.createConicGradient(a0, cx, cy);
+          stroke.addColorStop(0, hexA0(acc, 0.15));
+          stroke.addColorStop(span * (o.red ? o.red / o.max : 1) * 0.98, acc);
+          if (o.red) { stroke.addColorStop(span * (o.red / o.max), bad); stroke.addColorStop(span, bad); }
+          stroke.addColorStop(Math.min(1, span + 0.01), hexA0(acc, 0.15));
+        }
+        g.save(); g.shadowColor = hexA0(o.red && this.shown >= o.red ? bad : acc, 0.55); g.shadowBlur = lw * 1.6;
+        g.lineWidth = lw; g.strokeStyle = stroke;
+        g.beginPath(); g.arc(cx, cy, r, a0, ang(this.shown)); g.stroke(); g.restore();
+        const ea = ang(this.shown);
+        g.fillStyle = col("--ink"); g.beginPath(); g.arc(cx + Math.cos(ea) * r, cy + Math.sin(ea) * r, lw * 0.3, 0, 7); g.fill();
       }
       g.fillStyle = col("--muted"); g.strokeStyle = col("--line"); g.lineWidth = 1.5;
       g.font = Math.max(10, Math.round(r * 0.075)) + "px " + col("--font-mono"); g.textAlign = "center"; g.textBaseline = "middle";
       for (let v = 0; v <= o.max; v += o.step) {
         const a = ang(v), ri = r - r * 0.13, ro = r - r * 0.07;
         g.beginPath(); g.moveTo(cx + Math.cos(a) * ri, cy + Math.sin(a) * ri); g.lineTo(cx + Math.cos(a) * ro, cy + Math.sin(a) * ro); g.stroke();
+        if (r < 110 && v !== 0 && v !== o.max) continue;
         const rl = r - r * 0.24; g.fillText(o.label(v), cx + Math.cos(a) * rl, cy + Math.sin(a) * rl);
       }
     }
@@ -776,6 +843,19 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     if (lph == null) return null;
     return spd > 4 ? { v: (lph * 100) / spd, u: "L/100", d: 1 } : { v: lph, u: "L/h", d: 1 };
   };
+  const I = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>";
+  const ICONS = {
+    "05": I('<path d="M10 4a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 9v6"/>'),
+    RV: I('<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M7 7V5h3v2M14 7V5h3v2M6.5 13h3M14.5 13h3M16 11.5v3"/>'),
+    CO: I('<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M10 15a2 2 0 0 0 2 2"/>'),
+    "04": I('<path d="M5 19v-5M10 19V9M15 19v-7M20 19V5"/>'),
+    "11": I('<circle cx="12" cy="12" r="8"/><path d="M7.5 16.5l9-9"/>'),
+    "0F": I('<path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>'),
+    "2F": I('<path d="M5 20V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v15M4 20h10M5 10h8M13 8l3 2v7a1.5 1.5 0 0 0 3 0V9l-2-3"/>'),
+    "5C": I('<path d="M3 14h12l5-4-2-1-4 2H7L6 9H3zM8 9V7h3"/><path d="M19 15s1.5 1.6 1.5 2.6a1.5 1.5 0 0 1-3 0c0-1 1.5-2.6 1.5-2.6z"/>'),
+    "0B": I('<circle cx="12" cy="13" r="8"/><path d="M12 13l4-3M8 5l-1-1M16 5l1-1"/>'),
+    "46": I('<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>'),
+  };
   const TILES = [
     { id: "05", l: "Liquide de refroidissement", st: (v) => (v < 60 ? ["cold", "Froid"] : v > 112 ? ["bad", "Surchauffe"] : v > 104 ? ["warn", "Chaud"] : ["ok", "Normal"]) },
     { id: "RV", l: "Batterie", u: "V", d: 1, get: () => C.info.volt, st: (v) => (v < 11.8 ? ["bad", "Faible"] : v < 12.4 ? ["warn", "Moteur arrêté ?"] : v > 15 ? ["bad", "Surcharge"] : v >= 13.2 ? ["ok", "En charge"] : ["ok", "Normal"]) },
@@ -788,7 +868,29 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     { id: "0B", l: "Pression d'admission" },
     { id: "46", l: "Température extérieure" },
   ];
-  let tileEls = [];
+  let tileEls = [], lastSample = 0;
+  const HIST = {};
+  const css = getComputedStyle(document.documentElement), tok = (n) => css.getPropertyValue(n).trim();
+  const hexA = (hex, a) => { const h = hex.replace("#", ""), n = parseInt(h.length === 3 ? h.replace(/./g, "$&$&") : h, 16); return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")"; };
+  function drawSpark(e) {
+    const cv = e.cv, w = cv.clientWidth, h = cv.clientHeight, d = window.devicePixelRatio || 1;
+    if (!w || !h) return;
+    if (cv.width !== Math.round(w * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
+    const g = cv.getContext("2d"); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, w, h);
+    const pts = e.hist; if (pts.length < 2) return;
+    let lo = Infinity, hi = -Infinity; for (const v of pts) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    if (hi - lo < 1e-6) { lo -= 1; hi += 1; }
+    const pad = 4, span = Math.max(pts.length - 1, 24), X = (i) => w - pad - ((pts.length - 1 - i) / span) * (w - pad * 2), Y = (v) => h - pad - ((v - lo) / (hi - lo)) * (h - pad * 2);
+    const color = tok({ warn: "--warn", bad: "--bad", cold: "--cold" }[e.st] || "--accent");
+    g.beginPath(); pts.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))));
+    const line = new Path2D(); pts.forEach((v, i) => (i ? line.lineTo(X(i), Y(v)) : line.moveTo(X(i), Y(v))));
+    g.lineTo(X(pts.length - 1), h); g.lineTo(X(0), h); g.closePath();
+    const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, hexA(color, 0.28)); grad.addColorStop(1, hexA(color, 0));
+    g.fillStyle = grad; g.fill();
+    g.strokeStyle = color; g.lineWidth = 1.6; g.lineJoin = "round"; g.stroke(line);
+    const lx = X(pts.length - 1), ly = Y(pts[pts.length - 1]);
+    g.fillStyle = color; g.beginPath(); g.arc(lx, ly, 2.6, 0, 7); g.fill();
+  }
   function renderTiles() {
     const on = C.st === "on";
     const list = TILES.filter((t) => !on || t.id === "RV" || (t.need ? t.need.some((p) => C.sup.has(p)) : C.sup.has(t.id))).slice(0, 8);
@@ -797,13 +899,15 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     $("tiles").dataset.key = key; $("tiles").textContent = "";
     tileEls = list.map((t) => {
       const el = document.createElement("div"); el.className = "tile";
-      el.innerHTML = '<span class="lbl"></span><span class="v"><span class="n">—</span><small></small></span><span class="st"></span>';
+      el.innerHTML = '<div class="head"><span class="ico">' + (ICONS[t.id] || "") + '</span><span class="lbl"></span></div><span class="v"><span class="n">—</span><small></small></span><span class="st"></span><canvas class="spark" aria-hidden="true"></canvas>';
       el.querySelector(".lbl").textContent = t.l;
       $("tiles").appendChild(el);
-      return { t, n: el.querySelector(".n"), u: el.querySelector("small"), s: el.querySelector(".st"), last: "" };
+      return { t, el, n: el.querySelector(".n"), u: el.querySelector("small"), s: el.querySelector(".st"), cv: el.querySelector("canvas"), last: "", hist: HIST[t.id] || (HIST[t.id] = []), st: "" };
     });
   }
   function frameTiles() {
+    const now = performance.now(), sample = now - lastSample > 500;
+    if (sample) lastSample = now;
     for (const e of tileEls) {
       const t = e.t; let v, u, d;
       if (t.id === "CO") { const c = consumption(); v = c && c.v; u = c ? c.u : "L/100"; d = 1; }
@@ -811,9 +915,15 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
       else { v = C.vals[t.id]; u = PIDS[t.id].u; d = PIDS[t.id].d; }
       if (C.st !== "on") v = null;
       const s = v == null ? ["", ""] : t.st ? t.st(v) : ["", ""];
+      if (sample) {
+        if (v != null && isFinite(v)) { e.hist.push(v); if (e.hist.length > 120) e.hist.shift(); }
+        else if (C.st !== "on") e.hist.length = 0;
+        drawSpark(e);
+      }
       const key = num(v, d) + u + s.join();
       if (key === e.last) continue;
       e.last = key; e.n.textContent = num(v, d); e.u.textContent = u; e.s.className = "st " + s[0]; e.s.textContent = s[1];
+      e.st = s[0]; e.el.dataset.s = s[0];
     }
   }
 
@@ -845,8 +955,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
       const conf = parseDtcs(await elm.send("03", 6000), "43", C.info.can);
       const pend = parseDtcs(await elm.send("07", 6000).catch(() => ""), "47", C.info.can).filter((c) => !conf.includes(c));
       const mil = s ? !!(s[0] & 0x80) : null;
-      const box = $("mil");
-      box.classList.toggle("lit", !!mil); box.classList.toggle("clear", mil === false && !conf.length);
+      C.engine = mil || conf.length ? "warn" : pend.length ? "cold" : "ok"; updateCar();
       $("milText").textContent = mil ? "Voyant moteur allumé" : "Voyant moteur éteint";
       $("milSub").textContent = conf.length || pend.length
         ? conf.length + (conf.length > 1 ? " codes confirmés" : " code confirmé") + (pend.length ? ", " + pend.length + " en attente" : "")
@@ -866,6 +975,19 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
       if (C.info.vin) $("vin").querySelector("b").textContent = C.info.vin;
     });
     $("btnRead").disabled = false; $("btnRead").textContent = "Relire les codes";
+  }
+  function updateCar() {
+    const on = C.st === "on", v = C.info.volt, cool = C.vals["05"];
+    const bs = on && v != null ? TILES[1].st(v) : ["", ""], cs = on && cool != null ? TILES[0].st(cool) : ["", ""];
+    const es = on ? C.engine || "" : "";
+    $("spEngine").setAttribute("class", "spot " + es); $("spBatt").setAttribute("class", "spot " + bs[0]); $("spCool").setAttribute("class", "spot " + cs[0]);
+    const key = es + bs.join() + cs.join() + num(v, 1) + num(cool);
+    if ($("legend").dataset.key === key) return;
+    $("legend").dataset.key = key; $("legend").textContent = "";
+    const chip = (cls, label, val) => { const s = document.createElement("span"); s.className = cls; s.append(label + " "); const b = document.createElement("b"); b.textContent = val; s.appendChild(b); $("legend").appendChild(s); };
+    chip(es, "Moteur", !on ? "—" : es === "ok" ? "aucun défaut" : es === "warn" ? "défaut" : es === "cold" ? "à surveiller" : "non lu");
+    chip(bs[0], "Batterie", on && v != null ? num(v, 1) + " V" : "—");
+    chip(cs[0], "Refroidissement", on && cool != null ? num(cool) + " °C" : "—");
   }
   let armT = 0;
   async function clearCodes() {
@@ -955,11 +1077,13 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   });
 
   // ---------- boucle d'affichage ----------
+  let carTick = 0;
   function loop() {
     gR.target = C.st === "on" && C.vals["0C"] != null ? C.vals["0C"] : null;
     gS.target = C.st === "on" && C.vals["0D"] != null ? C.vals["0D"] : null;
     if (view === "dash") { gR.frame(); gS.frame(); frameTiles(); }
     if (view === "data") frameData();
+    if (view === "diag" && (++carTick % 20 === 0)) updateCar();
     requestAnimationFrame(loop);
   }
 
