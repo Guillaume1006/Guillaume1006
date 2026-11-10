@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -41,6 +42,7 @@ public class MainActivity extends Activity {
     private volatile int gen = 0;
     private Closeable link;
     private OutputStream out;
+    private volatile boolean fullscreen;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -62,6 +64,21 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new Bridge(), "ObdBridge");
         web.loadUrl("file:///android_asset/index.html");
         askPermission();
+    }
+
+    /** Plein écran immersif : barres d'état et de navigation masquées, réapparaissent brièvement par glissement. */
+    private void applyFullscreen() {
+        int flags = fullscreen
+                ? View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                  | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                : 0;
+        getWindow().getDecorView().setSystemUiVisibility(flags);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && fullscreen) applyFullscreen();
     }
 
     private boolean needsPermission() {
@@ -257,6 +274,17 @@ public class MainActivity extends Activity {
             } catch (IOException e) {
                 emit("state", "lost", reason(e));
             }
+        }
+
+        @JavascriptInterface
+        public void setFullscreen(boolean on) {
+            fullscreen = on;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    applyFullscreen();
+                }
+            });
         }
 
         @JavascriptInterface

@@ -82,6 +82,8 @@ button { cursor: pointer; }
 .btn.danger.armed { background: var(--bad); color: #1a0d0a; border-color: var(--bad); }
 .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 .btn svg { width: 18px; height: 18px; }
+.btn.square { padding: 0; width: 44px; flex: none; }
+.btn.square[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
 main { overflow: auto; min-height: 0; padding-block: 18px 24px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); }
 .view { display: flex; flex-direction: column; gap: 16px; max-width: 1280px; }
@@ -117,6 +119,26 @@ h2 { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-t
 .banner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: var(--surface); border: 1px dashed var(--line); border-radius: 18px; padding: 14px 18px; }
 .banner p { margin: 0; flex: 1 1 260px; color: var(--muted); }
 .banner p b { color: var(--ink); font-weight: 500; }
+
+/* Ordinateur de bord */
+.triphead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.triphead .lead { margin-top: 4px; }
+.price { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.price input { width: 76px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 9px 12px; text-align: center; font-family: var(--font-mono); color: var(--ink); }
+.stats-big { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat span { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat b { font-size: clamp(30px, 3.8vw, 46px); font-weight: 300; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat small { color: var(--muted); font-size: 12.5px; }
+.stats-big .stat:first-child b { color: var(--accent); }
+.tripgrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); gap: 12px; }
+.chartcard { background: var(--surface); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.chartbox { position: relative; flex: 1 1 auto; min-height: 220px; }
+#tChart { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stats-small { display: flex; flex-direction: column; gap: 8px; }
+.stats-small .stat { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 10px; padding: 12px 16px; }
+.stats-small .stat b { font-size: 22px; font-weight: 400; letter-spacing: -0.01em; }
+.stats-small .stat small { margin-left: 4px; }
 
 /* Diagnostic */
 .carviz { display: grid; grid-template-columns: minmax(220px, 380px) minmax(0, 1fr); gap: 8px 24px; align-items: center; background: radial-gradient(90% 120% at 25% 100%, color-mix(in srgb, var(--accent) 7%, var(--surface)) 0%, var(--surface) 60%); border-radius: 22px; padding: 18px 22px; }
@@ -228,6 +250,11 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   .tile .v { font-size: 26px; }
   .kinds { grid-template-columns: 1fr; }
   .carviz { grid-template-columns: 1fr; padding: 16px; }
+  .stats-big { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .tripgrid { grid-template-columns: 1fr; }
+  .chartbox { min-height: 190px; }
+  #btnFull { display: none; }
+  .nav button { font-size: 9.5px; }
   .fields { grid-template-columns: 1fr; }
   #toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
 }
@@ -238,6 +265,9 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   .gauge { aspect-ratio: 1.75; }
   .tile { padding: 10px 14px; }
   .tile .v { font-size: 26px; }
+  .chartbox { min-height: 170px; }
+  .stat { padding: 10px 14px; }
+  .nav button { padding: 8px 4px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; animation: none !important; } }
 </style>
@@ -247,6 +277,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="M12 15l4.5-5"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor"/></svg></div>
     <nav class="nav" aria-label="Sections">
       <button type="button" data-view="dash" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/></svg>Tableau</button>
+      <button type="button" data-view="trip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"/></svg>Trajet</button>
       <button type="button" data-view="diag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>Diagnostic</button>
       <button type="button" data-view="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 6h14M5 12h14M5 18h9"/></svg>Mesures</button>
       <button type="button" data-view="term"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7l5 5-5 5M12 17h7"/></svg>Terminal</button>
@@ -259,6 +290,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
       <span class="dot" id="dot"></span>
       <div><b id="stText">Déconnecté</b><small id="stDetail">Choisissez votre boîtier dans Connexion</small></div>
     </div>
+    <button class="btn square" id="btnFull" type="button" aria-pressed="false" aria-label="Plein écran" title="Plein écran"><svg id="icoFull" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     <button class="btn primary" id="btnConn" type="button">Se connecter</button>
   </header>
 
@@ -275,6 +307,36 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
         <div class="gauge"><canvas id="gSpd"></canvas><div class="read"><div class="val" id="gSpdV">—</div><div class="unit">km/h</div></div><div class="name">Vitesse</div></div>
       </div>
       <div class="tiles" id="tiles"></div>
+    </section>
+
+    <!-- Ordinateur de bord -->
+    <section class="view" id="v-trip" aria-label="Ordinateur de bord" hidden>
+      <div class="triphead">
+        <div><h2>Trajet en cours</h2><p class="lead" id="tripSince">—</p></div>
+        <div class="row">
+          <label class="price">Carburant <input id="price" type="text" inputmode="decimal" aria-label="Prix du carburant en euros par litre"> €/L</label>
+          <button class="btn" id="btnTripReset" type="button">Nouveau trajet</button>
+        </div>
+      </div>
+      <div class="stats-big">
+        <div class="stat"><span>Distance</span><b id="tDist">—</b><small>km</small></div>
+        <div class="stat"><span>Durée</span><b id="tTime">—</b><small id="tTimeU">min</small></div>
+        <div class="stat"><span>Vitesse moyenne</span><b id="tAvg">—</b><small>km/h</small></div>
+        <div class="stat"><span>Consommation moyenne</span><b id="tCons">—</b><small>L/100 km</small></div>
+      </div>
+      <div class="tripgrid">
+        <div class="chartcard">
+          <div class="row" style="justify-content:space-between"><h2>Vitesse pendant le trajet</h2><span class="hint" id="tChartHint"></span></div>
+          <div class="chartbox"><canvas id="tChart" aria-label="Graphique de la vitesse pendant le trajet"></canvas></div>
+        </div>
+        <div class="stats-small">
+          <div class="stat"><span>Carburant utilisé</span><div><b id="tFuel">—</b><small>L</small></div></div>
+          <div class="stat"><span>Coût estimé</span><div><b id="tCost">—</b><small>€</small></div></div>
+          <div class="stat"><span>Vitesse maximale</span><div><b id="tVmax">—</b><small>km/h</small></div></div>
+          <div class="stat"><span>Régime maximal</span><div><b id="tRmax">—</b><small>tr/min</small></div></div>
+          <div class="stat"><span>Temps à l'arrêt</span><div><b id="tIdle">—</b><small>%</small></div></div>
+        </div>
+      </div>
     </section>
 
     <!-- Diagnostic -->
@@ -376,6 +438,9 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
           <p class="hint">À changer seulement si la détection automatique échoue.</p>
         </div>
         <div class="card">
+          <label class="switch"><span>Plein écran<small>Masque les barres d'Android pour occuper tout l'écran</small></span><input type="checkbox" id="full"></label>
+        </div>
+        <div class="card">
           <label class="switch"><span>Connexion automatique<small>Se reconnecte au démarrage et après une coupure</small></span><input type="checkbox" id="auto"></label>
         </div>
       </div>
@@ -393,7 +458,7 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   const NATIVE = typeof window.ObdBridge !== "undefined";
 
   // ---------- réglages ----------
-  const DEF = { kind: NATIVE ? "bt" : "demo", addr: "", name: "", host: "192.168.0.10", port: "35000", proto: "0", fuel: "essence", auto: true };
+  const DEF = { kind: NATIVE ? "bt" : "demo", addr: "", name: "", host: "192.168.0.10", port: "35000", proto: "0", fuel: "essence", auto: true, full: false, price: "1,85" };
   const cfg = (() => { try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem("cadran.v1") || "{}")); } catch { return Object.assign({}, DEF); } })();
   if (!NATIVE) cfg.kind = "demo";
   const saveCfg = () => { try { localStorage.setItem("cadran.v1", JSON.stringify(cfg)); } catch {} };
@@ -836,10 +901,15 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   }
 
   // ---------- tuiles ----------
+  // Débit de carburant en L/h : mesuré directement, ou déduit du débit d'air (rapport air/carburant et densité).
+  const lphNow = () => {
+    const v = C.vals;
+    if (v["5E"] != null) return v["5E"];
+    if (v["10"] != null) return v["10"] * (cfg.fuel === "diesel" ? 3600 / (14.5 * 832) : 3600 / (14.7 * 745));
+    return null;
+  };
   const consumption = () => {
-    const v = C.vals, spd = v["0D"];
-    let lph = v["5E"];
-    if (lph == null && v["10"] != null) lph = v["10"] * (cfg.fuel === "diesel" ? 3600 / (14.5 * 832) : 3600 / (14.7 * 745));
+    const spd = C.vals["0D"], lph = lphNow();
     if (lph == null) return null;
     return spd > 4 ? { v: (lph * 100) / spd, u: "L/100", d: 1 } : { v: lph, u: "L/h", d: 1 };
   };
@@ -1032,12 +1102,120 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
     }
   }
 
+  // ---------- ordinateur de bord ----------
+  const TRIP_KEY = "cadran.trip.v1", GAP = 2 * 3600 * 1000;
+  const newTrip = () => ({ start: Date.now(), last: Date.now(), dist: 0, time: 0, idle: 0, fuel: 0, hasFuel: false, vmax: 0, rmax: 0, series: [], step: 5, accN: 0, accSum: 0 });
+  const trips = { real: (() => { try { const t = JSON.parse(localStorage.getItem(TRIP_KEY) || "null"); return t && t.start && Date.now() - t.last < GAP ? t : newTrip(); } catch { return newTrip(); } })(), demo: newTrip() };
+  const trip = () => (cfg.kind === "demo" ? trips.demo : trips.real);
+  const saveTrip = () => { try { localStorage.setItem(TRIP_KEY, JSON.stringify(trips.real)); } catch {} };
+  let tripLast = 0, tripSaves = 0;
+  function tripTick() {
+    if (C.st !== "on" || C.vals["0D"] == null) { tripLast = 0; return; }
+    const now = Date.now(), dt = tripLast ? Math.min(5, (now - tripLast) / 1000) : 0;
+    tripLast = now;
+    if (!dt) return;
+    let t = trip();
+    if (now - t.last > GAP) { t = cfg.kind === "demo" ? (trips.demo = newTrip()) : (trips.real = newTrip()); }
+    const spd = C.vals["0D"], rpm = C.vals["0C"], lph = lphNow();
+    t.time += dt; t.dist += (spd * dt) / 3600; if (spd < 2) t.idle += dt;
+    if (lph != null) { t.fuel += (lph * dt) / 3600; t.hasFuel = true; }
+    t.vmax = Math.max(t.vmax, spd); if (rpm != null) t.rmax = Math.max(t.rmax, rpm);
+    t.last = now; t.accN += dt; t.accSum += spd * dt;
+    if (t.accN >= t.step) {
+      t.series.push(t.accSum / t.accN); t.accN = 0; t.accSum = 0;
+      if (t.series.length >= 720) { const s2 = []; for (let i = 0; i + 1 < t.series.length; i += 2) s2.push((t.series[i] + t.series[i + 1]) / 2); t.series = s2; t.step *= 2; }
+    }
+    if (t === trips.real && ++tripSaves % 10 === 0) saveTrip();
+    if (view === "trip") renderTrip();
+  }
+  setInterval(tripTick, 1000);
+  const hhmm = (ms) => new Date(ms).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const price = () => { const v = parseFloat(String(cfg.price).replace(",", ".")); return isFinite(v) && v > 0 ? v : null; };
+  function renderTrip() {
+    const t = trip(), set = (id, v) => { if ($(id).textContent !== v) $(id).textContent = v; };
+    const today = new Date(t.start).toDateString() === new Date().toDateString();
+    $("tripSince").textContent = cfg.kind === "demo"
+      ? "Trajet de démonstration, non enregistré."
+      : t.time < 1 ? "Le trajet commence dès que la voiture roule. Il repart à zéro tout seul après 2 h d'arrêt."
+      : "Commencé " + (today ? "aujourd'hui" : "le " + new Date(t.start).toLocaleDateString("fr-FR")) + " à " + hhmm(t.start) + ". Repart à zéro tout seul après 2 h d'arrêt.";
+    const has = t.time >= 1;
+    set("tDist", has ? num(t.dist, t.dist < 100 ? 1 : 0) : "—");
+    if (!has) { set("tTime", "—"); set("tTimeU", "min"); }
+    else if (t.time < 60) { set("tTime", String(Math.round(t.time))); set("tTimeU", "s"); }
+    else if (t.time < 3600) { set("tTime", String(Math.floor(t.time / 60))); set("tTimeU", "min"); }
+    else { const h = Math.floor(t.time / 3600), m = Math.floor((t.time % 3600) / 60); set("tTime", h + " h " + String(m).padStart(2, "0")); set("tTimeU", ""); }
+    set("tAvg", has && t.time > 5 ? num((t.dist / t.time) * 3600) : "—");
+    set("tCons", t.hasFuel && t.dist >= 0.2 ? num((t.fuel / t.dist) * 100, 1) : "—");
+    set("tFuel", t.hasFuel ? num(t.fuel, 2) : "—");
+    const pr = price();
+    set("tCost", t.hasFuel && pr ? num(t.fuel * pr, 2) : "—");
+    set("tVmax", has ? num(t.vmax) : "—");
+    set("tRmax", t.rmax ? num(Math.round(t.rmax / 10) * 10) : "—");
+    set("tIdle", has ? num((t.idle / t.time) * 100) : "—");
+    drawTripChart(t);
+  }
+  function drawTripChart(t) {
+    const cv = $("tChart"), w = cv.clientWidth, h = cv.clientHeight, d = window.devicePixelRatio || 1;
+    if (!w || !h) return;
+    if (cv.width !== Math.round(w * d) || cv.height !== Math.round(h * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
+    const g = cv.getContext("2d"); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, w, h);
+    const pts = t.series.slice(); if (t.accN > 0) pts.push(t.accSum / t.accN);
+    const mono = tok("--font-mono"), muted = tok("--muted"), line = tok("--line"), acc = tok("--accent");
+    const top = Math.max(60, Math.ceil(Math.max(t.vmax, ...pts, 1) / 20) * 20);
+    const L = 34, R = 6, T = 8, B = 20, X = (i) => L + (pts.length < 2 ? 0 : (i / (pts.length - 1)) * (w - L - R)), Y = (v) => T + (1 - v / top) * (h - T - B);
+    g.font = "10.5px " + mono; g.fillStyle = muted; g.strokeStyle = line; g.lineWidth = 1; g.textBaseline = "middle"; g.textAlign = "right";
+    for (const v of [0, top / 2, top]) { g.beginPath(); g.moveTo(L, Math.round(Y(v)) + 0.5); g.lineTo(w - R, Math.round(Y(v)) + 0.5); g.stroke(); g.fillText(String(v), L - 6, Y(v)); }
+    g.textBaseline = "alphabetic"; g.textAlign = "left"; g.fillText(hhmm(t.start), L, h - 4);
+    g.textAlign = "right"; g.fillText("maintenant", w - R, h - 4);
+    $("tChartHint").textContent = pts.length < 2 ? "Le graphique se remplit pendant que vous roulez" : "km/h · un point toutes les " + (t.step < 60 ? t.step + " s" : t.step / 60 + " min");
+    if (pts.length < 2) return;
+    g.beginPath(); pts.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))));
+    const path = new Path2D(); pts.forEach((v, i) => (i ? path.lineTo(X(i), Y(v)) : path.moveTo(X(i), Y(v))));
+    g.lineTo(X(pts.length - 1), Y(0)); g.lineTo(X(0), Y(0)); g.closePath();
+    const grad = g.createLinearGradient(0, T, 0, h - B); grad.addColorStop(0, hexA(acc, 0.32)); grad.addColorStop(1, hexA(acc, 0));
+    g.fillStyle = grad; g.fill();
+    g.save(); g.shadowColor = hexA(acc, 0.5); g.shadowBlur = 8; g.strokeStyle = acc; g.lineWidth = 2; g.lineJoin = "round"; g.stroke(path); g.restore();
+    const lx = X(pts.length - 1), ly = Y(pts[pts.length - 1]);
+    g.fillStyle = tok("--ink"); g.beginPath(); g.arc(lx, ly, 3.2, 0, 7); g.fill();
+  }
+  let tripArmT = 0;
+  function resetTrip() {
+    const b = $("btnTripReset");
+    if (!b.classList.contains("danger")) {
+      b.classList.add("danger", "armed"); b.textContent = "Confirmer la remise à zéro";
+      clearTimeout(tripArmT); tripArmT = setTimeout(() => { b.classList.remove("danger", "armed"); b.textContent = "Nouveau trajet"; }, 5000); return;
+    }
+    clearTimeout(tripArmT); b.classList.remove("danger", "armed"); b.textContent = "Nouveau trajet";
+    if (cfg.kind === "demo") trips.demo = newTrip(); else { trips.real = newTrip(); saveTrip(); }
+    renderTrip(); toast("Nouveau trajet commencé.");
+  }
+  window.addEventListener("pagehide", saveTrip);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) saveTrip(); });
+
+  // ---------- plein écran ----------
+  const ICO_FULL = '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', ICO_EXIT = '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>';
+  function reflectFull(on) {
+    $("btnFull").setAttribute("aria-pressed", on); $("btnFull").setAttribute("aria-label", on ? "Quitter le plein écran" : "Plein écran");
+    $("icoFull").innerHTML = on ? ICO_EXIT : ICO_FULL; $("full").checked = on;
+  }
+  function setFull(on, fromGesture) {
+    cfg.full = !!on; saveCfg(); reflectFull(cfg.full);
+    if (NATIVE && ObdBridge.setFullscreen) { ObdBridge.setFullscreen(cfg.full); return; }
+    if (!fromGesture) return;
+    try {
+      if (cfg.full && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => { reflectFull((cfg.full = false)); saveCfg(); toast("Le plein écran n'est pas disponible ici."); });
+      else if (!cfg.full && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    } catch { reflectFull((cfg.full = false)); saveCfg(); }
+  }
+  document.addEventListener("fullscreenchange", () => { if (!NATIVE && !document.fullscreenElement && cfg.full) { cfg.full = false; saveCfg(); reflectFull(false); } });
+
   // ---------- navigation ----------
   let view = "dash";
   function show(v) {
     view = v;
     document.querySelectorAll(".nav button").forEach((b) => (b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
-    for (const id of ["dash", "diag", "data", "term", "conn"]) $("v-" + id).hidden = id !== v;
+    for (const id of ["dash", "trip", "diag", "data", "term", "conn"]) $("v-" + id).hidden = id !== v;
+    if (v === "trip") { $("price").value = cfg.price; requestAnimationFrame(renderTrip); }
     if (v === "term") { const el = $("term"); el.textContent = ""; LOG.forEach((l) => appendLog(l, false)); el.scrollTop = el.scrollHeight; }
     if (v === "conn") renderConn();
     if (v === "data") renderData();
@@ -1059,6 +1237,11 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
   $("auto").addEventListener("change", (e) => { cfg.auto = e.target.checked; saveCfg(); });
   ["host", "port"].forEach((id) => $(id).addEventListener("change", (e) => { cfg[id] = e.target.value.trim(); saveCfg(); }));
   $("btnRefresh").addEventListener("click", listDevices);
+  $("btnFull").addEventListener("click", () => setFull(!cfg.full, true));
+  $("full").addEventListener("change", (e) => setFull(e.target.checked, true));
+  $("btnTripReset").addEventListener("click", resetTrip);
+  $("price").addEventListener("change", (e) => { cfg.price = e.target.value.trim() || DEF.price; e.target.value = cfg.price; saveCfg(); renderTrip(); });
+  new ResizeObserver(() => { if (view === "trip") renderTrip(); }).observe($("tChart"));
   $("btnRead").addEventListener("click", readCodes);
   $("btnClear").addEventListener("click", clearCodes);
   $("cmdForm").addEventListener("submit", async (e) => {
@@ -1089,11 +1272,14 @@ label.f input, label.f select { background: var(--surface-2); border: 1px solid 
 
   // ---------- démarrage ----------
   applyFuel();
+  if (!NATIVE) cfg.full = false;
+  reflectFull(cfg.full);
+  if (NATIVE && cfg.full && ObdBridge.setFullscreen) ObdBridge.setFullscreen(true);
   setStatus("off", "Déconnecté", NATIVE ? "Choisissez votre boîtier dans Connexion" : "");
   requestAnimationFrame(loop);
   if (!NATIVE) connect();
   else if (cfg.auto && ((cfg.kind === "bt" && cfg.addr) || cfg.kind === "wifi" || cfg.kind === "demo")) setTimeout(connect, 500);
   else show("conn");
-  window.__cadran = { C, cfg, parsePid, parseDtcs, parseVin, messages };
+  window.__cadran = { C, cfg, parsePid, parseDtcs, parseVin, messages, trips };
 })();
 </script>
