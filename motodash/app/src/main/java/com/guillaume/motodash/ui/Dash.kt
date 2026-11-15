@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
@@ -71,17 +72,25 @@ class DashState(private val prefs: Prefs) {
     var musicApp by mutableStateOf(prefs.musicApp)
     var favs by mutableStateOf(prefs.favApps)
     var autoLaunch by mutableStateOf(prefs.autoLaunch)
+    var overlayMode by mutableStateOf(prefs.overlayMode)
+
+    /** Relit les réglages (modifiés depuis l'autre écran). */
+    fun reload() {
+        widget = Widget.entries.getOrElse(prefs.tab) { Widget.MUSIC }
+        navApp = prefs.navApp; musicApp = prefs.musicApp; favs = prefs.favApps
+        autoLaunch = prefs.autoLaunch; overlayMode = prefs.overlayMode
+    }
 
     fun show(w: Widget) { widget = w; prefs.tab = w.ordinal }
     fun setNav(pkg: String) { navApp = pkg; prefs.navApp = pkg }
     fun setMusic(pkg: String) { musicApp = pkg; prefs.musicApp = pkg }
     fun setFavList(l: List<String>) { favs = l; prefs.favApps = l }
     fun setAuto(b: Boolean) { autoLaunch = b; prefs.autoLaunch = b }
+    fun setOverlay(b: Boolean) { overlayMode = b; prefs.overlayMode = b }
 }
 
 @Composable
-fun DashScreen(prefs: Prefs, split: Boolean) {
-    val state = remember { DashState(prefs) }
+fun DashScreen(state: DashState, prefs: Prefs, split: Boolean) {
     val cfg = LocalConfiguration.current
     val landscape = cfg.screenWidthDp > cfg.screenHeightDp
     var picker by remember { mutableStateOf<Picker?>(null) }
@@ -105,7 +114,7 @@ fun DashScreen(prefs: Prefs, split: Boolean) {
     val ctx = LocalContext.current
     when (picker) {
         Picker.NAV -> AppPickerDialog("Ton appli GPS", "Applis GPS détectées", { Apps.navApps(ctx) }, { picker = null }) {
-            state.setNav(it); picker = null; Apps.launch(ctx, it, adjacent = true)
+            state.setNav(it); picker = null; Drive.start(ctx, state)
         }
         Picker.MUSIC -> AppPickerDialog("Ton appli musique", "Applis musique détectées", { Apps.musicApps(ctx) }, { picker = null }) {
             state.setMusic(it); picker = null
@@ -130,7 +139,7 @@ private fun GpsLauncher(state: DashState, pick: (Picker) -> Unit, modifier: Modi
         if (nav != null) {
             Image(nav.icon, null, Modifier.size(84.dp).clip(RoundedCornerShape(20.dp)))
             Spacer(Modifier.height(14.dp))
-            BigButton("Ouvrir ${nav.label} à côté", GoBlue) { Apps.launch(ctx, nav.pkg, adjacent = true) }
+            BigButton(if (state.overlayMode) "Démarrer avec ${nav.label}" else "Ouvrir ${nav.label} à côté", GoBlue) { Drive.start(ctx, state) }
             Spacer(Modifier.height(10.dp))
             Text("Changer d'appli GPS", color = TextDim, fontSize = 14.sp, modifier = Modifier.clickable { pick(Picker.NAV) }.padding(6.dp))
         } else {
@@ -140,7 +149,8 @@ private fun GpsLauncher(state: DashState, pick: (Picker) -> Unit, modifier: Modi
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            "Le GPS s'affiche ici, en écran partagé.\nFais glisser la barre du milieu pour lui donner plus de place.",
+            if (state.overlayMode) "Le GPS s'ouvre en grand ici,\nMotoDash reste affiché sur le côté."
+            else "Le GPS s'affiche ici, en écran partagé.\nFais glisser la barre du milieu pour lui donner plus de place.",
             color = TextDim, fontSize = 13.sp, textAlign = TextAlign.Center,
         )
     }
@@ -156,14 +166,23 @@ fun BigButton(text: String, color: Color, onClick: () -> Unit) {
 
 // ───────────────────────── Panneau MotoDash ─────────────────────────
 
+/**
+ * Le panneau MotoDash. overlay = true quand il est affiché par-dessus le GPS
+ * (pas de fenêtre de dialogue possible : les choix ouvrent l'écran MotoDash).
+ */
 @Composable
-private fun Panel(state: DashState, prefs: Prefs, pick: (Picker) -> Unit, modifier: Modifier) {
+fun Panel(
+    state: DashState, prefs: Prefs, pick: (Picker) -> Unit, modifier: Modifier,
+    overlay: Boolean = false, onClose: (() -> Unit)? = null,
+) {
+    val ctx = LocalContext.current
+    val openMain = { Drive.openMain(ctx, prefs, state.widget) }
     val widget: @Composable (Modifier) -> Unit = { m ->
         Box(m.glass()) {
             when (state.widget) {
                 Widget.MUSIC -> MusicPanel(state.musicApp) { pick(Picker.MUSIC) }
-                Widget.PHONE -> PhonePanel(prefs)
-                Widget.APPS -> AppsPanel(state.favs, state::setFavList)
+                Widget.PHONE -> if (overlay) PhonePanelOverlay(prefs, openMain) else PhonePanel(prefs)
+                Widget.APPS -> AppsPanel(state.favs, state::setFavList, if (overlay) openMain else null)
                 Widget.SETTINGS -> SettingsPanel(state, pick)
             }
         }
@@ -173,23 +192,23 @@ private fun Panel(state: DashState, prefs: Prefs, pick: (Picker) -> Unit, modifi
             // Panneau large et bas : le dock passe sur le côté
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusRow()
+                    StatusRow(onClose)
                     widget(Modifier.weight(1f).fillMaxWidth())
                 }
-                Dock(state, pick, vertical = true)
+                Dock(state, pick, vertical = true, overlay = overlay)
             }
         } else {
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusRow()
+                StatusRow(onClose)
                 widget(Modifier.weight(1f).fillMaxWidth())
-                Dock(state, pick, vertical = false)
+                Dock(state, pick, vertical = false, overlay = overlay)
             }
         }
     }
 }
 
 @Composable
-private fun StatusRow() {
+private fun StatusRow(onClose: (() -> Unit)?) {
     val ctx = LocalContext.current
     val (time, battery) = rememberClockAndBattery()
     Row(Modifier.fillMaxWidth().height(52.dp).glass(20.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -204,11 +223,15 @@ private fun StatusRow() {
                 Toast.makeText(ctx, "Aucun assistant vocal trouvé", Toast.LENGTH_SHORT).show()
             }
         }
+        if (onClose != null) {
+            Spacer(Modifier.width(8.dp))
+            RoundButton(Icons.Filled.Close, "Fermer le panneau", size = 40.dp, background = Color.White.copy(alpha = 0.15f), onClick = onClose)
+        }
     }
 }
 
 @Composable
-private fun Dock(state: DashState, pick: (Picker) -> Unit, vertical: Boolean) {
+private fun Dock(state: DashState, pick: (Picker) -> Unit, vertical: Boolean, overlay: Boolean) {
     val ctx = LocalContext.current
     val nav = Apps.entry(ctx, state.navApp)
     val music = Apps.entry(ctx, state.musicApp)
@@ -216,7 +239,7 @@ private fun Dock(state: DashState, pick: (Picker) -> Unit, vertical: Boolean) {
         // GPS : rouvre l'appli GPS dans l'autre moitié
         DockItem(nav?.icon, Icons.Filled.Directions, "GPS", listOf(Color(0xFF4A90FF), GoBlue), false,
             onLongClick = { pick(Picker.NAV) }) {
-            if (nav != null) Apps.launch(ctx, nav.pkg, adjacent = true) else pick(Picker.NAV)
+            if (nav != null) Apps.launch(ctx, nav.pkg, adjacent = !overlay && !state.overlayMode) else pick(Picker.NAV)
         }
         DockItem(music?.icon, Icons.Filled.MusicNote, "Musique", listOf(Color(0xFFFF5A7A), Color(0xFFE0245E)),
             state.widget == Widget.MUSIC) { state.show(Widget.MUSIC) }

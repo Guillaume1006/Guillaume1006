@@ -23,6 +23,11 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean("autoLaunch", true)
         set(v) = sp.edit().putBoolean("autoLaunch", v).apply()
 
+    /** true : MotoDash s'affiche par-dessus le GPS (comme CarPlay). false : écran partagé Android. */
+    var overlayMode: Boolean
+        get() = sp.getBoolean("overlayMode", true)
+        set(v) = sp.edit().putBoolean("overlayMode", v).apply()
+
     var favApps: List<String>
         get() = sp.getString("favApps", "")!!.split(',').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("favApps", v.joinToString(",")).apply()

@@ -108,26 +108,48 @@ fun MusicPanel(musicApp: String?, onChoose: () -> Unit) {
         }
         BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
             if (maxHeight < 190.dp) {
-                // Très peu de hauteur : tout sur une ligne
-                val coverSize = minOf(maxHeight, 64.dp)
-                Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                val title = info.title ?: (app?.label ?: "Musique")
+                val artist = info.artist ?: "Appuie sur lecture"
+                val cover: @Composable (androidx.compose.ui.unit.Dp) -> Unit = { size ->
                     Box(
-                        Modifier.size(coverSize).clip(RoundedCornerShape(12.dp)).background(CardHi)
+                        Modifier.size(size).clip(RoundedCornerShape(12.dp)).background(CardHi)
                             .clickable { Apps.launch(ctx, musicApp) },
                         contentAlignment = Alignment.Center,
                     ) {
                         if (art != null) Image(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                        else if (app != null) Image(app.icon, null, Modifier.size(36.dp))
+                        else if (app != null) Image(app.icon, null, Modifier.size(size * 0.6f))
                     }
-                    Column(Modifier.weight(1f).padding(horizontal = 10.dp).clickable(onClick = onChoose)) {
-                        Text(info.title ?: (app?.label ?: "Musique"), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(info.artist ?: "Appuie sur lecture", color = Lilac, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                val texts: @Composable (Modifier) -> Unit = { m ->
+                    Column(m.clickable(onClick = onChoose)) {
+                        Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(artist, color = Lilac, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    RoundButton(Icons.Filled.FastRewind, "Précédent", size = 46.dp, background = Color.Transparent) { MediaRepo.previous(ctx, musicApp) }
-                    RoundButton(if (info.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Lecture / pause", size = 56.dp, background = Color.White, tint = Color.Black) {
+                }
+                val controls: @Composable () -> Unit = {
+                    RoundButton(Icons.Filled.FastRewind, "Précédent", size = 48.dp, background = Color.Transparent) { MediaRepo.previous(ctx, musicApp) }
+                    RoundButton(if (info.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Lecture / pause", size = 58.dp, background = Color.White, tint = Color.Black) {
                         MediaRepo.playPause(ctx, musicApp)
                     }
-                    RoundButton(Icons.Filled.FastForward, "Suivant", size = 46.dp, background = Color.Transparent) { MediaRepo.next(ctx, musicApp) }
+                    RoundButton(Icons.Filled.FastForward, "Suivant", size = 48.dp, background = Color.Transparent) { MediaRepo.next(ctx, musicApp) }
+                }
+                if (maxWidth >= 330.dp) {
+                    // Large et bas : tout sur une ligne
+                    val coverSize = minOf(maxHeight, 64.dp)
+                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        cover(coverSize)
+                        texts(Modifier.weight(1f).padding(horizontal = 10.dp))
+                        controls()
+                    }
+                } else {
+                    // Étroit et bas : pochette + titre, puis les boutons
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            cover(52.dp)
+                            texts(Modifier.weight(1f).padding(start = 10.dp))
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) { controls() }
+                    }
                 }
                 return@BoxWithConstraints
             }
@@ -151,7 +173,7 @@ fun MusicPanel(musicApp: String?, onChoose: () -> Unit) {
                         "Autoriser l'affichage du titre",
                         color = Accent, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 1,
                         modifier = Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(10.dp)).background(CardHi)
-                            .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+                            .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                             .padding(6.dp),
                     )
                 }
@@ -214,6 +236,11 @@ fun SettingsPanel(state: DashState, pick: (Picker) -> Unit) {
         Text("Réglages", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         AppChoiceRow("Appli GPS", Apps.entry(ctx, state.navApp)) { pick(Picker.NAV) }
         AppChoiceRow("Appli musique", Apps.entry(ctx, state.musicApp)) { pick(Picker.MUSIC) }
+        Text("Affichage du GPS", color = TextDim, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ModeChip("Panneau par-dessus", "comme CarPlay", state.overlayMode, Modifier.weight(1f)) { state.setOverlay(true) }
+            ModeChip("Écran partagé", "Android", !state.overlayMode, Modifier.weight(1f)) { state.setOverlay(false) }
+        }
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardHi).padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -228,13 +255,27 @@ fun SettingsPanel(state: DashState, pick: (Picker) -> Unit) {
             "Accès au titre en cours",
             color = Color.White, fontSize = 15.sp,
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardHi)
-                .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+                .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                 .padding(14.dp),
         )
         Text(
-            "Astuce : fais glisser la barre entre le GPS et MotoDash pour agrandir le GPS. Touche deux fois la barre pour échanger les côtés.",
+            if (state.overlayMode)
+                "Le GPS s'ouvre en plein écran et MotoDash s'affiche par-dessus, sur le côté. Le ✕ en haut du panneau le ferme."
+            else
+                "Fais glisser la barre entre le GPS et MotoDash pour agrandir le GPS. Touche deux fois la barre pour échanger les côtés.",
             color = TextDim, fontSize = 13.sp,
         )
+    }
+}
+
+@Composable
+private fun ModeChip(title: String, sub: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier.clip(RoundedCornerShape(16.dp)).background(if (selected) Accent else CardHi).clickable(onClick = onClick).padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(title, color = if (selected) Color.Black else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(sub, color = if (selected) Color.Black.copy(alpha = 0.7f) else TextDim, fontSize = 12.sp)
     }
 }
 
@@ -255,7 +296,13 @@ private fun AppChoiceRow(label: String, app: AppEntry?, onClick: () -> Unit) {
 
 // ───────────────────────── Appels ─────────────────────────
 
-@OptIn(ExperimentalFoundationApi::class)
+private fun callNumber(ctx: android.content.Context, number: String) {
+    val granted = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
+    val action = if (granted) Intent.ACTION_CALL else Intent.ACTION_DIAL
+    ctx.startActivity(Intent(action, Uri.parse("tel:" + Uri.encode(number))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+}
+
+/** Appels depuis l'écran MotoDash : peut demander la permission et choisir un contact. */
 @Composable
 fun PhonePanel(prefs: Prefs) {
     val ctx = LocalContext.current
@@ -263,14 +310,8 @@ fun PhonePanel(prefs: Prefs) {
     var toRemove by remember { mutableStateOf<Contact?>(null) }
     var pendingCall by remember { mutableStateOf<String?>(null) }
 
-    fun call(number: String) {
-        val granted = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
-        val action = if (granted) Intent.ACTION_CALL else Intent.ACTION_DIAL
-        ctx.startActivity(Intent(action, Uri.parse("tel:" + Uri.encode(number))))
-    }
-
     val callPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        pendingCall?.let { call(it) }; pendingCall = null
+        pendingCall?.let { callNumber(ctx, it) }; pendingCall = null
     }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         val uri = res.data?.data ?: return@rememberLauncherForActivityResult
@@ -287,39 +328,15 @@ fun PhonePanel(prefs: Prefs) {
         }
     }
 
-    LazyVerticalGrid(
-        GridCells.Adaptive(130.dp), Modifier.fillMaxSize().padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        items(contacts) { c ->
-            Tile(
-                onClick = {
-                    val granted = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
-                    if (granted) call(c.number) else { pendingCall = c.number; callPerm.launch(Manifest.permission.CALL_PHONE) }
-                },
-                onLongClick = { toRemove = c },
-            ) {
-                Box(Modifier.size(54.dp).clip(CircleShape).background(Accent), contentAlignment = Alignment.Center) {
-                    Text(c.name.take(1).uppercase(), color = Color.Black, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                }
-                Text(c.name, color = Color.White, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        item {
-            Tile(onClick = {
-                pick.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI))
-            }) {
-                Icon(Icons.Filled.Add, null, tint = Accent, modifier = Modifier.size(48.dp))
-                Text("Ajouter", color = TextDim, fontSize = 15.sp)
-            }
-        }
-        item {
-            Tile(onClick = { ctx.startActivity(Intent(Intent.ACTION_DIAL)) }) {
-                Icon(Icons.Filled.Dialpad, null, tint = Color.White, modifier = Modifier.size(48.dp))
-                Text("Clavier", color = TextDim, fontSize = 15.sp)
-            }
-        }
-    }
+    ContactsGrid(
+        contacts,
+        onCall = { c ->
+            val granted = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
+            if (granted) callNumber(ctx, c.number) else { pendingCall = c.number; callPerm.launch(Manifest.permission.CALL_PHONE) }
+        },
+        onLongClick = { toRemove = it },
+        onAdd = { pick.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) },
+    )
 
     toRemove?.let { c ->
         ConfirmRemove(c.name, onDismiss = { toRemove = null }) {
@@ -328,10 +345,48 @@ fun PhonePanel(prefs: Prefs) {
     }
 }
 
+/** Appels depuis le panneau flottant (par-dessus le GPS) : pas de fenêtre de dialogue possible. */
+@Composable
+fun PhonePanelOverlay(prefs: Prefs, openMain: () -> Unit) {
+    val ctx = LocalContext.current
+    val contacts = remember { prefs.contacts }
+    ContactsGrid(contacts, onCall = { callNumber(ctx, it.number) }, onLongClick = null, onAdd = openMain)
+}
+
+@Composable
+private fun ContactsGrid(contacts: List<Contact>, onCall: (Contact) -> Unit, onLongClick: ((Contact) -> Unit)?, onAdd: () -> Unit) {
+    val ctx = LocalContext.current
+    LazyVerticalGrid(
+        GridCells.Adaptive(120.dp), Modifier.fillMaxSize().padding(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(contacts) { c ->
+            Tile(onClick = { onCall(c) }, onLongClick = onLongClick?.let { f -> { f(c) } }) {
+                Box(Modifier.size(54.dp).clip(CircleShape).background(Accent), contentAlignment = Alignment.Center) {
+                    Text(c.name.take(1).uppercase(), color = Color.Black, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                }
+                Text(c.name, color = Color.White, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        item {
+            Tile(onClick = onAdd) {
+                Icon(Icons.Filled.Add, null, tint = Accent, modifier = Modifier.size(48.dp))
+                Text("Ajouter", color = TextDim, fontSize = 15.sp)
+            }
+        }
+        item {
+            Tile(onClick = { ctx.startActivity(Intent(Intent.ACTION_DIAL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) {
+                Icon(Icons.Filled.Dialpad, null, tint = Color.White, modifier = Modifier.size(48.dp))
+                Text("Clavier", color = TextDim, fontSize = 15.sp)
+            }
+        }
+    }
+}
+
 // ───────────────────────── Applis ─────────────────────────
 
 @Composable
-fun AppsPanel(favs: List<String>, setFavs: (List<String>) -> Unit) {
+fun AppsPanel(favs: List<String>, setFavs: (List<String>) -> Unit, openMain: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     var picking by remember { mutableStateOf(false) }
     var toRemove by remember { mutableStateOf<AppEntry?>(null) }
@@ -342,13 +397,13 @@ fun AppsPanel(favs: List<String>, setFavs: (List<String>) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(entries) { app ->
-            Tile(onClick = { Apps.launch(ctx, app.pkg) }, onLongClick = { toRemove = app }) {
+            Tile(onClick = { Apps.launch(ctx, app.pkg) }, onLongClick = if (openMain == null) { { toRemove = app } } else null) {
                 Image(app.icon, null, Modifier.size(52.dp))
                 Text(app.label, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         item {
-            Tile(onClick = { picking = true }) {
+            Tile(onClick = { if (openMain != null) openMain() else picking = true }) {
                 Icon(Icons.Filled.Add, null, tint = Accent, modifier = Modifier.size(44.dp))
                 Text("Ajouter", color = TextDim, fontSize = 14.sp)
             }
