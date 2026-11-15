@@ -8,9 +8,22 @@ Tableau de bord moto pour Android, façon CarPlay, directement sur l'écran du t
 
 ## Deux façons d'afficher le GPS (Réglages)
 
-- **Par-dessus le GPS, comme CarPlay (par défaut).** Le GPS s'ouvre en plein écran et MotoDash s'affiche par-dessus, dans le tiers droit, avec un cadre arrondi autour de la carte. Les touches sur la carte vont au GPS, celles sur le panneau vont à MotoDash. Le ✕ du panneau (ou la notification) le ferme.
-  - *Limite* : le GPS croit occuper tout l'écran, donc ce qu'il affiche tout à droite passe sous le panneau. Chez Waze, c'est le bouton « signaler » ; tu peux signaler à la voix (« OK Waze »).
-- **Écran partagé Android.** Le GPS et MotoDash sont dans deux fenêtres séparées. Le GPS s'adapte à sa fenêtre, mais c'est à toi de régler la barre du milieu (touche-la deux fois pour échanger les côtés, fais-la glisser pour agrandir le GPS).
+- **Par-dessus le GPS, comme CarPlay (par défaut).** MotoDash ouvre le GPS puis s'affiche par-dessus, dans le tiers droit, avec un cadre arrondi autour de la carte. Les touches sur la carte vont au GPS, celles sur le panneau vont à MotoDash. Le ✕ du panneau (ou la notification) le ferme.
+  - **Le panneau se cache** dès que tu quittes le GPS (accueil, applis récentes, autre appli) et revient quand tu y retournes. Il faut pour ça activer MotoDash dans « Accès aux données d'utilisation » (demandé au premier démarrage).
+  - **Le GPS ajusté dans son cadre** : active « Fenêtres de forme libre » dans les options pour les développeurs (voir plus bas), puis redémarre le téléphone. Le GPS s'ouvre alors dans une fenêtre exactement à la taille du cadre et n'est plus coupé par le panneau. Android ajoute une petite barre de fenêtre en haut du GPS.
+  - Sans les fenêtres de forme libre, le GPS reste en plein écran sous le panneau : ce qu'il affiche tout à droite est caché.
+- **Écran partagé Android.** Le GPS et MotoDash sont dans deux fenêtres séparées. C'est à toi de régler la barre du milieu (touche-la deux fois pour échanger les côtés, fais-la glisser pour agrandir le GPS).
+
+![GPS ajusté dans son cadre](screenshots/rendu-cadre-ajuste.png)
+
+### Activer les fenêtres de forme libre
+
+1. Réglages → À propos du téléphone → touche 7 fois **Numéro de build** (les options pour les développeurs apparaissent).
+2. Réglages → Système → **Options pour les développeurs**.
+3. Active **Fenêtres de forme libre** (« Enable freeform windows »), et si l'option existe, **Forcer le redimensionnement des activités**.
+4. Redémarre le téléphone.
+
+Démarre MotoDash avec le téléphone déjà en paysage. Android ne laisse pas MotoDash redimensionner la fenêtre du GPS après coup : si tu tournes le téléphone, ferme la fenêtre du GPS (✕ en haut) et touche GPS dans le dock.
 
 ## Ce que contient le panneau
 

@@ -12,33 +12,49 @@ import android.os.Build
 import android.os.Process
 import android.provider.Settings
 import android.view.WindowManager
+import org.lsposed.hiddenapibypass.HiddenApiBypass
 
 /** Disposition commune : où va le GPS (le cadre) et où va le panneau MotoDash. */
 data class Geo(
     val sw: Int, val sh: Int, val landscape: Boolean,
     val gap: Int, val radius: Int,
     val map: Rect, val panel: Rect,
+    /** zone de l'écran non couverte par les barres système */
+    val safe: Rect,
 ) {
     companion object {
         fun compute(ctx: Context): Geo {
             val wm = ctx.getSystemService(WindowManager::class.java)
             val sw: Int; val sh: Int
+            // Zone utilisable : l'écran moins la barre d'état, la barre de navigation et l'encoche
+            val safe: Rect
             if (Build.VERSION.SDK_INT >= 30) {
-                val b = wm.maximumWindowMetrics.bounds; sw = b.width(); sh = b.height()
+                val m = wm.maximumWindowMetrics
+                sw = m.bounds.width(); sh = m.bounds.height()
+                val i = m.windowInsets.getInsetsIgnoringVisibility(
+                    android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout()
+                )
+                safe = Rect(i.left, i.top, sw - i.right, sh - i.bottom)
             } else {
                 val pt = Point()
                 @Suppress("DEPRECATION") wm.defaultDisplay.getRealSize(pt); sw = pt.x; sh = pt.y
+                val id = ctx.resources.getIdentifier("status_bar_height", "dimen", "android")
+                safe = Rect(0, if (id > 0) ctx.resources.getDimensionPixelSize(id) else 0, sw, sh)
             }
             val d = ctx.resources.displayMetrics.density
             val gap = (10 * d).toInt()
             val radius = (24 * d).toInt()
             val landscape = sw > sh
             return if (landscape) {
-                val panelX = sw - (sw * 0.34f).toInt()
-                Geo(sw, sh, true, gap, radius, Rect(gap, gap, panelX, sh - gap), Rect(panelX, 0, sw, sh))
+                val panelX = safe.right - (safe.width() * 0.34f).toInt()
+                Geo(sw, sh, true, gap, radius,
+                    map = Rect(safe.left + gap, safe.top + gap, panelX, safe.bottom - gap),
+                    panel = Rect(panelX, 0, sw, sh), safe = safe)
             } else {
-                val panelY = sh - (sh * 0.42f).toInt()
-                Geo(sw, sh, false, gap, radius, Rect(gap, gap, sw - gap, panelY), Rect(0, panelY, sw, sh))
+                val panelY = safe.bottom - (safe.height() * 0.42f).toInt()
+                Geo(sw, sh, false, gap, radius,
+                    map = Rect(safe.left + gap, safe.top + gap, safe.right - gap, panelY),
+                    panel = Rect(0, panelY, sw, sh), safe = safe)
             }
         }
     }
@@ -58,8 +74,9 @@ object Frame {
         if (!freeformAvailable(ctx)) return null
         val opts = ActivityOptions.makeBasic().setLaunchBounds(Geo.compute(ctx).map)
         runCatching {
-            // Mode « forme libre » (5) : pas d'API publique, ignoré si refusé
-            ActivityOptions::class.java.getMethod("setLaunchWindowingMode", Int::class.javaPrimitiveType).invoke(opts, 5)
+            // Mode « forme libre » (5) : fonction Android cachée, ignorée si elle n'existe pas
+            if (Build.VERSION.SDK_INT >= 28) HiddenApiBypass.invoke(ActivityOptions::class.java, opts, "setLaunchWindowingMode", 5)
+            else ActivityOptions::class.java.getMethod("setLaunchWindowingMode", Int::class.javaPrimitiveType).invoke(opts, 5)
         }
         return opts
     }

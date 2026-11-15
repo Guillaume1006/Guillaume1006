@@ -57,10 +57,10 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
         ssrc.performAttach()
         ssrc.performRestore(null)
         super.onCreate()
+        goForeground()   // tout de suite : Android exige la notification dans les secondes qui suivent
         wm = getSystemService(WindowManager::class.java)
         prefs = Prefs(this)
         state = DashState(prefs)
-        goForeground()
         instance = this
         addWindows()
         handler.post(watch)
@@ -127,16 +127,19 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
         val fw = sw.toFloat(); val fh = sh.toFloat()
         fun piece(x: Int, y: Int, w: Int, h: Int, corner: WallpaperView.Corner? = null) =
             addView(WallpaperView(this, x.toFloat(), y.toFloat(), fw, fh, corner), x, y, w, h, touchable = corner == null)
-        piece(0, 0, if (landscape) panelX else sw, gap)                              // haut
-        piece(0, 0, gap, if (landscape) sh else panelY)                              // gauche
-        if (landscape) piece(0, sh - gap, panelX, gap) else piece(sw - gap, 0, gap, panelY) // bas / droite
+        // bandes : tout ce qui entoure le cadre du GPS (hors panneau)
+        val frameR = if (landscape) panelX else sw
+        val frameB = if (landscape) sh else panelY
+        piece(0, 0, frameR, mapT)                          // haut
+        piece(0, mapT, mapL, mapB - mapT)                  // gauche
+        piece(0, mapB, frameR, frameB - mapB)              // bas
+        if (mapR < frameR) piece(mapR, mapT, frameR - mapR, mapB - mapT)  // droite (portrait)
         piece(mapL, mapT, radius, radius, WallpaperView.Corner.TOP_LEFT)
         piece(mapR - radius, mapT, radius, radius, WallpaperView.Corner.TOP_RIGHT)
         piece(mapL, mapB - radius, radius, radius, WallpaperView.Corner.BOTTOM_LEFT)
         piece(mapR - radius, mapB - radius, radius, radius, WallpaperView.Corner.BOTTOM_RIGHT)
 
         // Panneau MotoDash
-        val statusBar = dimen("status_bar_height")
         val root = FrameLayout(this).apply {
             // Compose cherche ces « propriétaires » sur la racine de la fenêtre
             setViewTreeLifecycleOwner(this@OverlayService)
@@ -152,9 +155,10 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
                         state, prefs,
                         pick = { Drive.openMain(this@OverlayService, prefs, Widget.SETTINGS) },
                         modifier = Modifier.fillMaxSize().padding(
-                            start = 10.dp, end = 10.dp,
-                            top = if (landscape) (statusBar / d).dp + 4.dp else 10.dp,
-                            bottom = 12.dp,
+                            start = 10.dp,
+                            end = ((sw - g.safe.right) / d).dp + 10.dp,
+                            top = if (landscape) (g.safe.top / d).dp + 10.dp else 10.dp,
+                            bottom = ((sh - g.safe.bottom) / d).dp + 10.dp,
                         ),
                         overlay = true,
                         onClose = { stopSelf() },
