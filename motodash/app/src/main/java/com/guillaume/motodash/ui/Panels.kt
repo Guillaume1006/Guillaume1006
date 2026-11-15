@@ -76,6 +76,7 @@ import androidx.core.content.ContextCompat
 import com.guillaume.motodash.AppEntry
 import com.guillaume.motodash.Apps
 import com.guillaume.motodash.Contact
+import com.guillaume.motodash.Frame
 import com.guillaume.motodash.MediaRepo
 import com.guillaume.motodash.Prefs
 import kotlinx.coroutines.Dispatchers
@@ -258,6 +259,19 @@ fun SettingsPanel(state: DashState, pick: (Picker) -> Unit) {
                 .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                 .padding(14.dp),
         )
+        if (state.overlayMode) {
+            val usage = Frame.usageAccess(ctx)
+            val free = Frame.freeformAvailable(ctx)
+            StatusChoice(
+                "Cacher le panneau hors du GPS", usage,
+                if (usage) "Activé" else "Toucher pour activer « Accès aux données d'utilisation »",
+            ) { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            StatusChoice(
+                "GPS ajusté dans son cadre", free,
+                if (free) "Activé : le GPS s'ouvre dans une fenêtre à la taille du cadre"
+                else "Options pour les développeurs → « Fenêtres de forme libre », puis redémarrer le téléphone",
+            ) { ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
         Text(
             if (state.overlayMode)
                 "Le GPS s'ouvre en plein écran et MotoDash s'affiche par-dessus, sur le côté. Le ✕ en haut du panneau le ferme."
@@ -265,6 +279,20 @@ fun SettingsPanel(state: DashState, pick: (Picker) -> Unit) {
                 "Fais glisser la barre entre le GPS et MotoDash pour agrandir le GPS. Touche deux fois la barre pour échanger les côtés.",
             color = TextDim, fontSize = 13.sp,
         )
+    }
+}
+
+@Composable
+private fun StatusChoice(title: String, ok: Boolean, detail: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardHi).clickable(onClick = onClick).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(12.dp).clip(CircleShape).background(if (ok) Color(0xFF4CD964) else Accent))
+        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+            Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(detail, color = TextDim, fontSize = 12.sp)
+        }
     }
 }
 

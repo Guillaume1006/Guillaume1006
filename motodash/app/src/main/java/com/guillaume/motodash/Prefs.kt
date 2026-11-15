@@ -28,6 +28,10 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean("overlayMode", true)
         set(v) = sp.edit().putBoolean("overlayMode", v).apply()
 
+    var askedUsage: Boolean
+        get() = sp.getBoolean("askedUsage", false)
+        set(v) = sp.edit().putBoolean("askedUsage", v).apply()
+
     var favApps: List<String>
         get() = sp.getString("favApps", "")!!.split(',').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("favApps", v.joinToString(",")).apply()

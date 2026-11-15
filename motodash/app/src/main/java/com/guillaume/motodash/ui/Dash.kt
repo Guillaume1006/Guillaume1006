@@ -239,7 +239,7 @@ private fun Dock(state: DashState, pick: (Picker) -> Unit, vertical: Boolean, ov
         // GPS : rouvre l'appli GPS dans l'autre moitié
         DockItem(nav?.icon, Icons.Filled.Directions, "GPS", listOf(Color(0xFF4A90FF), GoBlue), false,
             onLongClick = { pick(Picker.NAV) }) {
-            if (nav != null) Apps.launch(ctx, nav.pkg, adjacent = !overlay && !state.overlayMode) else pick(Picker.NAV)
+            if (nav == null) pick(Picker.NAV) else if (state.overlayMode) Drive.openGps(ctx, nav.pkg) else Apps.launch(ctx, nav.pkg, adjacent = true)
         }
         DockItem(music?.icon, Icons.Filled.MusicNote, "Musique", listOf(Color(0xFFFF5A7A), Color(0xFFE0245E)),
             state.widget == Widget.MUSIC) { state.show(Widget.MUSIC) }

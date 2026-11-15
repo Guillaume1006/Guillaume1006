@@ -57,7 +57,7 @@ object Apps {
      *   Sur Android 12L et plus, cela peut aussi lancer l'écran partagé tout seul.
      * - adjacent = false (musique, autres) : l'appli s'ouvre à la place de MotoDash, le GPS reste visible.
      */
-    fun launch(ctx: Context, pkg: String, adjacent: Boolean = false) {
+    fun launch(ctx: Context, pkg: String, adjacent: Boolean = false, options: android.app.ActivityOptions? = null) {
         val intent = ctx.packageManager.getLaunchIntentForPackage(pkg)
         if (intent == null) {
             Toast.makeText(ctx, "Appli introuvable", Toast.LENGTH_SHORT).show()
@@ -65,6 +65,6 @@ object Apps {
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (adjacent) intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-        ctx.startActivity(intent)
+        ctx.startActivity(intent, options?.toBundle())
     }
 }

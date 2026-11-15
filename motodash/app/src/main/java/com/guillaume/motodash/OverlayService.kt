@@ -63,6 +63,27 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
         goForeground()
         instance = this
         addWindows()
+        handler.post(watch)
+    }
+
+    // ───────────── Le panneau n'est visible que lorsque le GPS est au premier plan ─────────────
+
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var gpsInFront = true
+    private val watch = object : Runnable {
+        override fun run() {
+            val nav = state.navApp
+            if (nav != null && Frame.usageAccess(this@OverlayService)) {
+                val front = Frame.recentState(this@OverlayService, nav)
+                if (front != null && front != gpsInFront) { gpsInFront = front; applyVisibility() }
+            }
+            handler.postDelayed(this, 700)
+        }
+    }
+
+    private fun applyVisibility() {
+        val show = !hidden && gpsInFront
+        windows.forEach { it.visibility = if (show) View.VISIBLE else View.GONE }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -77,6 +98,7 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(watch)
         removeWindows()
         instance = null
         super.onDestroy()
@@ -86,40 +108,25 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
     fun setHidden(h: Boolean) {
         hidden = h
         if (!h) state.reload()
-        windows.forEach { it.visibility = if (h) View.GONE else View.VISIBLE }
+        applyVisibility()
     }
 
     // ───────────── Fenêtres ─────────────
 
     private fun addWindows() {
         if (!Settings.canDrawOverlays(this)) { stopSelf(); return }
-        val sw: Int; val sh: Int
-        if (Build.VERSION.SDK_INT >= 30) {
-            val b = wm.currentWindowMetrics.bounds; sw = b.width(); sh = b.height()
-        } else {
-            val pt = android.graphics.Point()
-            @Suppress("DEPRECATION") wm.defaultDisplay.getRealSize(pt); sw = pt.x; sh = pt.y
-        }
+        val g = Geo.compute(this)
+        val sw = g.sw; val sh = g.sh; val landscape = g.landscape
+        val gap = g.gap; val radius = g.radius
         val d = resources.displayMetrics.density
-        val gap = (10 * d).toInt()
-        val radius = (24 * d).toInt()
-        val landscape = sw > sh
+        val panelX = g.panel.left; val panelY = g.panel.top
+        val panelW = g.panel.width(); val panelH = g.panel.height()
+        val mapL = g.map.left; val mapT = g.map.top; val mapR = g.map.right; val mapB = g.map.bottom
 
-        // Zone du GPS (laissée libre) et zone du panneau
-        val panelW: Int; val panelH: Int; val panelX: Int; val panelY: Int
-        val mapL = gap; val mapT = gap; val mapR: Int; val mapB: Int
-        if (landscape) {
-            panelW = (sw * 0.34f).toInt(); panelH = sh; panelX = sw - panelW; panelY = 0
-            mapR = panelX; mapB = sh - gap
-        } else {
-            panelW = sw; panelH = (sh * 0.42f).toInt(); panelX = 0; panelY = sh - panelH
-            mapR = sw - gap; mapB = panelY
-        }
-
-        // Cadre autour du GPS : bandes + coins arrondis (ne captent pas les touches)
+        // Cadre autour du GPS : bandes (qui bloquent les touches vers ce qu'il y a derrière) + coins arrondis
         val fw = sw.toFloat(); val fh = sh.toFloat()
         fun piece(x: Int, y: Int, w: Int, h: Int, corner: WallpaperView.Corner? = null) =
-            addView(WallpaperView(this, x.toFloat(), y.toFloat(), fw, fh, corner), x, y, w, h, touchable = false)
+            addView(WallpaperView(this, x.toFloat(), y.toFloat(), fw, fh, corner), x, y, w, h, touchable = corner == null)
         piece(0, 0, if (landscape) panelX else sw, gap)                              // haut
         piece(0, 0, gap, if (landscape) sh else panelY)                              // gauche
         if (landscape) piece(0, sh - gap, panelX, gap) else piece(sw - gap, 0, gap, panelY) // bas / droite
@@ -157,7 +164,7 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
         }
         root.addView(compose, ViewGroup.LayoutParams(-1, -1))
         addView(root, panelX, panelY, panelW, panelH, touchable = true)
-        if (hidden) windows.forEach { it.visibility = View.GONE }
+        applyVisibility()
     }
 
     private fun addView(v: View, x: Int, y: Int, w: Int, h: Int, touchable: Boolean) {

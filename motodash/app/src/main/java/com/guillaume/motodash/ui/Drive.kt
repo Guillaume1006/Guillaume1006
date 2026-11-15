@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import com.guillaume.motodash.Apps
+import com.guillaume.motodash.Frame
 import com.guillaume.motodash.MainActivity
 import com.guillaume.motodash.OverlayService
 import com.guillaume.motodash.Prefs
@@ -23,12 +24,23 @@ object Drive {
                 )
                 return
             }
+            val prefs = Prefs(ctx)
+            if (!Frame.usageAccess(ctx) && !prefs.askedUsage) {
+                // Une seule fois : sans cet accès, le panneau reste affiché même hors du GPS
+                prefs.askedUsage = true
+                Toast.makeText(ctx, "Active MotoDash pour que le panneau se cache quand tu quittes le GPS", Toast.LENGTH_LONG).show()
+                ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            }
             OverlayService.start(ctx)
-            Apps.launch(ctx, nav, adjacent = false)   // GPS en plein écran, MotoDash par-dessus
+            openGps(ctx, nav)
         } else {
             Apps.launch(ctx, nav, adjacent = true)    // écran partagé Android
         }
     }
+
+    /** GPS dans son cadre (fenêtre de forme libre si disponible, sinon plein écran sous le panneau). */
+    fun openGps(ctx: Context, nav: String) = Apps.launch(ctx, nav, adjacent = false, options = Frame.gpsOptions(ctx))
 
     /** Ouvre l'écran MotoDash (réglages, choix d'applis, ajout de contacts). */
     fun openMain(ctx: Context, prefs: Prefs, tab: Widget? = null) {
