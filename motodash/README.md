@@ -38,3 +38,9 @@ Une fois MotoDash en écran partagé, les applis lancées depuis le dock ou le b
 ```bash
 ./gradlew assembleRelease   # → app/build/outputs/apk/release/app-release.apk
 ```
+
+## Aperçu
+
+![MotoDash en paysage](screenshots/paysage.png)
+
+*(Carte vide sur la capture : l'émulateur de test n'avait pas accès à Internet.)*

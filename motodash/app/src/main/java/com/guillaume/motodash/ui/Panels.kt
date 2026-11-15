@@ -146,7 +146,7 @@ fun MusicPanel() {
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!info.access) {
                     Text(
-                        "Touchez ici pour afficher le titre en cours",
+                        "Autoriser l'affichage du titre",
                         color = Accent, fontSize = 13.sp, textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(CardHi)
                             .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
