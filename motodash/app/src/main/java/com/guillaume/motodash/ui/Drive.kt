@@ -40,7 +40,10 @@ object Drive {
     }
 
     /** GPS dans son cadre (fenêtre de forme libre si disponible, sinon plein écran sous le panneau). */
-    fun openGps(ctx: Context, nav: String) = Apps.launch(ctx, nav, adjacent = false, options = Frame.gpsOptions(ctx))
+    fun openGps(ctx: Context, nav: String) {
+        Apps.launch(ctx, nav, adjacent = false, options = Frame.gpsOptions(ctx))
+        com.guillaume.motodash.FitService.request()   // puis caler la fenêtre dans le cadre
+    }
 
     /** Ouvre l'écran MotoDash (réglages, choix d'applis, ajout de contacts). */
     fun openMain(ctx: Context, prefs: Prefs, tab: Widget? = null) {

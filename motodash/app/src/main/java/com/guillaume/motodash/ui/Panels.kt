@@ -271,6 +271,12 @@ fun SettingsPanel(state: DashState, pick: (Picker) -> Unit) {
                 if (free) "Activé : le GPS s'ouvre dans une fenêtre à la taille du cadre"
                 else "Options pour les développeurs → « Fenêtres de forme libre », puis redémarrer le téléphone",
             ) { ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            val fit = com.guillaume.motodash.FitService.enabled()
+            StatusChoice(
+                "Ajustement automatique du GPS", fit,
+                if (fit) "Activé : MotoDash cale la fenêtre du GPS dans le cadre"
+                else "Accessibilité → MotoDash – ajustement du GPS (toucher pour y aller)",
+            ) { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }
         Text(
             if (state.overlayMode)

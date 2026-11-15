@@ -86,8 +86,13 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
         }
     }
 
+    private var fitting = false
+
+    /** Caché pendant que MotoDash ajuste la fenêtre du GPS (gestes simulés). */
+    fun setFitting(f: Boolean) { fitting = f; applyVisibility() }
+
     private fun applyVisibility() {
-        val show = !hidden && gpsInFront
+        val show = !hidden && gpsInFront && !fitting
         windows.forEach { it.visibility = if (show) View.VISIBLE else View.GONE }
     }
 

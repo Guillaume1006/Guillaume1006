@@ -158,6 +158,14 @@ private fun GpsLauncher(state: DashState, pick: (Picker) -> Unit, modifier: Modi
                     .clickable { ctx.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                     .padding(12.dp),
             )
+        } else if (state.overlayMode && !com.guillaume.motodash.FitService.enabled()) {
+            Text(
+                "Pour caler le GPS dans ce cadre, active l'ajustement automatique :\nAccessibilité → « MotoDash – ajustement du GPS ».\nToucher ici pour y aller.",
+                color = Accent, fontSize = 13.sp, textAlign = TextAlign.Center,
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(CardHi)
+                    .clickable { ctx.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    .padding(12.dp),
+            )
         } else Text(
             if (state.overlayMode) "Le GPS s'ouvre ici, à la taille du cadre.\nS'il était déjà ouvert, ferme-le d'abord (applis récentes → glisser vers le haut)."
             else "Le GPS s'affiche ici, en écran partagé.\nFais glisser la barre du milieu pour lui donner plus de place.",
