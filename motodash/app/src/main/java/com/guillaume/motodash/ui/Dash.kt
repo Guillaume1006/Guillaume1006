@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +34,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -147,17 +150,16 @@ private fun GpsLauncher(state: DashState, pick: (Picker) -> Unit, modifier: Modi
 fun BigButton(text: String, color: Color, onClick: () -> Unit) {
     Box(
         Modifier.clip(RoundedCornerShape(30.dp)).background(color).clickable(onClick = onClick)
-            .padding(horizontal = 26.dp, vertical = 16.dp),
-    ) { Text(text, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+            .padding(horizontal = 22.dp, vertical = 14.dp),
+    ) { Text(text, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
 }
 
 // ───────────────────────── Panneau MotoDash ─────────────────────────
 
 @Composable
 private fun Panel(state: DashState, prefs: Prefs, pick: (Picker) -> Unit, modifier: Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatusRow()
-        Box(Modifier.weight(1f).fillMaxWidth().glass()) {
+    val widget: @Composable (Modifier) -> Unit = { m ->
+        Box(m.glass()) {
             when (state.widget) {
                 Widget.MUSIC -> MusicPanel(state.musicApp) { pick(Picker.MUSIC) }
                 Widget.PHONE -> PhonePanel(prefs)
@@ -165,7 +167,24 @@ private fun Panel(state: DashState, prefs: Prefs, pick: (Picker) -> Unit, modifi
                 Widget.SETTINGS -> SettingsPanel(state, pick)
             }
         }
-        Dock(state, pick)
+    }
+    BoxWithConstraints(modifier) {
+        if (maxWidth > maxHeight * 1.25f) {
+            // Panneau large et bas : le dock passe sur le côté
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusRow()
+                    widget(Modifier.weight(1f).fillMaxWidth())
+                }
+                Dock(state, pick, vertical = true)
+            }
+        } else {
+            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusRow()
+                widget(Modifier.weight(1f).fillMaxWidth())
+                Dock(state, pick, vertical = false)
+            }
+        }
     }
 }
 
@@ -189,15 +208,11 @@ private fun StatusRow() {
 }
 
 @Composable
-private fun Dock(state: DashState, pick: (Picker) -> Unit) {
+private fun Dock(state: DashState, pick: (Picker) -> Unit, vertical: Boolean) {
     val ctx = LocalContext.current
     val nav = Apps.entry(ctx, state.navApp)
     val music = Apps.entry(ctx, state.musicApp)
-    Row(
-        Modifier.fillMaxWidth().height(68.dp).glass(22.dp).padding(horizontal = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val items: @Composable () -> Unit = {
         // GPS : rouvre l'appli GPS dans l'autre moitié
         DockItem(nav?.icon, Icons.Filled.Directions, "GPS", listOf(Color(0xFF4A90FF), GoBlue), false,
             onLongClick = { pick(Picker.NAV) }) {
@@ -212,7 +227,26 @@ private fun Dock(state: DashState, pick: (Picker) -> Unit) {
         DockItem(null, Icons.Filled.Settings, "Réglages", listOf(Color(0xFF6B6B78), Color(0xFF3A3A44)),
             state.widget == Widget.SETTINGS) { state.show(Widget.SETTINGS) }
     }
+    if (vertical) {
+        BoxWithConstraints(Modifier.fillMaxHeight().glass(22.dp).padding(horizontal = 8.dp, vertical = 6.dp)) {
+            // 5 icônes empilées : leur taille s'adapte à la hauteur (max 52 dp)
+            val itemSize = minOf(52.dp, (maxHeight - 24.dp) / 5)
+            CompositionLocalProvider(LocalDockSize provides itemSize) {
+                Column(Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceEvenly) { items() }
+            }
+        }
+    } else {
+        BoxWithConstraints(Modifier.fillMaxWidth().glass(22.dp).padding(horizontal = 6.dp, vertical = 8.dp)) {
+            // 5 icônes : leur taille s'adapte à la largeur du panneau (max 52 dp)
+            val itemSize = minOf(52.dp, (maxWidth - 24.dp) / 5)
+            CompositionLocalProvider(LocalDockSize provides itemSize) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) { items() }
+            }
+        }
+    }
 }
+
+private val LocalDockSize = staticCompositionLocalOf { 50.dp }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -220,16 +254,17 @@ private fun DockItem(
     appIcon: ImageBitmap?, icon: ImageVector, label: String, colors: List<Color>, selected: Boolean,
     onLongClick: (() -> Unit)? = null, onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    val size = LocalDockSize.current
+    val shape = RoundedCornerShape(size * 0.28f)
     Box(
-        Modifier.size(50.dp).clip(shape)
+        Modifier.size(size).clip(shape)
             .then(if (appIcon == null) Modifier.background(Brush.verticalGradient(colors)) else Modifier)
             .then(if (selected) Modifier.border(2.5.dp, Color.White, shape) else Modifier)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         contentAlignment = Alignment.Center,
     ) {
         if (appIcon != null) Image(appIcon, label, Modifier.fillMaxSize())
-        else Icon(icon, label, tint = Color.White, modifier = Modifier.size(28.dp))
+        else Icon(icon, label, tint = Color.White, modifier = Modifier.size(size * 0.55f))
     }
 }
 

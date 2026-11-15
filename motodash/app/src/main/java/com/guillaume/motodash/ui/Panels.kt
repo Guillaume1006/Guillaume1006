@@ -107,6 +107,30 @@ fun MusicPanel(musicApp: String?, onChoose: () -> Unit) {
             Image(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(40.dp).alpha(0.45f))
         }
         BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
+            if (maxHeight < 190.dp) {
+                // Très peu de hauteur : tout sur une ligne
+                val coverSize = minOf(maxHeight, 64.dp)
+                Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(coverSize).clip(RoundedCornerShape(12.dp)).background(CardHi)
+                            .clickable { Apps.launch(ctx, musicApp) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (art != null) Image(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        else if (app != null) Image(app.icon, null, Modifier.size(36.dp))
+                    }
+                    Column(Modifier.weight(1f).padding(horizontal = 10.dp).clickable(onClick = onChoose)) {
+                        Text(info.title ?: (app?.label ?: "Musique"), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(info.artist ?: "Appuie sur lecture", color = Lilac, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    RoundButton(Icons.Filled.FastRewind, "Précédent", size = 46.dp, background = Color.Transparent) { MediaRepo.previous(ctx, musicApp) }
+                    RoundButton(if (info.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Lecture / pause", size = 56.dp, background = Color.White, tint = Color.Black) {
+                        MediaRepo.playPause(ctx, musicApp)
+                    }
+                    RoundButton(Icons.Filled.FastForward, "Suivant", size = 46.dp, background = Color.Transparent) { MediaRepo.next(ctx, musicApp) }
+                }
+                return@BoxWithConstraints
+            }
             val tall = maxHeight > 360.dp && maxWidth > 220.dp
             val artSize = if (tall) minOf(maxWidth * 0.62f, maxHeight * 0.4f) else (maxHeight - 175.dp).coerceIn(48.dp, 120.dp)
             val big = maxWidth > 260.dp

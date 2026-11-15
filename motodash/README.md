@@ -37,3 +37,13 @@ Au lancement, MotoDash ouvre ton GPS **en écran partagé**, à côté de lui. S
 ```bash
 ./gradlew assembleRelease   # → app/build/outputs/apk/release/app-release.apk
 ```
+
+## Rendus
+
+| Écran partagé 50 / 50 (capture réelle) | Premier lancement |
+|---|---|
+| ![](screenshots/rendu-moitie.png) | ![](screenshots/rendu-premier-lancement.png) |
+| **Choix de l'appli GPS** | **Choix de l'appli musique** |
+| ![](screenshots/rendu-choix-gps.png) | ![](screenshots/rendu-choix-musique.png) |
+
+*Les rendus utilisent une fausse appli GPS et un faux lecteur créés pour les captures. Sur ton téléphone, ce sont tes vraies applis (Waze, Spotify…).*
