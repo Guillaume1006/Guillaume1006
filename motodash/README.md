@@ -2,14 +2,20 @@
 
 Tableau de bord moto pour Android, façon CarPlay, directement sur l'écran du téléphone.
 
-- **Une moitié : la carte GPS** (OpenStreetMap, sans compte ni clé). Elle suit ta position, avec la vitesse en surimpression, un mode nuit, la carte orientée vers ton cap, et un gros bouton **Navigation** qui ouvre ton appli GPS préférée (Waze, Google Maps, Calimoto…). Un appui long sur ce bouton permet de changer d'appli.
-- **L'autre moitié : des onglets à gros boutons** (utilisables avec des gants)
-  - **Compteur** : vitesse, vitesse max, distance du trajet, durée, altitude
-  - **Musique** : lecture/pause, piste suivante/précédente, volume, titre et pochette du morceau en cours
-  - **Appels** : contacts favoris en un seul appui, plus le clavier
-  - **Applis** : tes applis au choix, en raccourci
+Disposition inspirée de CarPlay : fond dégradé, cartes en verre dépoli, gros boutons utilisables avec des gants.
 
-Il s'adapte au paysage (carte à gauche, panneau à droite) comme au portrait (carte en haut). Le bouton ⇄ inverse les deux moitiés. L'écran reste allumé et l'appli s'affiche par-dessus l'écran verrouillé.
+- **Dock** (à gauche en paysage, en bas en portrait) : heure, batterie, état du GPS, et les icônes Musique, Appels, Compteur, puis tes applis préférées. La grille ouvre la liste des applis.
+- **Carte GPS** au centre. Elle suit ta position avec une flèche orange. Trois styles : Voyager clair, OpenStreetMap ou sombre (bouton calques). Elle peut s'orienter vers ton cap.
+- **Carte vitesse** : vitesse et vitesse max, avec deux gros boutons :
+  - **Go** ouvre ton appli de navigation (Waze, Google Maps, Calimoto…). Un appui long permet d'en choisir une autre.
+  - **Voix** lance l'assistant vocal.
+- **Carte du bas**, au choix depuis le dock :
+  - **Musique** : pochette (aussi en fond flouté), titre, artiste, barre de progression, précédent / lecture / suivant
+  - **Appels** : contacts favoris en un seul appui, plus le clavier
+  - **Compteur** : vitesse max, distance, durée, altitude, nouveau trajet
+  - **Applis** : ajoute ou retire les applis du dock (appui long pour retirer)
+
+L'écran reste allumé et l'appli s'affiche par-dessus l'écran verrouillé.
 
 ## Installer
 
@@ -25,7 +31,7 @@ Android ne permet pas à une appli d'en afficher une autre *à l'intérieur* de 
 2. Touche l'icône de MotoDash, puis **Écran partagé**.
 3. Choisis l'autre appli.
 
-Une fois MotoDash en écran partagé, les applis lancées depuis l'onglet Applis ou le bouton Navigation s'ouvrent automatiquement dans l'autre moitié.
+Une fois MotoDash en écran partagé, les applis lancées depuis le dock ou le bouton Go s'ouvrent automatiquement dans l'autre moitié.
 
 ## Compiler
 

@@ -23,17 +23,14 @@ class Prefs(ctx: Context) {
         get() = sp.getString("navApp", null)
         set(v) = sp.edit().putString("navApp", v).apply()
 
-    var nightMap: Boolean
-        get() = sp.getBoolean("nightMap", false)
-        set(v) = sp.edit().putBoolean("nightMap", v).apply()
+    /** 0 = Voyager (CARTO), 1 = OpenStreetMap, 2 = Sombre */
+    var mapStyle: Int
+        get() = sp.getInt("mapStyle", 0)
+        set(v) = sp.edit().putInt("mapStyle", v).apply()
 
     var headingUp: Boolean
         get() = sp.getBoolean("headingUp", false)
         set(v) = sp.edit().putBoolean("headingUp", v).apply()
-
-    var mapFirst: Boolean
-        get() = sp.getBoolean("mapFirst", true)
-        set(v) = sp.edit().putBoolean("mapFirst", v).apply()
 
     var tab: Int
         get() = sp.getInt("tab", 0)

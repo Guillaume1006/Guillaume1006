@@ -16,10 +16,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,10 +38,8 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.automirrored.filled.VolumeDown
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -56,6 +54,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -89,27 +89,22 @@ fun SpeedPanel(tracker: LocationTracker) {
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(1000) } }
     val mins = ((now - ride.startMs) / 60_000).coerceAtLeast(0)
 
-    Column(Modifier.fillMaxSize().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${ride.speedKmh.toInt()}", color = Color.White, fontSize = 110.sp, fontWeight = FontWeight.Black, lineHeight = 110.sp)
-                Text("km/h", color = Accent, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            }
+    Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Stat("Vitesse max", "${ride.maxKmh.toInt()}", "km/h", Modifier.weight(1f).fillMaxHeight())
+            Stat("Trajet", String.format(Locale.FRANCE, "%.1f", ride.tripKm), "km", Modifier.weight(1f).fillMaxHeight())
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Stat("Max", "${ride.maxKmh.toInt()}", "km/h", Modifier.weight(1f))
-            Stat("Trajet", String.format(Locale.FRANCE, "%.1f", ride.tripKm), "km", Modifier.weight(1f))
-            Stat("Durée", "%d:%02d".format(mins / 60, mins % 60), "h", Modifier.weight(1f))
-            Stat("Alt.", ride.altitude?.toInt()?.toString() ?: "–", "m", Modifier.weight(1f))
+        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Stat("Durée", "%d:%02d".format(mins / 60, mins % 60), "h", Modifier.weight(1f).fillMaxHeight())
+            Stat("Altitude", ride.altitude?.toInt()?.toString() ?: "–", "m", Modifier.weight(1f).fillMaxHeight())
         }
-        Spacer(Modifier.height(8.dp))
         Row(
-            Modifier.clip(RoundedCornerShape(14.dp)).background(CardHi).clickable { tracker.resetTrip() }
-                .padding(horizontal = 18.dp, vertical = 10.dp),
+            Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(14.dp)).background(CardHi)
+                .clickable { tracker.resetTrip() }.padding(horizontal = 18.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Filled.Refresh, null, tint = Color.White)
-            Text("  Remise à zéro", color = Color.White, fontSize = 16.sp)
+            Text("  Nouveau trajet", color = Color.White, fontSize = 16.sp)
         }
     }
 }
@@ -117,12 +112,15 @@ fun SpeedPanel(tracker: LocationTracker) {
 @Composable
 private fun Stat(label: String, value: String, unit: String, modifier: Modifier) {
     Column(
-        modifier.clip(RoundedCornerShape(14.dp)).background(CardHi).padding(vertical = 8.dp),
+        modifier.clip(RoundedCornerShape(18.dp)).background(CardHi).padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Text(label, color = TextDim, fontSize = 12.sp)
-        Text(value, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-        Text(unit, color = TextDim, fontSize = 11.sp)
+        Text(label, color = TextDim, fontSize = 13.sp)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(value, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(" $unit", color = TextDim, fontSize = 14.sp, modifier = Modifier.padding(bottom = 5.dp))
+        }
     }
 }
 
@@ -132,45 +130,71 @@ private fun Stat(label: String, value: String, unit: String, modifier: Modifier)
 fun MusicPanel() {
     val ctx = LocalContext.current
     var info by remember { mutableStateOf(MediaRepo.read(ctx)) }
-    LaunchedEffect(Unit) { while (true) { info = MediaRepo.read(ctx); delay(1000) } }
+    LaunchedEffect(Unit) { while (true) { info = MediaRepo.read(ctx); delay(500) } }
     val art = remember(info.art) { info.art?.asImageBitmap() }
+    val progress = if (info.durationMs > 0) (info.positionMs.toFloat() / info.durationMs).coerceIn(0f, 1f) else 0f
 
-    Column(Modifier.fillMaxSize().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        if (!info.access) {
-            Text(
-                "Touchez ici pour autoriser MotoDash à afficher le titre en cours",
-                color = Accent, fontSize = 14.sp, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(CardHi)
-                    .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-                    .padding(10.dp),
-            )
-            Spacer(Modifier.height(8.dp))
+    Box(Modifier.fillMaxSize()) {
+        // Pochette floutée en fond, comme sur CarPlay (flou sur Android 12+)
+        if (art != null) {
+            Image(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(40.dp).alpha(0.45f))
         }
-        Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true).clip(RoundedCornerShape(16.dp)).background(CardHi)
-                    .clickable { info.pkg?.let { Apps.launch(ctx, it) } },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (art != null) Image(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                else Icon(Icons.Filled.MusicNote, null, tint = TextDim, modifier = Modifier.size(56.dp))
+        BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp)) {
+            val tall = maxHeight > 340.dp
+            val artSize = if (tall) minOf(maxWidth * 0.6f, maxHeight * 0.42f) else (maxHeight - 150.dp).coerceIn(56.dp, 120.dp)
+
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                if (!info.access) {
+                    Text(
+                        "Touchez ici pour afficher le titre en cours",
+                        color = Accent, fontSize = 13.sp, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(CardHi)
+                            .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+                            .padding(6.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                val cover: @Composable () -> Unit = {
+                    Box(
+                        Modifier.size(artSize).clip(RoundedCornerShape(14.dp)).background(CardHi)
+                            .clickable { info.pkg?.let { Apps.launch(ctx, it) } },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (art != null) Image(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                        else Icon(Icons.Filled.MusicNote, null, tint = TextDim, modifier = Modifier.size(artSize * 0.45f))
+                    }
+                }
+                val title = info.title ?: "Aucune lecture"
+                val artist = info.artist ?: info.pkg?.let { Apps.entry(ctx, it)?.label } ?: "Lance ta musique"
+                if (tall) {
+                    cover()
+                    Spacer(Modifier.height(12.dp))
+                    Text(title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(artist, color = Lilac, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                } else {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        cover()
+                        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                            Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(artist, color = Lilac, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                // Barre de progression
+                Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = 0.25f))) {
+                    Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Color.White))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    RoundButton(Icons.Filled.FastRewind, "Précédent", size = 64.dp, background = Color.Transparent) { MediaRepo.previous(ctx) }
+                    RoundButton(
+                        if (info.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Lecture / pause",
+                        size = 72.dp, background = Color.White, tint = Color.Black,
+                    ) { MediaRepo.playPause(ctx) }
+                    RoundButton(Icons.Filled.FastForward, "Suivant", size = 64.dp, background = Color.Transparent) { MediaRepo.next(ctx) }
+                }
             }
-            Column(Modifier.weight(1f).padding(start = 14.dp)) {
-                Text(info.title ?: "Aucune lecture", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(info.artist ?: "", color = TextDim, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                info.pkg?.let { p -> Apps.entry(ctx, p)?.let { Text(it.label, color = Accent, fontSize = 13.sp) } }
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            RoundButton(Icons.Filled.SkipPrevious, "Précédent", size = 72.dp, background = CardHi) { MediaRepo.previous(ctx) }
-            RoundButton(if (info.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Lecture / pause", size = 92.dp, active = true) {
-                MediaRepo.playPause(ctx)
-            }
-            RoundButton(Icons.Filled.SkipNext, "Suivant", size = 72.dp, background = CardHi) { MediaRepo.next(ctx) }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            RoundButton(Icons.AutoMirrored.Filled.VolumeDown, "Volume -", background = CardHi) { MediaRepo.volume(ctx, false) }
-            RoundButton(Icons.AutoMirrored.Filled.VolumeUp, "Volume +", background = CardHi) { MediaRepo.volume(ctx, true) }
         }
     }
 }
@@ -253,40 +277,39 @@ fun PhonePanel(prefs: Prefs) {
 // ───────────────────────── Applis ─────────────────────────
 
 @Composable
-fun AppsPanel(prefs: Prefs) {
+fun AppsPanel(favs: List<String>, setFavs: (List<String>) -> Unit) {
     val ctx = LocalContext.current
-    var favs by remember { mutableStateOf(prefs.favApps) }
     var picking by remember { mutableStateOf(false) }
     var toRemove by remember { mutableStateOf<AppEntry?>(null) }
     val entries = remember(favs) { favs.mapNotNull { Apps.entry(ctx, it) } }
 
     LazyVerticalGrid(
-        GridCells.Adaptive(110.dp), Modifier.fillMaxSize().padding(10.dp),
+        GridCells.Adaptive(104.dp), Modifier.fillMaxSize().padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(entries) { app ->
             Tile(onClick = { Apps.launch(ctx, app.pkg) }, onLongClick = { toRemove = app }) {
-                Image(app.icon, null, Modifier.size(56.dp))
+                Image(app.icon, null, Modifier.size(52.dp))
                 Text(app.label, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         item {
             Tile(onClick = { picking = true }) {
-                Icon(Icons.Filled.Add, null, tint = Accent, modifier = Modifier.size(48.dp))
+                Icon(Icons.Filled.Add, null, tint = Accent, modifier = Modifier.size(44.dp))
                 Text("Ajouter", color = TextDim, fontSize = 14.sp)
             }
         }
     }
 
     if (picking) {
-        AppPickerDialog("Ajouter une appli", onDismiss = { picking = false }) { pkg ->
-            if (pkg !in favs) { favs = favs + pkg; prefs.favApps = favs }
+        AppPickerDialog("Ajouter une appli au dock", onDismiss = { picking = false }) { pkg ->
+            if (pkg !in favs) setFavs(favs + pkg)
             picking = false
         }
     }
     toRemove?.let { a ->
         ConfirmRemove(a.label, onDismiss = { toRemove = null }) {
-            favs = favs - a.pkg; prefs.favApps = favs; toRemove = null
+            setFavs(favs - a.pkg); toRemove = null
         }
     }
 }
@@ -297,7 +320,7 @@ fun AppsPanel(prefs: Prefs) {
 @Composable
 private fun Tile(onClick: () -> Unit, onLongClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(18.dp)).background(CardHi)
+        Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(18.dp)).background(CardHi)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
