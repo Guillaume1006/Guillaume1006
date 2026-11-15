@@ -2,45 +2,38 @@
 
 Tableau de bord moto pour Android, façon CarPlay, directement sur l'écran du téléphone.
 
-Disposition inspirée de CarPlay : fond dégradé, cartes en verre dépoli, gros boutons utilisables avec des gants.
+**Ton appli GPS** (Waze, Google Maps, Calimoto…) prend la grande partie de l'écran. **MotoDash** tient dans un panneau sur le côté : fond dégradé, cartes en verre dépoli, gros boutons utilisables avec des gants.
 
-- **Dock** (à gauche en paysage, en bas en portrait) : heure, batterie, état du GPS, et les icônes Musique, Appels, Compteur, puis tes applis préférées. La grille ouvre la liste des applis.
-- **Carte GPS** au centre. Elle suit ta position avec une flèche orange. Trois styles : Voyager clair, OpenStreetMap ou sombre (bouton calques). Elle peut s'orienter vers ton cap.
-- **Carte vitesse** : vitesse et vitesse max, avec deux gros boutons :
-  - **Go** ouvre ton appli de navigation (Waze, Google Maps, Calimoto…). Un appui long permet d'en choisir une autre.
-  - **Voix** lance l'assistant vocal.
-- **Carte du bas**, au choix depuis le dock :
-  - **Musique** : pochette (aussi en fond flouté), titre, artiste, barre de progression, précédent / lecture / suivant
-  - **Appels** : contacts favoris en un seul appui, plus le clavier
-  - **Compteur** : vitesse max, distance, durée, altitude, nouveau trajet
-  - **Applis** : ajoute ou retire les applis du dock (appui long pour retirer)
+![Rendu : GPS à gauche, MotoDash à droite](screenshots/rendu-ecran-partage.png)
 
-L'écran reste allumé et l'appli s'affiche par-dessus l'écran verrouillé.
+## Ce que contient le panneau
+
+- **En haut** : l'heure, la batterie et le bouton micro de l'assistant vocal.
+- **La carte Musique** pour l'appli de ton choix (Spotify, Deezer, YouTube Music…) : pochette, titre, artiste, barre de progression et précédent / lecture / suivant. Touche la pochette pour ouvrir l'appli musique.
+- **Le dock** :
+  - **GPS** rouvre ton appli GPS à côté. Un appui long permet de changer d'appli.
+  - **Musique** et **Appels** (contacts favoris en un seul appui).
+  - **Applis** : tes raccourcis.
+  - **Réglages** : appli GPS, appli musique, ouverture du GPS au démarrage.
+
+L'écran reste allumé et MotoDash s'affiche par-dessus l'écran verrouillé.
 
 ## Installer
 
 1. Copie `MotoDash.apk` sur le téléphone et ouvre-le (autorise « Installer des applis inconnues »).
-2. Au premier lancement, accepte la localisation.
-3. Onglet Musique : touche le bandeau orange et active **MotoDash** dans « Accès aux notifications ». C'est nécessaire pour afficher le titre en cours. Les boutons lecture et suivant fonctionnent même sans cette autorisation.
+2. Choisis ton **appli GPS**. MotoDash propose d'abord celles qu'il a détectées.
+3. Choisis ton **appli musique**, puis touche « Autoriser l'affichage du titre » et active MotoDash dans « Accès aux notifications ».
 
-## Afficher une autre appli dans la moitié de l'écran
+## Le GPS en grand
 
-Android ne permet pas à une appli d'en afficher une autre *à l'intérieur* de sa propre fenêtre. On passe donc par l'écran partagé d'Android :
+Au lancement, MotoDash ouvre ton GPS **en écran partagé**, à côté de lui. Sur Android 12L et plus, l'écran se partage normalement tout seul.
 
-1. Ouvre MotoDash, puis le menu **Récents** (le carré, ou un glissement vers le haut en le maintenant).
-2. Touche l'icône de MotoDash, puis **Écran partagé**.
-3. Choisis l'autre appli.
-
-Une fois MotoDash en écran partagé, les applis lancées depuis le dock ou le bouton Go s'ouvrent automatiquement dans l'autre moitié.
+- **Pour agrandir le GPS**, fais glisser la barre du milieu vers MotoDash (2/3 pour le GPS, 1/3 pour MotoDash).
+- **Si le GPS est du mauvais côté**, touche deux fois la barre du milieu pour échanger les côtés.
+- **Si l'écran ne se partage pas tout seul** : ouvre MotoDash, puis **Récents**, touche l'icône MotoDash, puis **Écran partagé**, et choisis ton GPS.
 
 ## Compiler
 
 ```bash
 ./gradlew assembleRelease   # → app/build/outputs/apk/release/app-release.apk
 ```
-
-## Aperçu
-
-![MotoDash en paysage](screenshots/paysage.png)
-
-*(Carte vide sur la capture : l'émulateur de test n'avait pas accès à Internet.)*

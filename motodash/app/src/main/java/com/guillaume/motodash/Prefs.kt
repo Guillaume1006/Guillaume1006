@@ -8,6 +8,21 @@ data class Contact(val name: String, val number: String)
 class Prefs(ctx: Context) {
     private val sp: SharedPreferences = ctx.getSharedPreferences("motodash", Context.MODE_PRIVATE)
 
+    /** Appli GPS choisie (Waze, Google Maps, Calimoto…) */
+    var navApp: String?
+        get() = sp.getString("navApp", null)
+        set(v) = sp.edit().putString("navApp", v).apply()
+
+    /** Appli musique choisie (Spotify, Deezer, YouTube Music…) */
+    var musicApp: String?
+        get() = sp.getString("musicApp", null)
+        set(v) = sp.edit().putString("musicApp", v).apply()
+
+    /** Ouvrir le GPS en écran partagé au lancement de MotoDash */
+    var autoLaunch: Boolean
+        get() = sp.getBoolean("autoLaunch", true)
+        set(v) = sp.edit().putBoolean("autoLaunch", v).apply()
+
     var favApps: List<String>
         get() = sp.getString("favApps", "")!!.split(',').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("favApps", v.joinToString(",")).apply()
@@ -18,19 +33,6 @@ class Prefs(ctx: Context) {
             if (p.size == 2) Contact(p[0], p[1]) else null
         }
         set(v) = sp.edit().putString("contacts", v.joinToString("\n") { "${it.name.replace('\t', ' ')}\t${it.number}" }).apply()
-
-    var navApp: String?
-        get() = sp.getString("navApp", null)
-        set(v) = sp.edit().putString("navApp", v).apply()
-
-    /** 0 = Voyager (CARTO), 1 = OpenStreetMap, 2 = Sombre */
-    var mapStyle: Int
-        get() = sp.getInt("mapStyle", 0)
-        set(v) = sp.edit().putInt("mapStyle", v).apply()
-
-    var headingUp: Boolean
-        get() = sp.getBoolean("headingUp", false)
-        set(v) = sp.edit().putBoolean("headingUp", v).apply()
 
     var tab: Int
         get() = sp.getInt("tab", 0)

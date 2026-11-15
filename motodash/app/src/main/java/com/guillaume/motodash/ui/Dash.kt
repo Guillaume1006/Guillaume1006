@@ -8,8 +8,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,17 +22,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,153 +44,193 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.guillaume.motodash.Apps
-import com.guillaume.motodash.LocationTracker
 import com.guillaume.motodash.Prefs
-import com.guillaume.motodash.RideState
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-enum class Widget(val label: String, val icon: ImageVector, val colors: List<Color>) {
-    MUSIC("Musique", Icons.Filled.MusicNote, listOf(Color(0xFFFF5A7A), Color(0xFFE0245E))),
-    PHONE("Appels", Icons.Filled.Phone, listOf(Color(0xFF5FE07A), Color(0xFF2DB84C))),
-    SPEED("Compteur", Icons.Filled.Speed, listOf(Color(0xFFFFA040), Color(0xFFFF6A00))),
-    APPS("Applis", Icons.Filled.Apps, listOf(Color(0xFF8E8E9A), Color(0xFF55555F))),
+enum class Widget { MUSIC, PHONE, APPS, SETTINGS }
+
+/** État partagé de l'écran : applis choisies, widget affiché. */
+class DashState(private val prefs: Prefs) {
+    var widget by mutableStateOf(Widget.entries.getOrElse(prefs.tab) { Widget.MUSIC })
+    var navApp by mutableStateOf(prefs.navApp)
+    var musicApp by mutableStateOf(prefs.musicApp)
+    var favs by mutableStateOf(prefs.favApps)
+    var autoLaunch by mutableStateOf(prefs.autoLaunch)
+
+    fun show(w: Widget) { widget = w; prefs.tab = w.ordinal }
+    fun setNav(pkg: String) { navApp = pkg; prefs.navApp = pkg }
+    fun setMusic(pkg: String) { musicApp = pkg; prefs.musicApp = pkg }
+    fun setFavList(l: List<String>) { favs = l; prefs.favApps = l }
+    fun setAuto(b: Boolean) { autoLaunch = b; prefs.autoLaunch = b }
 }
 
 @Composable
-fun DashScreen(tracker: LocationTracker, prefs: Prefs, locationGranted: Boolean) {
-    val ride by tracker.state.collectAsStateWithLifecycle()
+fun DashScreen(prefs: Prefs, split: Boolean) {
+    val state = remember { DashState(prefs) }
     val cfg = LocalConfiguration.current
     val landscape = cfg.screenWidthDp > cfg.screenHeightDp
-    var widget by remember { mutableIntStateOf(prefs.tab.coerceIn(0, Widget.entries.size - 1)) }
-    var favs by remember { mutableStateOf(prefs.favApps) }
-    val current = Widget.entries[widget]
-    val select: (Widget) -> Unit = { widget = it.ordinal; prefs.tab = it.ordinal }
-    val setFavs: (List<String>) -> Unit = { favs = it; prefs.favApps = it }
+    var picker by remember { mutableStateOf<Picker?>(null) }
 
-    val gap = Arrangement.spacedBy(10.dp)
     Box(Modifier.fillMaxSize().wallpaper().padding(10.dp)) {
-        if (landscape) {
-            Row(Modifier.fillMaxSize(), horizontalArrangement = gap) {
-                Dock(true, ride.hasFix, current, favs, select, Modifier.width(80.dp).fillMaxHeight())
-                MapPanel(ride, prefs, locationGranted, Modifier.weight(1.2f).fillMaxHeight())
-                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = gap) {
-                    ActionCard(ride, prefs, Modifier.fillMaxWidth().weight(0.34f))
-                    WidgetCard(current, tracker, prefs, favs, setFavs, Modifier.fillMaxWidth().weight(0.66f))
-                }
+        when {
+            // MotoDash est dans sa moitié d'écran : on n'affiche que le panneau.
+            split -> Panel(state, prefs, { picker = it }, Modifier.fillMaxSize())
+            // Plein écran : la place du GPS (2/3) + le panneau (1/3).
+            landscape -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GpsLauncher(state, { picker = it }, Modifier.weight(2f).fillMaxHeight())
+                Panel(state, prefs, { picker = it }, Modifier.weight(1f).fillMaxHeight())
             }
+            else -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                GpsLauncher(state, { picker = it }, Modifier.weight(1f).fillMaxWidth())
+                Panel(state, prefs, { picker = it }, Modifier.weight(1.3f).fillMaxWidth())
+            }
+        }
+    }
+
+    val ctx = LocalContext.current
+    when (picker) {
+        Picker.NAV -> AppPickerDialog("Ton appli GPS", "Applis GPS détectées", { Apps.navApps(ctx) }, { picker = null }) {
+            state.setNav(it); picker = null; Apps.launch(ctx, it, adjacent = true)
+        }
+        Picker.MUSIC -> AppPickerDialog("Ton appli musique", "Applis musique détectées", { Apps.musicApps(ctx) }, { picker = null }) {
+            state.setMusic(it); picker = null
+        }
+        null -> {}
+    }
+}
+
+enum class Picker { NAV, MUSIC }
+
+// ───────────────────────── Emplacement du GPS (plein écran) ─────────────────────────
+
+@Composable
+private fun GpsLauncher(state: DashState, pick: (Picker) -> Unit, modifier: Modifier) {
+    val ctx = LocalContext.current
+    val nav = Apps.entry(ctx, state.navApp)
+    Column(
+        modifier.glass().padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        if (nav != null) {
+            Image(nav.icon, null, Modifier.size(84.dp).clip(RoundedCornerShape(20.dp)))
+            Spacer(Modifier.height(14.dp))
+            BigButton("Ouvrir ${nav.label} à côté", GoBlue) { Apps.launch(ctx, nav.pkg, adjacent = true) }
+            Spacer(Modifier.height(10.dp))
+            Text("Changer d'appli GPS", color = TextDim, fontSize = 14.sp, modifier = Modifier.clickable { pick(Picker.NAV) }.padding(6.dp))
         } else {
-            Column(Modifier.fillMaxSize(), verticalArrangement = gap) {
-                MapPanel(ride, prefs, locationGranted, Modifier.weight(1f).fillMaxWidth())
-                ActionCard(ride, prefs, Modifier.fillMaxWidth().height(116.dp))
-                WidgetCard(current, tracker, prefs, favs, setFavs, Modifier.fillMaxWidth().weight(0.85f))
-                Dock(false, ride.hasFix, current, favs, select, Modifier.fillMaxWidth().height(80.dp))
+            Icon(Icons.Filled.Directions, null, tint = Color.White, modifier = Modifier.size(72.dp))
+            Spacer(Modifier.height(14.dp))
+            BigButton("Choisir mon appli GPS", GoBlue) { pick(Picker.NAV) }
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Le GPS s'affiche ici, en écran partagé.\nFais glisser la barre du milieu pour lui donner plus de place.",
+            color = TextDim, fontSize = 13.sp, textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+fun BigButton(text: String, color: Color, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(30.dp)).background(color).clickable(onClick = onClick)
+            .padding(horizontal = 26.dp, vertical = 16.dp),
+    ) { Text(text, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+}
+
+// ───────────────────────── Panneau MotoDash ─────────────────────────
+
+@Composable
+private fun Panel(state: DashState, prefs: Prefs, pick: (Picker) -> Unit, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatusRow()
+        Box(Modifier.weight(1f).fillMaxWidth().glass()) {
+            when (state.widget) {
+                Widget.MUSIC -> MusicPanel(state.musicApp) { pick(Picker.MUSIC) }
+                Widget.PHONE -> PhonePanel(prefs)
+                Widget.APPS -> AppsPanel(state.favs, state::setFavList)
+                Widget.SETTINGS -> SettingsPanel(state, pick)
             }
         }
+        Dock(state, pick)
     }
 }
 
 @Composable
-private fun WidgetCard(
-    w: Widget, tracker: LocationTracker, prefs: Prefs,
-    favs: List<String>, setFavs: (List<String>) -> Unit, modifier: Modifier,
-) {
-    Box(modifier.glass()) {
-        when (w) {
-            Widget.MUSIC -> MusicPanel()
-            Widget.PHONE -> PhonePanel(prefs)
-            Widget.SPEED -> SpeedPanel(tracker)
-            Widget.APPS -> AppsPanel(favs, setFavs)
-        }
-    }
-}
-
-// ───────────────────────── Dock ─────────────────────────
-
-@Composable
-private fun Dock(
-    vertical: Boolean, hasFix: Boolean, selected: Widget, favs: List<String>,
-    onSelect: (Widget) -> Unit, modifier: Modifier,
-) {
+private fun StatusRow() {
     val ctx = LocalContext.current
     val (time, battery) = rememberClockAndBattery()
-    val icons: @Composable () -> Unit = {
-        listOf(Widget.MUSIC, Widget.PHONE, Widget.SPEED).forEach { w ->
-            DockIcon(w.icon, w.label, Brush.verticalGradient(w.colors), w == selected) { onSelect(w) }
-        }
-        favs.forEach { pkg ->
-            Apps.entry(ctx, pkg)?.let { app ->
-                DockApp(app.icon, app.label) { Apps.launch(ctx, pkg) }
+    Row(Modifier.fillMaxWidth().height(52.dp).glass(20.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(time, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(10.dp))
+        if (battery >= 0) Text("$battery%", color = if (battery < 20) Color(0xFFFF453A) else TextDim, fontSize = 14.sp)
+        Spacer(Modifier.weight(1f))
+        RoundButton(Icons.Filled.Mic, "Assistant vocal", size = 40.dp, background = MicRed) {
+            try {
+                ctx.startActivity(Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (_: Exception) {
+                Toast.makeText(ctx, "Aucun assistant vocal trouvé", Toast.LENGTH_SHORT).show()
             }
         }
     }
-    val status: @Composable () -> Unit = {
-        Text(time, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(8.dp).clip(CircleShape).background(if (hasFix) Color(0xFF4CD964) else Color(0xFFFF453A)))
-            Spacer(Modifier.width(5.dp))
-            if (battery >= 0) Text("$battery%", color = if (battery < 20) Color(0xFFFF453A) else TextDim, fontSize = 12.sp)
-        }
-    }
-    val grid: @Composable () -> Unit = {
-        DockIcon(Icons.Filled.Apps, "Toutes mes applis", Brush.verticalGradient(Widget.APPS.colors), selected == Widget.APPS) {
-            onSelect(Widget.APPS)
-        }
-    }
+}
 
-    if (vertical) {
-        Column(modifier.glass(24.dp).padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            status()
-            Spacer(Modifier.height(12.dp))
-            Column(
-                Modifier.weight(1f).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) { icons() }
-            Spacer(Modifier.height(10.dp))
-            grid()
+@Composable
+private fun Dock(state: DashState, pick: (Picker) -> Unit) {
+    val ctx = LocalContext.current
+    val nav = Apps.entry(ctx, state.navApp)
+    val music = Apps.entry(ctx, state.musicApp)
+    Row(
+        Modifier.fillMaxWidth().height(68.dp).glass(22.dp).padding(horizontal = 6.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // GPS : rouvre l'appli GPS dans l'autre moitié
+        DockItem(nav?.icon, Icons.Filled.Directions, "GPS", listOf(Color(0xFF4A90FF), GoBlue), false,
+            onLongClick = { pick(Picker.NAV) }) {
+            if (nav != null) Apps.launch(ctx, nav.pkg, adjacent = true) else pick(Picker.NAV)
         }
-    } else {
-        Row(modifier.glass(24.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) { status() }
-            Spacer(Modifier.width(14.dp))
-            Row(
-                Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) { icons() }
-            Spacer(Modifier.width(10.dp))
-            grid()
-        }
+        DockItem(music?.icon, Icons.Filled.MusicNote, "Musique", listOf(Color(0xFFFF5A7A), Color(0xFFE0245E)),
+            state.widget == Widget.MUSIC) { state.show(Widget.MUSIC) }
+        DockItem(null, Icons.Filled.Phone, "Appels", listOf(Color(0xFF5FE07A), Color(0xFF2DB84C)),
+            state.widget == Widget.PHONE) { state.show(Widget.PHONE) }
+        DockItem(null, Icons.Filled.Apps, "Applis", listOf(Color(0xFF8E8E9A), Color(0xFF55555F)),
+            state.widget == Widget.APPS) { state.show(Widget.APPS) }
+        DockItem(null, Icons.Filled.Settings, "Réglages", listOf(Color(0xFF6B6B78), Color(0xFF3A3A44)),
+            state.widget == Widget.SETTINGS) { state.show(Widget.SETTINGS) }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DockIcon(icon: ImageVector, label: String, brush: Brush, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(15.dp)
+private fun DockItem(
+    appIcon: ImageBitmap?, icon: ImageVector, label: String, colors: List<Color>, selected: Boolean,
+    onLongClick: (() -> Unit)? = null, onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(14.dp)
     Box(
-        Modifier.size(54.dp).clip(shape).background(brush)
+        Modifier.size(50.dp).clip(shape)
+            .then(if (appIcon == null) Modifier.background(Brush.verticalGradient(colors)) else Modifier)
             .then(if (selected) Modifier.border(2.5.dp, Color.White, shape) else Modifier)
-            .combinedClickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, label, tint = Color.White, modifier = Modifier.size(30.dp)) }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun DockApp(icon: androidx.compose.ui.graphics.ImageBitmap, label: String, onClick: () -> Unit) {
-    Image(icon, label, Modifier.size(54.dp).clip(RoundedCornerShape(15.dp)).combinedClickable(onClick = onClick))
+    ) {
+        if (appIcon != null) Image(appIcon, label, Modifier.fillMaxSize())
+        else Icon(icon, label, tint = Color.White, modifier = Modifier.size(28.dp))
+    }
 }
 
 @Composable
@@ -213,51 +250,4 @@ private fun rememberClockAndBattery(): Pair<String, Int> {
         }
     }
     return time to battery
-}
-
-// ───────────────────────── Vitesse + Go / Voix ─────────────────────────
-
-@Composable
-private fun ActionCard(ride: RideState, prefs: Prefs, modifier: Modifier) {
-    val ctx = LocalContext.current
-    var pickNav by remember { mutableStateOf(false) }
-
-    Row(modifier.glass().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text("${ride.speedKmh.toInt()}", color = Color.White, fontSize = 54.sp, fontWeight = FontWeight.Black, lineHeight = 54.sp)
-                Text(" km/h", color = TextDim, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
-            }
-            Text("max ${ride.maxKmh.toInt()} km/h", color = TextDim, fontSize = 12.sp)
-        }
-        Spacer(Modifier.weight(1f))
-        ActionButton("Go", Icons.Filled.Directions, GoBlue, onLongClick = { pickNav = true }) {
-            val nav = prefs.navApp
-            if (nav == null) pickNav = true else Apps.launch(ctx, nav)
-        }
-        Spacer(Modifier.width(18.dp))
-        ActionButton("Voix", Icons.Filled.Mic, MicRed) {
-            try {
-                ctx.startActivity(Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            } catch (_: Exception) {
-                Toast.makeText(ctx, "Aucun assistant vocal trouvé", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    if (pickNav) {
-        AppPickerDialog(
-            title = "Appli de navigation (Waze, Maps…)",
-            onDismiss = { pickNav = false },
-            onPick = { pkg -> prefs.navApp = pkg; pickNav = false; Apps.launch(ctx, pkg) },
-        )
-    }
-}
-
-@Composable
-private fun ActionButton(label: String, icon: ImageVector, color: Color, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        RoundButton(icon, label, size = 62.dp, background = color, onLongClick = onLongClick, onClick = onClick)
-        Text(label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-    }
 }

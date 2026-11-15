@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Flèche de navigation (en mouvement) -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="56dp" android:height="56dp" android:viewportWidth="56" android:viewportHeight="56">
-    <path android:fillColor="#55000000" android:pathData="M28,28 m-24,0 a24,24 0 1,0 48,0 a24,24 0 1,0 -48,0" />
-    <path android:fillColor="#FFFFFF" android:pathData="M28,28 m-21,0 a21,21 0 1,0 42,0 a21,21 0 1,0 -42,0" />
-    <path android:fillColor="#FF7A00" android:pathData="M28,11 L41,41 L28,34 L15,41 Z" />
-</vector>
