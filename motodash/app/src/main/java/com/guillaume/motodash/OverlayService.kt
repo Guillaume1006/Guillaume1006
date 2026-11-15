@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
@@ -87,6 +88,14 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
     }
 
     private var fitting = false
+    private var mapOverride: Rect? = null
+
+    /** Cadre recalé sur la vraie fenêtre du GPS (quand le GPS refuse la taille demandée). */
+    fun setMapOverride(r: Rect?) {
+        if (r == mapOverride) return
+        mapOverride = r
+        removeWindows(); addWindows()
+    }
 
     /** Caché pendant que MotoDash ajuste la fenêtre du GPS (gestes simulés). */
     fun setFitting(f: Boolean) { fitting = f; applyVisibility() }
@@ -104,6 +113,7 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        mapOverride = null
         removeWindows(); addWindows()   // rotation : on recalcule la disposition
     }
 
@@ -126,7 +136,13 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
 
     private fun addWindows() {
         if (!Settings.canDrawOverlays(this)) { stopSelf(); return }
-        val g = Geo.compute(this)
+        var g = Geo.compute(this)
+        mapOverride?.let { o ->
+            // Cadre = fenêtre du GPS (limitée à l'écran), panneau = la place restante
+            val m = Rect(maxOf(o.left, g.safe.left + g.gap / 2), maxOf(o.top, g.safe.top), minOf(o.right, g.sw), minOf(o.bottom, g.safe.bottom - g.gap / 2))
+            if (g.landscape && g.sw - m.right >= g.sw / 4) g = g.copy(map = m, panel = Rect(m.right, 0, g.sw, g.sh))
+            else if (!g.landscape && g.sh - m.bottom >= g.sh / 4) g = g.copy(map = m, panel = Rect(0, m.bottom, g.sw, g.sh))
+        }
         val sw = g.sw; val sh = g.sh; val landscape = g.landscape
         val gap = g.gap; val radius = g.radius
         val d = resources.displayMetrics.density

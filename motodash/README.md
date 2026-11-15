@@ -16,6 +16,19 @@ Tableau de bord moto pour Android, façon CarPlay, directement sur l'écran du t
 
 ![GPS ajusté dans son cadre](screenshots/rendu-cadre-ajuste.png)
 
+### Ajustement automatique (accessibilité)
+
+Android ne laisse pas une appli redimensionner la fenêtre d'une autre. MotoDash fait donc comme toi avec le doigt, grâce à l'accessibilité :
+
+1. il glisse la barre de la fenêtre du GPS pour la placer dans le cadre ;
+2. il glisse son coin pour lui donner la taille du cadre ;
+3. si le GPS refuse cette taille, c'est le cadre et le panneau qui s'adaptent à sa fenêtre ;
+4. si tu touches ☐ (plein écran), il remet le GPS dans sa fenêtre.
+
+Pour l'activer : Réglages → Accessibilité → **MotoDash – ajustement du GPS**. Sur Android 13+, il faut d'abord autoriser les paramètres restreints : Réglages → Applis → MotoDash → ⋮ → **Autoriser les paramètres restreints**.
+
+![Ajustement automatique](screenshots/rendu-ajuste-auto.png)
+
 ### Activer les fenêtres de forme libre
 
 1. Réglages → À propos du téléphone → touche 7 fois **Numéro de build** (les options pour les développeurs apparaissent).
