@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.guillaume.motodash.Apps
+import com.guillaume.motodash.Frame
 import com.guillaume.motodash.Prefs
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -148,7 +149,16 @@ private fun GpsLauncher(state: DashState, pick: (Picker) -> Unit, modifier: Modi
             BigButton("Choisir mon appli GPS", GoBlue) { pick(Picker.NAV) }
         }
         Spacer(Modifier.height(16.dp))
-        Text(
+        if (state.overlayMode && !Frame.freeformAvailable(ctx)) {
+            // Sans fenêtres de forme libre, le GPS reste en plein écran sous le panneau
+            Text(
+                "⚠ Le GPS sera en partie caché par le panneau.\nPour l'ajuster dans son cadre : Options pour les développeurs → « Fenêtres de forme libre », puis redémarrer.\nToucher ici pour y aller.",
+                color = Accent, fontSize = 13.sp, textAlign = TextAlign.Center,
+                modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(CardHi)
+                    .clickable { ctx.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    .padding(12.dp),
+            )
+        } else Text(
             if (state.overlayMode) "Le GPS s'ouvre en grand ici,\nMotoDash reste affiché sur le côté."
             else "Le GPS s'affiche ici, en écran partagé.\nFais glisser la barre du milieu pour lui donner plus de place.",
             color = TextDim, fontSize = 13.sp, textAlign = TextAlign.Center,
