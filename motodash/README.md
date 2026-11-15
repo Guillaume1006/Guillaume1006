@@ -23,6 +23,8 @@ Tableau de bord moto pour Android, façon CarPlay, directement sur l'écran du t
 3. Active **Fenêtres de forme libre** (« Enable freeform windows »), et si l'option existe, **Forcer le redimensionnement des activités**.
 4. Redémarre le téléphone.
 
+**Ferme Waze avant de démarrer MotoDash** (applis récentes → glisse Waze vers le haut). S'il est déjà ouvert, Android garde sa fenêtre actuelle : en plein écran, ou à une taille par défaut sur Android 12 et plus.
+
 Démarre MotoDash avec le téléphone déjà en paysage. Android ne laisse pas MotoDash redimensionner la fenêtre du GPS après coup : si tu tournes le téléphone, ferme la fenêtre du GPS (✕ en haut) et touche GPS dans le dock.
 
 ## Ce que contient le panneau

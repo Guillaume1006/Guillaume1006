@@ -159,7 +159,7 @@ private fun GpsLauncher(state: DashState, pick: (Picker) -> Unit, modifier: Modi
                     .padding(12.dp),
             )
         } else Text(
-            if (state.overlayMode) "Le GPS s'ouvre en grand ici,\nMotoDash reste affiché sur le côté."
+            if (state.overlayMode) "Le GPS s'ouvre ici, à la taille du cadre.\nS'il était déjà ouvert, ferme-le d'abord (applis récentes → glisser vers le haut)."
             else "Le GPS s'affiche ici, en écran partagé.\nFais glisser la barre du milieu pour lui donner plus de place.",
             color = TextDim, fontSize = 13.sp, textAlign = TextAlign.Center,
         )

@@ -63,21 +63,26 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
         state = DashState(prefs)
         instance = this
         addWindows()
-        handler.post(watch)
+        bgHandler.post(watch)
     }
 
     // ───────────── Le panneau n'est visible que lorsque le GPS est au premier plan ─────────────
 
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    // La lecture de l'historique d'utilisation se fait hors du fil principal
+    private val bg = android.os.HandlerThread("motodash-watch").apply { start() }
+    private val bgHandler = android.os.Handler(bg.looper)
     private var gpsInFront = true
     private val watch = object : Runnable {
         override fun run() {
             val nav = state.navApp
             if (nav != null && Frame.usageAccess(this@OverlayService)) {
                 val front = Frame.recentState(this@OverlayService, nav)
-                if (front != null && front != gpsInFront) { gpsInFront = front; applyVisibility() }
+                if (front != null) handler.post {
+                    if (front != gpsInFront) { gpsInFront = front; applyVisibility() }
+                }
             }
-            handler.postDelayed(this, 700)
+            bgHandler.postDelayed(this, 700)
         }
     }
 
@@ -98,7 +103,8 @@ class OverlayService : LifecycleService(), SavedStateRegistryOwner {
     }
 
     override fun onDestroy() {
-        handler.removeCallbacks(watch)
+        bgHandler.removeCallbacks(watch)
+        bg.quitSafely()
         removeWindows()
         instance = null
         super.onDestroy()
