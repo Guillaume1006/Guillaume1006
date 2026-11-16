@@ -76,6 +76,7 @@ import androidx.core.content.ContextCompat
 import com.guillaume.motodash.AppEntry
 import com.guillaume.motodash.Apps
 import com.guillaume.motodash.Contact
+import com.guillaume.motodash.Frame
 import com.guillaume.motodash.MediaRepo
 import com.guillaume.motodash.Prefs
 import kotlinx.coroutines.Dispatchers
@@ -236,6 +237,11 @@ fun SettingsPanel(state: DashState, pick: (Picker) -> Unit) {
         Text("Réglages", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         AppChoiceRow("Appli GPS", Apps.entry(ctx, state.navApp)) { pick(Picker.NAV) }
         AppChoiceRow("Appli musique", Apps.entry(ctx, state.musicApp)) { pick(Picker.MUSIC) }
+        Text("Affichage du GPS", color = TextDim, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ModeChip("Panneau par-dessus", "comme CarPlay", state.overlayMode, Modifier.weight(1f)) { state.setOverlay(true) }
+            ModeChip("Écran partagé", "Android", !state.overlayMode, Modifier.weight(1f)) { state.setOverlay(false) }
+        }
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardHi).padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -253,10 +259,45 @@ fun SettingsPanel(state: DashState, pick: (Picker) -> Unit) {
                 .clickable { ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                 .padding(14.dp),
         )
+        if (state.overlayMode) {
+            val usage = Frame.usageAccess(ctx)
+            StatusChoice(
+                "Cacher le panneau hors du GPS", usage,
+                if (usage) "Activé" else "Toucher pour activer « Accès aux données d'utilisation »",
+            ) { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
         Text(
-            "Fais glisser la barre entre le GPS et MotoDash pour agrandir le GPS. Touche-la deux fois pour échanger les côtés.",
+            if (state.overlayMode)
+                "Le GPS s'ouvre en plein écran et MotoDash s'affiche par-dessus, sur le côté. Le ✕ en haut du panneau le ferme."
+            else
+                "Fais glisser la barre entre le GPS et MotoDash pour agrandir le GPS. Touche deux fois la barre pour échanger les côtés.",
             color = TextDim, fontSize = 13.sp,
         )
+    }
+}
+
+@Composable
+private fun StatusChoice(title: String, ok: Boolean, detail: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardHi).clickable(onClick = onClick).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(12.dp).clip(CircleShape).background(if (ok) Color(0xFF4CD964) else Accent))
+        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+            Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(detail, color = TextDim, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun ModeChip(title: String, sub: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier.clip(RoundedCornerShape(16.dp)).background(if (selected) Accent else CardHi).clickable(onClick = onClick).padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(title, color = if (selected) Color.Black else Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(sub, color = if (selected) Color.Black.copy(alpha = 0.7f) else TextDim, fontSize = 12.sp)
     }
 }
 
@@ -326,6 +367,14 @@ fun PhonePanel(prefs: Prefs) {
     }
 }
 
+/** Appels depuis le panneau flottant (par-dessus le GPS) : pas de fenêtre de dialogue possible. */
+@Composable
+fun PhonePanelOverlay(prefs: Prefs, openMain: () -> Unit) {
+    val ctx = LocalContext.current
+    val contacts = remember { prefs.contacts }
+    ContactsGrid(contacts, onCall = { callNumber(ctx, it.number) }, onLongClick = null, onAdd = openMain)
+}
+
 @Composable
 private fun ContactsGrid(contacts: List<Contact>, onCall: (Contact) -> Unit, onLongClick: ((Contact) -> Unit)?, onAdd: () -> Unit) {
     val ctx = LocalContext.current
@@ -359,7 +408,7 @@ private fun ContactsGrid(contacts: List<Contact>, onCall: (Contact) -> Unit, onL
 // ───────────────────────── Applis ─────────────────────────
 
 @Composable
-fun AppsPanel(favs: List<String>, setFavs: (List<String>) -> Unit) {
+fun AppsPanel(favs: List<String>, setFavs: (List<String>) -> Unit, openMain: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     var picking by remember { mutableStateOf(false) }
     var toRemove by remember { mutableStateOf<AppEntry?>(null) }
@@ -370,13 +419,13 @@ fun AppsPanel(favs: List<String>, setFavs: (List<String>) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(entries) { app ->
-            Tile(onClick = { Apps.launch(ctx, app.pkg) }, onLongClick = { toRemove = app }) {
+            Tile(onClick = { Apps.launch(ctx, app.pkg) }, onLongClick = if (openMain == null) { { toRemove = app } } else null) {
                 Image(app.icon, null, Modifier.size(52.dp))
                 Text(app.label, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         item {
-            Tile(onClick = { picking = true }) {
+            Tile(onClick = { if (openMain != null) openMain() else picking = true }) {
                 Icon(Icons.Filled.Add, null, tint = Accent, modifier = Modifier.size(44.dp))
                 Text("Ajouter", color = TextDim, fontSize = 14.sp)
             }
