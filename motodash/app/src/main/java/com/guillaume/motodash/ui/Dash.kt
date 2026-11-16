@@ -177,13 +177,13 @@ fun Panel(state: DashState, prefs: Prefs, pick: (Picker) -> Unit, modifier: Modi
     }
     BoxWithConstraints(modifier) {
         if (maxWidth > maxHeight * 1.25f) {
-            // Panneau large et bas : le dock passe sur le côté
+            // Panneau large et bas : la barre d'icônes passe à gauche, comme sur CarPlay
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Dock(state, pick, vertical = true)
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     StatusRow()
                     widget(Modifier.weight(1f).fillMaxWidth())
                 }
-                Dock(state, pick, vertical = true)
             }
         } else {
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
