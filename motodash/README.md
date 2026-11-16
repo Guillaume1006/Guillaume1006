@@ -1,46 +1,20 @@
 # MotoDash
 
-Tableau de bord moto pour Android, façon CarPlay, directement sur l'écran du téléphone.
+Tableau de bord moto pour Android, directement sur l'écran du téléphone, à l'horizontale.
 
-**Ton appli GPS** (Waze, Google Maps, Calimoto…) s'ouvre en grand, et **MotoDash** s'affiche à côté dans un panneau : fond dégradé, cartes en verre dépoli, gros boutons utilisables avec des gants.
+**Ton appli GPS** (Waze, Google Maps, Calimoto…) et **MotoDash** s'affichent côte à côte en **écran partagé Android**. Tu fais glisser la barre du milieu pour agrandir le GPS. Waze s'adapte toujours à sa fenêtre, donc rien n'est caché.
 
-![Rendu : GPS à gauche, MotoDash par-dessus à droite](screenshots/rendu-par-dessus.png)
+![Écran partagé : le GPS et MotoDash, la barre du milieu pour agrandir le GPS](screenshots/maquette-ecran-partage.png)
 
-## Deux façons d'afficher le GPS (Réglages)
+## Utilisation
 
-- **Par-dessus le GPS, comme CarPlay (par défaut).** MotoDash ouvre le GPS puis s'affiche par-dessus, dans le tiers droit, avec un cadre arrondi autour de la carte. Les touches sur la carte vont au GPS, celles sur le panneau vont à MotoDash. Le ✕ du panneau (ou la notification) le ferme.
-  - **Le panneau se cache** dès que tu quittes le GPS (accueil, applis récentes, autre appli) et revient quand tu y retournes. Il faut pour ça activer MotoDash dans « Accès aux données d'utilisation » (demandé au premier démarrage).
-  - **Le GPS ajusté dans son cadre** : active « Fenêtres de forme libre » dans les options pour les développeurs (voir plus bas), puis redémarre le téléphone. Le GPS s'ouvre alors dans une fenêtre exactement à la taille du cadre et n'est plus coupé par le panneau. Android ajoute une petite barre de fenêtre en haut du GPS.
-  - Sans les fenêtres de forme libre, le GPS reste en plein écran sous le panneau : ce qu'il affiche tout à droite est caché.
-- **Écran partagé Android.** Le GPS et MotoDash sont dans deux fenêtres séparées. C'est à toi de régler la barre du milieu (touche-la deux fois pour échanger les côtés, fais-la glisser pour agrandir le GPS).
+1. Ouvre MotoDash, téléphone à l'horizontale.
+2. MotoDash ouvre ton GPS **en écran partagé**. Sur Android 12L et plus, l'écran se partage tout seul.
+3. **Pour agrandir le GPS**, fais glisser la barre du milieu vers MotoDash.
+4. **Pour mettre le GPS de l'autre côté**, touche deux fois la barre du milieu.
+5. **Si l'écran ne se partage pas tout seul** : ouvre MotoDash, puis Récents, touche l'icône MotoDash, puis **Écran partagé**, et choisis ton GPS.
 
-![GPS ajusté dans son cadre](screenshots/rendu-cadre-ajuste.png)
-
-### Ajustement automatique (accessibilité)
-
-Android ne laisse pas une appli redimensionner la fenêtre d'une autre. MotoDash fait donc comme toi avec le doigt, grâce à l'accessibilité :
-
-1. il glisse la barre de la fenêtre du GPS pour la placer dans le cadre ;
-2. il glisse son coin pour lui donner la taille du cadre ;
-3. si le GPS refuse cette taille, c'est le cadre et le panneau qui s'adaptent à sa fenêtre ;
-4. si tu touches ☐ (plein écran), il remet le GPS dans sa fenêtre.
-
-Pour l'activer : Réglages → Accessibilité → **MotoDash – ajustement du GPS**. Sur Android 13+, il faut d'abord autoriser les paramètres restreints : Réglages → Applis → MotoDash → ⋮ → **Autoriser les paramètres restreints**.
-
-![Ajustement automatique](screenshots/rendu-ajuste-auto.png)
-
-### Activer les fenêtres de forme libre
-
-1. Réglages → À propos du téléphone → touche 7 fois **Numéro de build** (les options pour les développeurs apparaissent).
-2. Réglages → Système → **Options pour les développeurs**.
-3. Active **Fenêtres de forme libre** (« Enable freeform windows »), et si l'option existe, **Forcer le redimensionnement des activités**.
-4. Redémarre le téléphone.
-
-**Ferme Waze avant de démarrer MotoDash** (applis récentes → glisse Waze vers le haut). S'il est déjà ouvert, Android garde sa fenêtre actuelle : en plein écran, ou à une taille par défaut sur Android 12 et plus.
-
-Démarre MotoDash avec le téléphone déjà en paysage. Android ne laisse pas MotoDash redimensionner la fenêtre du GPS après coup : si tu tournes le téléphone, ferme la fenêtre du GPS (✕ en haut) et touche GPS dans le dock.
-
-## Ce que contient le panneau
+## Ce que contient le panneau MotoDash
 
 - **En haut** : l'heure, la batterie et le bouton micro de l'assistant vocal.
 - **La carte Musique** pour l'appli de ton choix (Spotify, Deezer, YouTube Music…) : pochette, titre, artiste, barre de progression et précédent / lecture / suivant. Touche la pochette pour ouvrir l'appli musique.
@@ -56,18 +30,11 @@ L'écran reste allumé et MotoDash s'affiche par-dessus l'écran verrouillé.
 
 1. Copie `MotoDash.apk` sur le téléphone et ouvre-le (autorise « Installer des applis inconnues »).
 2. Choisis ton **appli GPS** et ton **appli musique**. MotoDash propose d'abord celles qu'il a détectées.
-3. Touche **Démarrer**, puis autorise MotoDash à **s'afficher par-dessus les autres applis**.
-4. Pour voir le titre en cours, MotoDash a besoin de « l'accès aux notifications ». Android 13+ le bloque pour les applis installées hors du Play Store :
+3. Pour voir le titre en cours, MotoDash a besoin de « l'accès aux notifications ». Android 13+ le bloque pour les applis installées hors du Play Store :
    - **Réglages → Applis → MotoDash → ⋮ (en haut à droite) → Autoriser les paramètres restreints** ;
    - puis, dans MotoDash, touche « Autoriser l'affichage du titre » et active MotoDash.
 
-## Mode écran partagé
-
-Sur Android 12L et plus, l'écran se partage tout seul quand MotoDash ouvre le GPS.
-
-- **Pour agrandir le GPS**, fais glisser la barre du milieu vers MotoDash (2/3 pour le GPS, 1/3 pour MotoDash).
-- **Si le GPS est du mauvais côté**, touche deux fois la barre du milieu pour échanger les côtés.
-- **Si l'écran ne se partage pas tout seul** : ouvre MotoDash, puis **Récents**, touche l'icône MotoDash, puis **Écran partagé**, et choisis ton GPS.
+Les options « Fenêtres de forme libre », « Accessibilité → MotoDash » et « Afficher par-dessus les autres applis » ne servent plus. Tu peux les désactiver.
 
 ## Compiler
 

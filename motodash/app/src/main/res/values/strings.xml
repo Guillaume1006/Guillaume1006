@@ -1,4 +1,3 @@
 <resources>
     <string name="app_name">MotoDash</string>
-    <string name="fit_description">MotoDash place et redimensionne automatiquement la fenêtre de ton appli GPS pour qu\'elle tienne exactement dans son cadre, à côté du panneau. MotoDash ne lit rien d\'autre et n\'agit que sur la fenêtre du GPS.</string>
 </resources>
