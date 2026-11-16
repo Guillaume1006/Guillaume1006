@@ -4,7 +4,7 @@ Tableau de bord moto pour Android, façon CarPlay, directement sur l'écran du t
 
 **Ton appli GPS** (Waze, Google Maps, Calimoto…) s'affiche en grand dans un cadre arrondi, et **MotoDash** est à droite : heure, musique, appels, applis, avec la barre d'icônes sur le bord gauche du panneau.
 
-![Waze dans le grand cadre, MotoDash à droite](screenshots/maquette-waze-dans-cadre.png)
+![Waze dans le grand cadre, MotoDash à droite](screenshots/rendu-par-dessus.png)
 
 ## Comment ça marche
 
