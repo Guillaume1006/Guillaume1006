@@ -4,7 +4,7 @@ Tableau de bord moto pour Android, directement sur l'écran du téléphone, à l
 
 **Ton appli GPS** (Waze, Google Maps, Calimoto…) et **MotoDash** s'affichent côte à côte en **écran partagé Android**. Tu fais glisser la barre du milieu pour agrandir le GPS. Waze s'adapte toujours à sa fenêtre, donc rien n'est caché.
 
-![Écran partagé : le GPS et MotoDash, la barre du milieu pour agrandir le GPS](screenshots/maquette-ecran-partage.png)
+![MotoDash à gauche avec la barre d'icônes, Waze à droite](screenshots/rendu-icones-gauche.png)
 
 ## Utilisation
 
