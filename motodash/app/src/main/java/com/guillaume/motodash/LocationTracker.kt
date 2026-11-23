@@ -39,7 +39,8 @@ class LocationTracker(private val ctx: Context, private val onLocation: (Locatio
         if (p != null) {
             val dt = (loc.time - p.time) / 1000f
             val d = p.distanceTo(loc)
-            val measured = if (dt in 0.2f..10f) d / dt else 0f
+            // Ignore les sauts aberrants (première position, mauvais signal) : > 250 km/h
+            val measured = (if (dt in 0.2f..10f) d / dt else 0f).let { if (it > 70f) 0f else it }
             // Vitesse absente, ou annoncée à 0 alors qu'on se déplace nettement (> 7 km/h)
             if ((!loc.hasSpeed() || loc.speed < 0.5f) && measured > 2f) loc.speed = measured
             if ((!loc.hasBearing() || (loc.bearing == 0f && measured > 2f)) && d > 3f) loc.bearing = p.bearingTo(loc).let { if (it < 0) it + 360f else it }
