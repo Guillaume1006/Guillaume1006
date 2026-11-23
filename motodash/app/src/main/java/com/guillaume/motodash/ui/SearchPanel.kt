@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -77,6 +80,7 @@ fun SearchPanel(nav: Navigator, prefs: Prefs, onStarted: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var favorites by remember { mutableStateOf(prefs.favorites) }
     val recents = remember { prefs.recents }
+    val focus = remember { FocusRequester() }
 
     fun run(q: String = query) {
         if (q.isBlank()) return
@@ -105,24 +109,25 @@ fun SearchPanel(nav: Navigator, prefs: Prefs, onStarted: () -> Unit) {
         // Champ de recherche + micro
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(28.dp)).background(CardHi).padding(horizontal = 16.dp),
+                Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(28.dp)).background(CardHi)
+                    .clickable { focus.requestFocus() }.padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Filled.Search, null, tint = TextDim)
-                Box(Modifier.weight(1f).padding(start = 10.dp)) {
-                    if (query.isEmpty()) Text("Où va-t-on ?", color = TextDim, fontSize = 18.sp)
+                Box(Modifier.weight(1f).padding(start = 8.dp)) {
+                    if (query.isEmpty()) Text("Où va-t-on ?", color = TextDim, fontSize = 17.sp, maxLines = 1)
                     BasicTextField(
                         value = query, onValueChange = { query = it }, singleLine = true,
                         textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
                         cursorBrush = SolidColor(Accent),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { run() }),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     )
                 }
             }
             Spacer(Modifier.size(8.dp))
-            RoundButton(Icons.Filled.Mic, "Dicter la destination", size = 56.dp, background = MicRed) {
+            RoundButton(Icons.Filled.Mic, "Dicter la destination", size = 52.dp, background = MicRed) {
                 try {
                     speech.launch(
                         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)

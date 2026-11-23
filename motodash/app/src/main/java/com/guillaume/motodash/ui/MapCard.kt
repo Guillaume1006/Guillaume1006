@@ -141,6 +141,7 @@ fun MapCard(nav: Navigator, location: Location?, onSearch: () -> Unit, modifier:
         val m = map ?: return@LaunchedEffect
         if (style == null || location == null) return@LaunchedEffect
         runCatching { m.locationComponent.forceLocationUpdate(location) }
+        style?.getSourceAs<GeoJsonSource>("me")?.setGeoJson(Point.fromLngLat(location.longitude, location.latitude))
     }
     // Itinéraire → ligne bleue + point d'arrivée
     LaunchedEffect(s.route, s.destination, style) {
@@ -219,6 +220,8 @@ fun MapCard(nav: Navigator, location: Location?, onSearch: () -> Unit, modifier:
 }
 
 private fun addRouteLayers(st: Style) {
+    // Pas de bâtiments en 3D : inutiles à moto et plus gourmands pour le téléphone
+    st.layers.filterIsInstance<org.maplibre.android.style.layers.FillExtrusionLayer>().forEach { st.removeLayer(it) }
     st.addSource(GeoJsonSource("route"))
     st.addSource(GeoJsonSource("dest"))
     st.addLayer(LineLayer("route-casing", "route").withProperties(
@@ -228,6 +231,16 @@ private fun addRouteLayers(st: Style) {
     st.addLayer(LineLayer("route-line", "route").withProperties(
         PropertyFactory.lineColor("#3D8BFF"), PropertyFactory.lineWidth(8f),
         PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+    ))
+    st.addSource(GeoJsonSource("me"))
+    st.addLayer(CircleLayer("me-halo", "me").withProperties(
+        PropertyFactory.circleColor("#1A73E8"), PropertyFactory.circleOpacity(0.25f), PropertyFactory.circleRadius(22f),
+        PropertyFactory.circlePitchAlignment(Property.CIRCLE_PITCH_ALIGNMENT_MAP),
+    ))
+    st.addLayer(CircleLayer("me-dot", "me").withProperties(
+        PropertyFactory.circleColor("#FF7A00"), PropertyFactory.circleRadius(11f),
+        PropertyFactory.circleStrokeColor("#FFFFFF"), PropertyFactory.circleStrokeWidth(4f),
+        PropertyFactory.circlePitchAlignment(Property.CIRCLE_PITCH_ALIGNMENT_MAP),
     ))
     st.addLayer(CircleLayer("dest-point", "dest").withProperties(
         PropertyFactory.circleColor("#E53935"), PropertyFactory.circleRadius(10f),
@@ -284,10 +297,13 @@ private fun EtaBar(s: NavState, modifier: Modifier, onStop: () -> Unit) {
         if (s.status == Status.ROUTING) {
             Text("Calcul…", color = Color.White, fontSize = 20.sp, modifier = Modifier.weight(1f))
         } else {
-            Text("Arrivée ", color = Color(0xFF7CC4FF), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            Text(arrival, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text("   $dur   ${formatDistance(s.remainingM)}", color = Color.White, fontSize = 20.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text("Arrivée ", color = Color(0xFF7CC4FF), fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text(arrival, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                }
+                Text("$dur · ${formatDistance(s.remainingM)}", color = Color.White, fontSize = 17.sp, maxLines = 1)
+            }
         }
         RoundButton(Icons.Filled.Close, "Arrêter le guidage", size = 52.dp, background = MicRed, onClick = onStop)
     }
