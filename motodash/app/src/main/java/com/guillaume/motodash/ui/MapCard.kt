@@ -95,7 +95,7 @@ private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
 /** La carte de navigation, dans le grand cadre arrondi. */
 @Composable
-fun MapCard(nav: Navigator, location: Location?, onSearch: () -> Unit, modifier: Modifier) {
+fun MapCard(nav: Navigator, location: Location?, northUp: Boolean, onSearch: () -> Unit, modifier: Modifier) {
     val ctx = LocalContext.current
     val s by nav.state.collectAsStateWithLifecycle()
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
@@ -158,7 +158,7 @@ fun MapCard(nav: Navigator, location: Location?, onSearch: () -> Unit, modifier:
         )
     }
     // Caméra : vue de conduite inclinée pendant le guidage, vue du dessus sinon
-    LaunchedEffect(s.status, tracking, style, location != null) {
+    LaunchedEffect(s.status, tracking, style, location != null, northUp) {
         val m = map ?: return@LaunchedEffect
         if (style == null || location == null) return@LaunchedEffect
         val lc = m.locationComponent
@@ -166,7 +166,11 @@ fun MapCard(nav: Navigator, location: Location?, onSearch: () -> Unit, modifier:
         val navigating = s.status == Status.NAVIGATING
         lc.renderMode = if (navigating) RenderMode.GPS else RenderMode.COMPASS
         if (tracking) {
-            lc.cameraMode = if (navigating) CameraMode.TRACKING_GPS else CameraMode.TRACKING
+            lc.cameraMode = when {
+                navigating && !northUp -> CameraMode.TRACKING_GPS        // la carte tourne avec la moto
+                navigating -> CameraMode.TRACKING_GPS_NORTH               // nord en haut
+                else -> CameraMode.TRACKING
+            }
             lc.zoomWhileTracking(if (navigating) 16.5 else 15.0)
             lc.tiltWhileTracking(if (navigating) 50.0 else 0.0)
         }

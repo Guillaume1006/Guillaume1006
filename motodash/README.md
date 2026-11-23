@@ -1,38 +1,50 @@
 # MotoDash
 
-Tableau de bord moto pour Android, façon CarPlay, directement sur l'écran du téléphone, à l'horizontale.
+Tableau de bord moto pour Android, façon CarPlay, à l'horizontale. **La navigation est intégrée** : plus besoin de Waze, la carte remplit exactement le grand cadre arrondi et rien n'est caché.
 
-**Ton appli GPS** (Waze, Google Maps, Calimoto…) s'affiche en grand dans un cadre arrondi, et **MotoDash** est à droite : heure, musique, appels, applis, avec la barre d'icônes en bas du panneau.
+![MotoDash 2.0](screenshots/rendu-navigation.png)
 
-![Waze dans le grand cadre, MotoDash à droite](screenshots/rendu-par-dessus.png)
+## Ce que fait l'appli
 
-## Comment ça marche
+- **Carte** OpenStreetMap (OpenFreeMap), gratuite, sans compte ni clé.
+- **Itinéraires moto** calculés par Valhalla (profil moto), avec options « éviter les autoroutes » et « éviter les péages ».
+- **Guidage pas à pas** :
+  - prochaine manœuvre (flèche, distance, nom de rue), heure d'arrivée, temps et distance restants ;
+  - **voix en français**, la musique baisse pendant les annonces ;
+  - **recalcul automatique** si tu sors de l'itinéraire.
+- **Destination** : tape-la, **dicte-la** (micro), ou choisis-la dans tes favoris ☆ et destinations récentes. Une adresse partagée depuis une autre appli (« Ouvrir avec MotoDash ») lance aussi le guidage.
+- **Panneau de droite** :
+  - l'heure, la batterie, l'assistant vocal ;
+  - la musique (YT Music, Spotify… : pochette, titre, commandes), les appels (favoris), tes applis ;
+  - les réglages.
+- **Écran toujours allumé.** Le GPS reste actif pendant un guidage, même écran verrouillé.
 
-- MotoDash ouvre le GPS **en plein écran**, puis dessine par-dessus le panneau de droite et le contour arrondi. Les touches sur la carte vont au GPS, celles sur le panneau vont à MotoDash.
-- Le GPS croit occuper tout l'écran : **son tiers droit passe sous le panneau**. Chez Waze, ce sont la fin de la barre « Arrivée … km » et le bouton « signaler » (tu peux signaler à la voix).
-- **Le panneau se cache** dès que tu quittes le GPS (accueil, applis récentes, autre appli) et revient quand tu y retournes.
-- **Le ✕** en haut du panneau (ou la notification « MotoDash est affiché ») le ferme.
-- Réglages → « Écran partagé » remet le mode moitié-moitié d'Android si tu préfères voir le GPS en entier.
+## Réglages
+
+- **Carte nord en haut** (activé par défaut) : la carte reste fixe. Désactive-le pour que la carte tourne dans le sens de la marche.
+- **Guidage vocal**, **éviter les autoroutes**, **éviter les péages**.
+- **Appli musique**, et **accès au titre en cours**.
 
 ## Installer
 
-1. Copie `MotoDash.apk` sur le téléphone et ouvre-le (autorise « Installer des applis inconnues »).
-2. Choisis ton **appli GPS** et ton **appli musique**.
-3. Touche **Démarrer**, puis :
-   - autorise MotoDash à **s'afficher par-dessus les autres applis** ;
-   - active MotoDash dans **Accès aux données d'utilisation** (pour cacher le panneau hors du GPS).
-4. Pour voir le titre en cours : **Réglages → Applis → MotoDash → ⋮ → Autoriser les paramètres restreints**, puis, dans MotoDash, « Autoriser l'affichage du titre ».
+1. Désinstalle l'ancienne version de MotoDash (la nouvelle n'a plus besoin des anciennes autorisations).
+2. Copie `MotoDash.apk` sur le téléphone et ouvre-le (autorise « Installer des applis inconnues »).
+3. Accepte la **localisation**.
+4. Choisis ton **appli musique**. Pour voir le titre en cours : **Réglages → Applis → MotoDash → ⋮ → Autoriser les paramètres restreints**, puis, dans MotoDash, « Autoriser l'affichage du titre ».
 
-Les options « Fenêtres de forme libre » et « Accessibilité → MotoDash » ne servent plus. Tu peux les désactiver.
+Plus besoin d'« afficher par-dessus les autres applis », de l'accès aux données d'utilisation, de l'accessibilité ni des fenêtres de forme libre.
 
-## Ce que contient le panneau
+## Limites
 
-- **En haut** : l'heure, la batterie, le micro de l'assistant vocal et le ✕.
-- **La carte Musique** pour l'appli de ton choix : pochette, titre, artiste, progression, précédent / lecture / suivant.
-- **La barre d'icônes** : GPS, Musique, Appels (contacts favoris), Applis, Réglages.
+- **Pas d'alertes communautaires** (radars, police, accidents, bouchons signalés) : c'est propre à Waze.
+- Les services de carte, d'itinéraire et de recherche sont **gratuits et publics**. Il faut du réseau mobile, et ils peuvent être lents ou indisponibles par moments.
+- Une **voix française** doit être installée sur le téléphone (Réglages → Synthèse vocale).
 
-## Compiler
+## Compiler et tester
 
 ```bash
-./gradlew assembleRelease   # → app/build/outputs/apk/release/app-release.apk
+./gradlew assembleRelease        # → app/build/outputs/apk/release/app-release.apk
+./gradlew testReleaseUnitTest    # tests du guidage sur un vrai itinéraire moto
 ```
+
+Carte © OpenStreetMap, OpenFreeMap · Itinéraires : Valhalla · Recherche : Photon / Nominatim

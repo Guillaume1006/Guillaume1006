@@ -74,10 +74,11 @@ class DashState(private val prefs: Prefs) {
     var voice by mutableStateOf(prefs.voice)
     var avoidHighways by mutableStateOf(prefs.avoidHighways)
     var avoidTolls by mutableStateOf(prefs.avoidTolls)
+    var northUp by mutableStateOf(prefs.northUp)
 
     fun reload() {
         musicApp = prefs.musicApp; favs = prefs.favApps
-        voice = prefs.voice; avoidHighways = prefs.avoidHighways; avoidTolls = prefs.avoidTolls
+        voice = prefs.voice; avoidHighways = prefs.avoidHighways; avoidTolls = prefs.avoidTolls; northUp = prefs.northUp
     }
 
     fun show(w: Widget) { widget = w; if (w != Widget.SEARCH) prefs.tab = w.ordinal }
@@ -86,6 +87,7 @@ class DashState(private val prefs: Prefs) {
     fun changeVoice(b: Boolean) { voice = b; prefs.voice = b }
     fun changeAvoidHighways(b: Boolean) { avoidHighways = b; prefs.avoidHighways = b }
     fun changeAvoidTolls(b: Boolean) { avoidTolls = b; prefs.avoidTolls = b }
+    fun changeNorthUp(b: Boolean) { northUp = b; prefs.northUp = b }
 }
 
 @Composable
@@ -96,7 +98,7 @@ fun DashScreen(state: DashState, prefs: Prefs, nav: Navigator, location: Locatio
     var pickMusic by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().wallpaper().padding(10.dp)) {
-        val map: @Composable (Modifier) -> Unit = { m -> MapCard(nav, location, onSearch = { state.show(Widget.SEARCH) }, modifier = m) }
+        val map: @Composable (Modifier) -> Unit = { m -> MapCard(nav, location, state.northUp, onSearch = { state.show(Widget.SEARCH) }, modifier = m) }
         val panel: @Composable (Modifier) -> Unit = { m -> Panel(state, prefs, nav, { pickMusic = true }, m) }
         if (landscape) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

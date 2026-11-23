@@ -236,6 +236,7 @@ fun SettingsPanel(state: DashState, pickMusic: () -> Unit) {
         Text("Réglages", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         AppChoiceRow("Appli musique", Apps.entry(ctx, state.musicApp), pickMusic)
         SwitchRow("Guidage vocal", state.voice, state::changeVoice)
+        SwitchRow("Carte nord en haut", state.northUp, state::changeNorthUp)
         SwitchRow("Éviter les autoroutes", state.avoidHighways, state::changeAvoidHighways)
         SwitchRow("Éviter les péages", state.avoidTolls, state::changeAvoidTolls)
         Text(

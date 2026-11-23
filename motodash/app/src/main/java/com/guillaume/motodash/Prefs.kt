@@ -19,6 +19,11 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean("voice", true)
         set(v) = sp.edit().putBoolean("voice", v).apply()
 
+    /** Carte fixe, nord en haut (sinon elle tourne dans le sens de la marche) */
+    var northUp: Boolean
+        get() = sp.getBoolean("northUp", true)
+        set(v) = sp.edit().putBoolean("northUp", v).apply()
+
     var avoidHighways: Boolean
         get() = sp.getBoolean("avoidHighways", false)
         set(v) = sp.edit().putBoolean("avoidHighways", v).apply()

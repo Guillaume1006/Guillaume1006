@@ -37,7 +37,7 @@ class LocationTracker(private val ctx: Context, private val onLocation: (Locatio
         // Si le GPS ne donne pas la vitesse ou le cap, on les calcule depuis la position précédente
         val p = prev
         if (p != null) {
-            val dt = (loc.time - p.time) / 1000f
+            val dt = (loc.elapsedRealtimeNanos - p.elapsedRealtimeNanos) / 1e9f
             val d = p.distanceTo(loc)
             // Ignore les sauts aberrants (première position, mauvais signal) : > 250 km/h
             val measured = (if (dt in 0.2f..10f) d / dt else 0f).let { if (it > 70f) 0f else it }
