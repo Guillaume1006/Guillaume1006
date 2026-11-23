@@ -5,5 +5,5 @@ local.properties
 .idea/
 .kotlin/
 
-# Certificat du proxy de l'environnement de test (version debug seulement)
-app/src/debug/res/raw/
+# Réglages réseau de l'environnement de test (version debug locale seulement)
+app/src/debug/
