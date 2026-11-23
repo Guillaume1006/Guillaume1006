@@ -46,4 +46,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     // Carte (moteur libre, sans compte ni clé)
     implementation("org.maplibre.gl:android-sdk:11.8.0")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

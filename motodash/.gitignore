@@ -4,3 +4,6 @@ local.properties
 *.iml
 .idea/
 .kotlin/
+
+# Certificat du proxy de l'environnement de test (version debug seulement)
+app/src/debug/res/raw/

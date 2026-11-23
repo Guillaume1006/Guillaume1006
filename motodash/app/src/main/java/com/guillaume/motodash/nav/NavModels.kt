@@ -29,12 +29,40 @@ data class Maneuver(
     val exitCount: Int?,         // numéro de sortie (rond-point)
 )
 
+/** Où on en est sur l'itinéraire. */
+data class Progress(
+    val seg: Int,             // segment de la ligne le plus proche
+    val offRouteM: Double,    // distance à la ligne (m)
+    val along: Double,        // distance parcourue depuis le départ (m)
+    val remaining: Double,    // distance restante (m)
+    val nextIdx: Int,         // index de la prochaine manœuvre
+    val distToNext: Double,   // distance jusqu'à elle (m)
+)
+
 /** Itinéraire : la ligne (points + distance cumulée) et les manœuvres. */
 class Route(val points: List<LatLon>, val maneuvers: List<Maneuver>, val timeS: Double) {
     val cum: DoubleArray = DoubleArray(points.size).also { c ->
         for (i in 1 until points.size) c[i] = c[i - 1] + distance(points[i - 1], points[i])
     }
     val lengthM: Double get() = cum.lastOrNull() ?: 0.0
+
+    /** Position projetée sur la ligne, en cherchant autour du segment [fromSeg]. */
+    fun progress(p: LatLon, fromSeg: Int): Progress? {
+        if (points.size < 2 || maneuvers.isEmpty()) return null
+        var best = -1; var bestD = Double.MAX_VALUE; var bestT = 0.0
+        val lo = maxOf(0, fromSeg - 3)
+        val hi = minOf(points.size - 2, fromSeg + 300)
+        for (i in lo..hi) {
+            val (t, d) = project(p, points[i], points[i + 1])
+            if (d < bestD) { bestD = d; best = i; bestT = t }
+        }
+        if (best < 0) return null
+        val along = cum[best] + bestT * (cum[best + 1] - cum[best])
+        val last = points.size - 1
+        val idx = maneuvers.indexOfFirst { cum[it.beginIndex.coerceIn(0, last)] > along + 5 }.let { if (it < 0) maneuvers.size - 1 else it }
+        val dist = (cum[maneuvers[idx].beginIndex.coerceIn(0, last)] - along).coerceAtLeast(0.0)
+        return Progress(best, bestD, along, (lengthM - along).coerceAtLeast(0.0), idx, dist)
+    }
 }
 
 private const val R = 6_371_000.0

@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
-import kotlin.math.min
 
 enum class Status { IDLE, ROUTING, NAVIGATING, ARRIVED, ERROR }
 
@@ -101,19 +100,11 @@ class Navigator(ctx: Context, private val prefs: Prefs, private val scope: Corou
         if (s.status != Status.NAVIGATING || r.points.size < 2) return
         val p = LatLon(loc.latitude, loc.longitude)
 
-        // Point le plus proche sur la ligne, autour de la dernière position connue
-        var best = -1; var bestD = Double.MAX_VALUE; var bestT = 0.0
-        val lo = max(0, segIdx - 3)
-        val hi = min(r.points.size - 2, segIdx + 300)
-        for (i in lo..hi) {
-            val (t, d) = project(p, r.points[i], r.points[i + 1])
-            if (d < bestD) { bestD = d; best = i; bestT = t }
-        }
-        if (best < 0) return
+        val pr = r.progress(p, segIdx) ?: return
 
         // Sortie de route : recalcul après 3 points d'affilée à plus de 50 m
         val now = System.currentTimeMillis()
-        if (bestD > 50 && loc.accuracy < 40) {
+        if (pr.offRouteM > 50 && loc.accuracy < 40) {
             offCount++
             if (offCount >= 3 && now - lastReroute > 15_000) {
                 lastReroute = now; offCount = 0
@@ -123,19 +114,17 @@ class Navigator(ctx: Context, private val prefs: Prefs, private val scope: Corou
             return
         }
         offCount = 0
-        segIdx = best
+        segIdx = pr.seg
 
-        val along = r.cum[best] + bestT * (r.cum[best + 1] - r.cum[best])
-        val remaining = (r.lengthM - along).coerceAtLeast(0.0)
+        val remaining = pr.remaining
         if (remaining < 30) {
             _state.update { it.copy(status = Status.ARRIVED, remainingM = 0.0, remainingS = 0.0) }
             if (prefs.voice) voice.say("Vous êtes arrivé à destination.")
             return
         }
-        val last = r.points.size - 1
-        val idx = r.maneuvers.indexOfFirst { r.cum[it.beginIndex.coerceIn(0, last)] > along + 5 }.let { if (it < 0) r.maneuvers.size - 1 else it }
+        val idx = pr.nextIdx
         val next = r.maneuvers[idx]
-        val dist = (r.cum[next.beginIndex.coerceIn(0, last)] - along).coerceAtLeast(0.0)
+        val dist = pr.distToNext
         val remS = if (r.lengthM > 0) r.timeS * remaining / r.lengthM else 0.0
         _state.update { it.copy(next = next, distToNext = dist, remainingM = remaining, remainingS = remS, rerouting = false) }
         announce(idx, next, dist, loc.speed)
