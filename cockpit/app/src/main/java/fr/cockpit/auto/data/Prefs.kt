@@ -26,6 +26,10 @@ object Prefs {
     private val _railSide = MutableStateFlow(RailSide.Left)
     val railSide: StateFlow<RailSide> = _railSide.asStateFlow()
 
+    private val _wazePanel = MutableStateFlow(true)
+    /** Dans Waze, la colonne musique / agenda / météo de Cockpit reste affichée à droite. */
+    val wazePanel: StateFlow<Boolean> = _wazePanel.asStateFlow()
+
     fun init(ctx: Context) {
         if (sp != null && app === ctx.applicationContext) return
         app = ctx.applicationContext
@@ -33,6 +37,12 @@ object Prefs {
         sp = prefs
         _musicPackage.value = prefs.getString(KEY_MUSIC, null)
         _railSide.value = if (prefs.getString(KEY_SIDE, null) == "right") RailSide.Right else RailSide.Left
+        _wazePanel.value = prefs.getBoolean(KEY_WAZE_PANEL, true)
+    }
+
+    fun setWazePanel(on: Boolean) {
+        _wazePanel.value = on
+        sp?.edit()?.putBoolean(KEY_WAZE_PANEL, on)?.apply()
     }
 
     fun setMusicPackage(pkg: String) {
@@ -47,6 +57,7 @@ object Prefs {
 
     private const val KEY_MUSIC = "music_package"
     private const val KEY_SIDE = "rail_side"
+    private const val KEY_WAZE_PANEL = "waze_panel"
 }
 
 /** État partagé entre l'écran principal et la barre flottante. */
@@ -63,11 +74,15 @@ object CockpitState {
     /** Moment de la dernière ouverture d'app depuis Cockpit (horloge depuis le démarrage). */
     @Volatile var lastLaunchAt = 0L
 
+    /** Dernière app ouverte depuis Cockpit. */
+    @Volatile var lastLaunchedPackage: String? = null
+
     /** Change à chaque ouverture : la barre flottante s'affiche sans attendre. */
     val launchTick = MutableStateFlow(0)
 
     fun markLaunched(pkg: String) {
         carApps += pkg
+        lastLaunchedPackage = pkg
         lastLaunchAt = SystemClock.elapsedRealtime()
         launchTick.value++
     }

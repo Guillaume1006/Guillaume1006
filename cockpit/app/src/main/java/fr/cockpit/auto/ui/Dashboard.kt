@@ -95,15 +95,24 @@ fun Dashboard(nowPlaying: NowPlaying, refresh: Int, onOpenMusic: () -> Unit) {
                 located = located,
                 overlayOk = overlayOk,
                 onOpen = { Launchers.openNavigation(context) },
-                modifier = Modifier.weight(1.6f).fillMaxHeight(),
+                modifier = Modifier.weight(MAP_WEIGHT).fillMaxHeight(),
             )
         }
-        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            NowPlayingCard(nowPlaying, onOpenMusic, Modifier.weight(1.15f).fillMaxWidth())
-            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                AgendaTile(refresh, Modifier.weight(1f).fillMaxHeight())
-                WeatherTile(refresh, Modifier.weight(1f).fillMaxHeight())
-            }
+        DashboardSide(nowPlaying, refresh, onOpenMusic, Modifier.weight(1f).fillMaxHeight())
+    }
+}
+
+/** Proportion carte / colonne du tableau de bord (reprise par le mode Waze). */
+const val MAP_WEIGHT = 1.6f
+
+/** Colonne de droite du tableau de bord : musique, agenda, météo. Aussi affichée par-dessus Waze. */
+@Composable
+fun DashboardSide(nowPlaying: NowPlaying, refresh: Int, onOpenMusic: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        NowPlayingCard(nowPlaying, onOpenMusic, Modifier.weight(1.15f).fillMaxWidth())
+        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            AgendaTile(refresh, Modifier.weight(1f).fillMaxHeight())
+            WeatherTile(refresh, Modifier.weight(1f).fillMaxHeight())
         }
     }
 }

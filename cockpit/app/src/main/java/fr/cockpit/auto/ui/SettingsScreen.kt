@@ -53,15 +53,19 @@ fun SettingsScreen(refresh: Int) {
     val overlayOk = remember(refresh) { Settings.canDrawOverlays(ctx) }
     val notificationsOk = remember(refresh) { NowPlaying.hasAccess(ctx) }
     val usageOk = remember(refresh) { ForegroundApp.detector.hasAccess(ctx) }
+    val wazePanel by Prefs.wazePanel.collectAsState()
 
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         KCard(Modifier.weight(1.1f).fillMaxHeight()) {
             Column(Modifier.fillMaxSize().padding(14.dp)) {
                 MusicAppPicker(refresh = refresh, title = "App de musique", modifier = Modifier.weight(1f))
                 VSpace(10)
-                KButton("Quitter le mode voiture", filled = false) {
-                    RailOverlayService.stop(ctx)
-                    (ctx as? Activity)?.finishAndRemoveTask()
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KButton("Autorisations Android", filled = false) { Launchers.openAppSettings(ctx) }
+                    KButton("Quitter le mode voiture", filled = false) {
+                        RailOverlayService.stop(ctx)
+                        (ctx as? Activity)?.finishAndRemoveTask()
+                    }
                 }
             }
         }
@@ -80,6 +84,9 @@ fun SettingsScreen(refresh: Int) {
                     StatusRow("Disparaître dans les menus du téléphone", usageOk) {
                         Launchers.openUsageAccess(ctx)
                     }
+                    ToggleRow("Dans Waze, garder musique, agenda et météo à droite", wazePanel) {
+                        Prefs.setWazePanel(!wazePanel)
+                    }
                 }
             }
             KCard(Modifier.fillMaxWidth()) {
@@ -88,10 +95,19 @@ fun SettingsScreen(refresh: Int) {
                     StatusRow("Musique et messages (accès aux notifications)", notificationsOk) {
                         Launchers.openNotificationAccess(ctx)
                     }
-                    StatusRow("Position, agenda, contacts", null) { Launchers.openAppSettings(ctx) }
                 }
             }
         }
+    }
+}
+
+/** Ligne avec un bouton Oui / Non. */
+@Composable
+private fun ToggleRow(text: String, on: Boolean, onToggle: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(text, color = K.text, fontSize = 14.sp, lineHeight = 18.sp, modifier = Modifier.weight(1f))
+        Spacer(Modifier.size(10.dp))
+        Choice(if (on) "Oui" else "Non", on, onToggle)
     }
 }
 

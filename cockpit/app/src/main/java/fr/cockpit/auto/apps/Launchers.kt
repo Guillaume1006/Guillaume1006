@@ -26,6 +26,9 @@ object Launchers {
     const val WAZE = "com.waze"
     private const val GOOGLE_MAPS = "com.google.android.apps.maps"
 
+    /** Apps de navigation : affichées à la place de la carte, entre la barre et la colonne de droite. */
+    val NAVIGATION_APPS = setOf(WAZE, GOOGLE_MAPS)
+
     fun isInstalled(ctx: Context, pkg: String): Boolean =
         ctx.packageManager.getLaunchIntentForPackage(pkg) != null
 

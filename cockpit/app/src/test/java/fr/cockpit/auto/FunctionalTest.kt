@@ -82,6 +82,9 @@ class FunctionalTest {
         Messages.clear()
         ShadowSettings.setCanDrawOverlays(false)
         realDetector = ForegroundApp.detector
+        Prefs.init(app)
+        Prefs.setWazePanel(true)
+        Prefs.setRailSide(RailSide.Left)
         // Accès aux notifications retiré (chaîne vide, comme sur un téléphone où il est désactivé)
         Settings.Secure.putString(app.contentResolver, "enabled_notification_listeners", "")
     }
@@ -283,7 +286,7 @@ class FunctionalTest {
         idle()
 
         // Dans Waze : barre visible, collée au bord, en paysage, écran allumé
-        val view = wmViews(wm).single()
+        val view = window(wm, RailOverlayService.TAG_RAIL)!!
         val params = view.layoutParams as WindowManager.LayoutParams
         assertEquals(View.VISIBLE, view.visibility)
         assertEquals(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE, params.screenOrientation)
@@ -321,6 +324,62 @@ class FunctionalTest {
     }
 
     @Test
+    fun in_waze_the_music_agenda_weather_column_stays_on_the_right() {
+        ShadowSettings.setCanDrawOverlays(true)
+        val detector = FakeDetector(access = true, foreground = WAZE)
+        ForegroundApp.detector = detector
+        CockpitState.carApps += setOf(WAZE, CLAUDE)
+        val controller = Robolectric.buildService(RailOverlayService::class.java).create()
+        val wm = controller.get().getSystemService(WindowManager::class.java)
+        idle()
+
+        // Dans Waze : barre à gauche + colonne à droite, Waze visible seulement au milieu
+        val rail = window(wm, RailOverlayService.TAG_RAIL)!!
+        val panel = window(wm, RailOverlayService.TAG_PANEL)!!
+        assertEquals(View.VISIBLE, rail.visibility)
+        assertEquals(View.VISIBLE, panel.visibility)
+        val params = panel.layoutParams as WindowManager.LayoutParams
+        assertEquals(Gravity.END, params.gravity and Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK)
+        assertEquals(controller.get().panelWidthPx(), params.width)
+        assertEquals(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE, params.screenOrientation)
+        // Même largeur que la colonne du tableau de bord (900 dp de large dans ce test)
+        val density = app.resources.displayMetrics.density
+        val expectedDp = (900f - 78f - 24f - 12f) / 2.6f + 24f
+        assertEquals(expectedDp, params.width / density, 1.5f)
+
+        // Dans Claude : la barre seule, pas la colonne
+        detector.foreground = CLAUDE
+        idleFor(600)
+        assertEquals(View.VISIBLE, rail.visibility)
+        assertEquals(View.GONE, panel.visibility)
+
+        // Option désactivée dans les réglages : barre seule dans Waze
+        detector.foreground = WAZE
+        Prefs.setWazePanel(false)
+        idleFor(600)
+        assertEquals(View.VISIBLE, rail.visibility)
+        assertEquals(View.GONE, panel.visibility)
+        Prefs.setWazePanel(true)
+        idleFor(600)
+        assertEquals(View.VISIBLE, panel.visibility)
+
+        // Menus du téléphone : tout disparaît
+        detector.foreground = "com.nothing.launcher"
+        idleFor(600)
+        assertEquals(View.GONE, rail.visibility)
+        assertEquals(View.GONE, panel.visibility)
+
+        // Barre à droite : la colonne passe à gauche
+        detector.foreground = WAZE
+        Prefs.setRailSide(RailSide.Right)
+        idleFor(600)
+        assertEquals(Gravity.START, (panel.layoutParams as WindowManager.LayoutParams).gravity and Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK)
+
+        controller.destroy()
+        assertTrue(wmViews(wm).isEmpty())
+    }
+
+    @Test
     fun floating_rail_needs_the_overlay_permission() {
         ShadowSettings.setCanDrawOverlays(false)
         val controller = Robolectric.buildService(RailOverlayService::class.java).create()
@@ -352,6 +411,8 @@ class FunctionalTest {
         onAllNodes(androidx.compose.ui.test.hasText(text))
 
     private fun wmViews(wm: WindowManager): List<View> = Shadow.extract<ShadowWindowManagerImpl>(wm).views
+
+    private fun window(wm: WindowManager, tag: String): View? = wmViews(wm).firstOrNull { it.tag == tag }
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 

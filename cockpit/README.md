@@ -2,11 +2,12 @@
 
 App plein écran pour un téléphone posé à l'horizontale sur un support de voiture (pensée pour le Nothing Phone, format 20:9).
 
-## Ce que fait la version 0.4
+## Ce que fait la version 0.5
 
 - **Barre latérale** collée au bord de l'écran (par-dessus la zone de la caméra) : heure, batterie, Waze, Musique, Messages, **Claude**, Accueil / Toutes les apps. À gauche ou à droite, au choix.
 - **Tout s'ouvre dans Cockpit** : lecteur musique, messages et téléphone sont des écrans de Cockpit, la barre ne bouge pas.
-- **Waze et Claude** (qui ne peuvent pas s'afficher à l'intérieur d'une autre app) s'ouvrent sans animation, avec la barre déjà en place par-dessus, au même endroit, et le téléphone gardé à l'horizontale. La barre disparaît quand tu pars dans les menus du téléphone.
+- **Waze à la place de la carte** : Waze ne peut pas s'afficher à l'intérieur d'une autre app, alors c'est l'inverse : Waze s'ouvre derrière (sans animation) et Cockpit garde par-dessus sa barre à gauche et sa colonne musique / agenda / météo à droite. Waze n'est visible qu'au milieu, à la place de la carte. Option dans Réglages.
+- **Claude** s'ouvre sans animation, la barre reste en place. Le téléphone reste à l'horizontale, et tout disparaît quand tu pars dans les menus du téléphone.
 - **Lecteur musique** : l'app choisie (Spotify, Deezer…) se pilote depuis Cockpit : titre, pochette, progression, lecture/pause, précédent/suivant. Playlists affichées quand l'app les partage (Spotify les réserve à Android Auto).
 - **Messages** : SMS, WhatsApp, Messenger… reçus pendant la conduite, lus à voix haute, réponse dictée.
 - **Téléphone** : contacts favoris en grosses tuiles, un tap appelle.
@@ -33,7 +34,7 @@ Prérequis : JDK 17+ et le SDK Android (plateforme 35).
 cd cockpit
 echo "sdk.dir=/chemin/vers/android-sdk" > local.properties
 ./gradlew assembleRelease          # app/build/outputs/apk/release/app-release.apk
-./gradlew testDebugUnitTest        # 16 tests : chaque bouton, lecteur, messages, barre flottante
+./gradlew testDebugUnitTest        # 17 tests : chaque bouton, lecteur, messages, mode Waze
 ./gradlew recordRoborazziDebug     # captures des écrans dans app/build/screens/
 ```
 
@@ -47,7 +48,7 @@ echo "sdk.dir=/chemin/vers/android-sdk" > local.properties
 | `ui/MessagesScreen.kt` | Messages lus et réponse dictée |
 | `ui/PhoneScreen.kt` | Favoris et appels |
 | `ui/SettingsScreen.kt` | Réglages |
-| `overlay/RailOverlayService.kt` | Barre flottante au-dessus des autres apps |
+| `overlay/RailOverlayService.kt` | Barre et colonne de Cockpit au-dessus de Waze et Claude |
 | `data/Prefs.kt` | Choix enregistrés (app de musique, côté de la barre) |
 | `ui/Dashboard.kt` | Carte, lecture en cours, agenda, météo |
 | `ui/AppGrid.kt` | Grille d'apps |

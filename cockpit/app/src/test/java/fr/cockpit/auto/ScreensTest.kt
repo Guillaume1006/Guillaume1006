@@ -6,6 +6,14 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.provider.Settings
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -88,5 +96,36 @@ class ScreensTest {
         compose.onNodeWithText("Réglages").performClick()
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screens/7-reglages.png")
+    }
+
+    /** Disposition du mode Waze : barre et colonne de Cockpit, Waze au milieu (zone grisée ici). */
+    @Test
+    fun waze_mode_layout() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val nowPlaying = fr.cockpit.auto.media.NowPlaying(app)
+        compose.setContent {
+            CockpitTheme {
+                androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxSize().background(fr.cockpit.auto.ui.K.bg)) {
+                    fr.cockpit.auto.ui.Rail(
+                        claudeIcon = null, selected = null,
+                        bottomIcon = androidx.compose.material.icons.Icons.Rounded.Home, bottomLabel = "Retour",
+                        onNavigation = {}, onMusic = {}, onMessages = {}, onClaude = {}, onBottom = {},
+                    )
+                    androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier.weight(1f).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0xFF2B3A44)),
+                        contentAlignment = androidx.compose.ui.Alignment.Center,
+                    ) {
+                        androidx.compose.material3.Text("Waze s'affiche ici", color = androidx.compose.ui.graphics.Color.White, fontSize = 22.sp)
+                    }
+                    val col = (900f - 78f - 24f - 12f) / 2.6f + 24f
+                    fr.cockpit.auto.ui.DashboardSide(
+                        nowPlaying, 0, {},
+                        androidx.compose.ui.Modifier.width(col.dp).fillMaxHeight().background(fr.cockpit.auto.ui.K.bg).padding(12.dp),
+                    )
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/8-mode-waze.png")
     }
 }
