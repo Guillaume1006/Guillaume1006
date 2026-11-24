@@ -13,8 +13,8 @@ android {
         applicationId = "fr.cockpit.auto"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2"
+        versionCode = 3
+        versionName = "0.3"
         // Le Nothing Phone (comme presque tous les téléphones récents) est en ARM 64 bits.
         ndk { abiFilters += "arm64-v8a" }
     }

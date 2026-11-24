@@ -19,8 +19,11 @@ object Prefs {
     private val _railSide = MutableStateFlow(RailSide.Left)
     val railSide: StateFlow<RailSide> = _railSide.asStateFlow()
 
+    private var app: Context? = null
+
     fun init(ctx: Context) {
-        if (sp != null) return
+        if (sp != null && app === ctx.applicationContext) return
+        app = ctx.applicationContext
         val prefs = ctx.applicationContext.getSharedPreferences("cockpit", Context.MODE_PRIVATE)
         sp = prefs
         _musicPackage.value = prefs.getString(KEY_MUSIC, null)

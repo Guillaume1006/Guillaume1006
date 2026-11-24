@@ -20,10 +20,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // Écran toujours allumé et plein écran : le téléphone est sur son support.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        WindowCompat.getInsetsController(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
+        hideSystemBars()
         handleIntent(intent)
         setContent {
             CockpitTheme {
@@ -47,6 +44,19 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         CockpitState.activityVisible.value = false
         super.onStop()
+    }
+
+    /** Au retour d'une autre app, Android réaffiche parfois les barres système : on les recache. */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemBars()
+    }
+
+    private fun hideSystemBars() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
     }
 
     private fun handleIntent(intent: Intent?) {

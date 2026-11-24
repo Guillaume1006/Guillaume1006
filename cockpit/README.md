@@ -2,10 +2,10 @@
 
 App plein écran pour un téléphone posé à l'horizontale sur un support de voiture (pensée pour le Nothing Phone, format 20:9).
 
-## Ce que fait la version 0.2
+## Ce que fait la version 0.3
 
 - **Barre latérale** : heure, batterie, raccourcis Waze / Musique / Messages, **bouton Claude** (ouvre l'app Claude), bouton Accueil / Toutes les apps. À gauche ou à droite, au choix.
-- **Barre flottante** : quand Waze, la musique, Claude ou une autre app est ouverte depuis Cockpit, la barre reste affichée par-dessus, au même endroit. Le bouton du bas ramène à Cockpit ; un appui long (ou « Quitter » dans la notification) arrête le mode voiture.
+- **Barre flottante** : quand Waze, la musique, Claude ou une autre app est ouverte depuis Cockpit, la barre reste affichée par-dessus, au même endroit, et garde le téléphone à l'horizontale. Le bouton du bas ramène à Cockpit ; un appui long (ou « Quitter » dans la notification) arrête le mode voiture.
 - **Tableau de bord**
   - Carte sombre centrée sur ta position (MapLibre + OpenFreeMap, gratuit, sans clé). Un tap ouvre **Waze**.
   - **Lecture en cours** : titre, pochette, progression et commandes de l'app audio active (Spotify, Deezer, YouTube Music, radio…).
@@ -33,7 +33,8 @@ Prérequis : JDK 17+ et le SDK Android (plateforme 35).
 cd cockpit
 echo "sdk.dir=/chemin/vers/android-sdk" > local.properties
 ./gradlew assembleRelease          # app/build/outputs/apk/release/app-release.apk
-./gradlew testDebugUnitTest        # captures des écrans dans app/build/screens/
+./gradlew testDebugUnitTest        # 14 tests : chaque bouton, réglages, barre flottante
+./gradlew recordRoborazziDebug     # captures des écrans dans app/build/screens/
 ```
 
 ## Organisation du code
