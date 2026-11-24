@@ -24,6 +24,16 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean("northUp", true)
         set(v) = sp.edit().putBoolean("northUp", v).apply()
 
+    /** Alertes radars (Belgique) et zones de danger (France) */
+    var radars: Boolean
+        get() = sp.getBoolean("radars", true)
+        set(v) = sp.edit().putBoolean("radars", v).apply()
+
+    /** Zones de danger en France (désactivable) */
+    var alertsFrance: Boolean
+        get() = sp.getBoolean("alertsFrance", true)
+        set(v) = sp.edit().putBoolean("alertsFrance", v).apply()
+
     var avoidHighways: Boolean
         get() = sp.getBoolean("avoidHighways", false)
         set(v) = sp.edit().putBoolean("avoidHighways", v).apply()

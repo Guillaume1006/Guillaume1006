@@ -237,6 +237,14 @@ fun SettingsPanel(state: DashState, pickMusic: () -> Unit) {
         AppChoiceRow("Appli musique", Apps.entry(ctx, state.musicApp), pickMusic)
         SwitchRow("Guidage vocal", state.voice, state::changeVoice)
         SwitchRow("Carte nord en haut", state.northUp, state::changeNorthUp)
+        SwitchRow("Alertes radars", state.radars, state::changeRadars)
+        if (state.radars) {
+            SwitchRow("Zones de danger en France", state.alertsFrance, state::changeAlertsFrance)
+            Text(
+                "Belgique : radars fixes signalés précisément. France : la loi interdit d'indiquer où sont les radars, MotoDash signale donc des « zones de danger » de 2 km. Données OpenStreetMap, sans les contrôles mobiles.",
+                color = TextDim, fontSize = 12.sp,
+            )
+        }
         SwitchRow("Éviter les autoroutes", state.avoidHighways, state::changeAvoidHighways)
         SwitchRow("Éviter les péages", state.avoidTolls, state::changeAvoidTolls)
         Text(

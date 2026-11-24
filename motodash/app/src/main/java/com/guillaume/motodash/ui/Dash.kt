@@ -75,10 +75,12 @@ class DashState(private val prefs: Prefs) {
     var avoidHighways by mutableStateOf(prefs.avoidHighways)
     var avoidTolls by mutableStateOf(prefs.avoidTolls)
     var northUp by mutableStateOf(prefs.northUp)
+    var radars by mutableStateOf(prefs.radars)
+    var alertsFrance by mutableStateOf(prefs.alertsFrance)
 
     fun reload() {
         musicApp = prefs.musicApp; favs = prefs.favApps
-        voice = prefs.voice; avoidHighways = prefs.avoidHighways; avoidTolls = prefs.avoidTolls; northUp = prefs.northUp
+        voice = prefs.voice; avoidHighways = prefs.avoidHighways; avoidTolls = prefs.avoidTolls; northUp = prefs.northUp; radars = prefs.radars; alertsFrance = prefs.alertsFrance
     }
 
     fun show(w: Widget) { widget = w; if (w != Widget.SEARCH) prefs.tab = w.ordinal }
@@ -88,6 +90,8 @@ class DashState(private val prefs: Prefs) {
     fun changeAvoidHighways(b: Boolean) { avoidHighways = b; prefs.avoidHighways = b }
     fun changeAvoidTolls(b: Boolean) { avoidTolls = b; prefs.avoidTolls = b }
     fun changeNorthUp(b: Boolean) { northUp = b; prefs.northUp = b }
+    fun changeRadars(b: Boolean) { radars = b; prefs.radars = b }
+    fun changeAlertsFrance(b: Boolean) { alertsFrance = b; prefs.alertsFrance = b }
 }
 
 @Composable

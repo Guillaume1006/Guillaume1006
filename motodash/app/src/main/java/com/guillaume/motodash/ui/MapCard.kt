@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Merge
 import androidx.compose.material.icons.filled.RampLeft
 import androidx.compose.material.icons.filled.RampRight
@@ -62,6 +64,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.guillaume.motodash.nav.CameraAlert
 import com.guillaume.motodash.nav.NavState
 import com.guillaume.motodash.nav.Navigator
 import com.guillaume.motodash.nav.Status
@@ -157,6 +160,13 @@ fun MapCard(nav: Navigator, location: Location?, northUp: Boolean, onSearch: () 
             else FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(d.lon, d.lat)))
         )
     }
+    // Radars sur la carte : Belgique uniquement (en France, la loi interdit de les situer)
+    LaunchedEffect(s.cameras, style) {
+        val st = style ?: return@LaunchedEffect
+        st.getSourceAs<GeoJsonSource>("cams")?.setGeoJson(
+            FeatureCollection.fromFeatures(s.cameras.filter { !it.cam.france }.map { Feature.fromGeometry(Point.fromLngLat(it.cam.lon, it.cam.lat)) })
+        )
+    }
     // Caméra : vue de conduite inclinée pendant le guidage, vue du dessus sinon
     LaunchedEffect(s.status, tracking, style, location != null, northUp) {
         val m = map ?: return@LaunchedEffect
@@ -182,7 +192,10 @@ fun MapCard(nav: Navigator, location: Location?, northUp: Boolean, onSearch: () 
         // Haut : prochaine manœuvre / état
         Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
             when (s.status) {
-                Status.NAVIGATING -> ManeuverBanner(s)
+                Status.NAVIGATING -> {
+                    ManeuverBanner(s)
+                    s.alert?.let { Spacer(Modifier.size(8.dp)); AlertChip(it, location) }
+                }
                 Status.ROUTING -> Chip("Calcul de l'itinéraire…", loading = true)
                 Status.ARRIVED -> Chip("Vous êtes arrivé 🏁") { nav.stop() }
                 Status.ERROR -> Chip(s.error ?: "Erreur", color = MicRed) { nav.stop() }
@@ -204,7 +217,7 @@ fun MapCard(nav: Navigator, location: Location?, northUp: Boolean, onSearch: () 
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            SpeedBubble(location)
+            SpeedBubble(location, (s.alert as? CameraAlert.Radar)?.limit)
             if (s.status == Status.NAVIGATING || s.status == Status.ROUTING) {
                 EtaBar(s, Modifier.weight(1f)) { nav.stop() }
             } else {
@@ -235,6 +248,11 @@ private fun addRouteLayers(st: Style) {
     st.addLayer(LineLayer("route-line", "route").withProperties(
         PropertyFactory.lineColor("#3D8BFF"), PropertyFactory.lineWidth(8f),
         PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+    ))
+    st.addSource(GeoJsonSource("cams"))
+    st.addLayer(CircleLayer("cams-point", "cams").withProperties(
+        PropertyFactory.circleColor("#FFFFFF"), PropertyFactory.circleRadius(9f),
+        PropertyFactory.circleStrokeColor("#E53935"), PropertyFactory.circleStrokeWidth(5f),
     ))
     st.addSource(GeoJsonSource("me"))
     st.addLayer(CircleLayer("me-halo", "me").withProperties(
@@ -290,6 +308,22 @@ private fun ManeuverBanner(s: NavState) {
 }
 
 @Composable
+private fun AlertChip(a: CameraAlert, location: Location?) {
+    val (bg, icon, text) = when (a) {
+        is CameraAlert.Radar -> Triple(MicRed, Icons.Filled.PhotoCamera,
+            "Radar" + (a.limit?.let { " · $it" } ?: "") + " · " + formatDistance(a.distance))
+        is CameraAlert.DangerZone -> Triple(Color(0xFFFF9800), Icons.Filled.Warning, "Zone de danger · " + formatDistance(a.remaining))
+    }
+    Row(
+        Modifier.clip(RoundedCornerShape(18.dp)).background(bg).padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(28.dp))
+        Text("  $text", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
 private fun EtaBar(s: NavState, modifier: Modifier, onStop: () -> Unit) {
     val arrival = SimpleDateFormat("HH:mm", Locale.FRANCE).format(Date(System.currentTimeMillis() + (s.remainingS * 1000).toLong()))
     val mins = (s.remainingS / 60).toInt()
@@ -314,10 +348,11 @@ private fun EtaBar(s: NavState, modifier: Modifier, onStop: () -> Unit) {
 }
 
 @Composable
-private fun SpeedBubble(location: Location?) {
+private fun SpeedBubble(location: Location?, limit: Int?) {
     val kmh = location?.takeIf { it.hasSpeed() }?.let { (it.speed * 3.6f).toInt() } ?: 0
+    val over = limit != null && kmh > limit + 3
     Column(
-        Modifier.size(84.dp).clip(CircleShape).background(Color(0xF0101014)),
+        Modifier.size(84.dp).clip(CircleShape).background(if (over) MicRed else Color(0xF0101014)),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
         Text("$kmh", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)

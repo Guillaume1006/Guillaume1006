@@ -12,6 +12,10 @@ Tableau de bord moto pour Android, façon CarPlay, à l'horizontale. **La naviga
   - prochaine manœuvre (flèche, distance, nom de rue), heure d'arrivée, temps et distance restants ;
   - **voix en français**, la musique baisse pendant les annonces ;
   - **recalcul automatique** si tu sors de l'itinéraire.
+- **Radars** (données OpenStreetMap, radars fixes) :
+  - **Belgique** : radar signalé précisément (point rouge sur la carte, bandeau « Radar · 70 · 350 m », annonce vocale), et « Attention à la vitesse » si tu dépasses la limite.
+  - **France** : la loi interdit d'indiquer où se trouvent les radars. MotoDash signale donc des **zones de danger** de 2 km, comme Waze et Coyote, sans montrer le radar.
+  - Les contrôles mobiles signalés en direct par les autres conducteurs ne sont pas inclus : c'est propre à Waze et Coyote.
 - **Destination** : tape-la, **dicte-la** (micro), ou choisis-la dans tes favoris ☆ et destinations récentes. Une adresse partagée depuis une autre appli (« Ouvrir avec MotoDash ») lance aussi le guidage.
 - **Panneau de droite** :
   - l'heure, la batterie, l'assistant vocal ;
@@ -22,6 +26,7 @@ Tableau de bord moto pour Android, façon CarPlay, à l'horizontale. **La naviga
 ## Réglages
 
 - **Carte nord en haut** (activé par défaut) : la carte reste fixe. Désactive-le pour que la carte tourne dans le sens de la marche.
+- **Alertes radars**, et **zones de danger en France** (désactivables séparément).
 - **Guidage vocal**, **éviter les autoroutes**, **éviter les péages**.
 - **Appli musique**, et **accès au titre en cours**.
 
@@ -36,7 +41,7 @@ Plus besoin d'« afficher par-dessus les autres applis », de l'accès aux donn�
 
 ## Limites
 
-- **Pas d'alertes communautaires** (radars, police, accidents, bouchons signalés) : c'est propre à Waze.
+- **Pas d'alertes communautaires** (contrôles mobiles, police, accidents, bouchons signalés) : c'est propre à Waze. Les radars fixes viennent d'OpenStreetMap ; un radar récent peut manquer.
 - Les services de carte, d'itinéraire et de recherche sont **gratuits et publics**. Il faut du réseau mobile, et ils peuvent être lents ou indisponibles par moments.
 - Une **voix française** doit être installée sur le téléphone (Réglages → Synthèse vocale).
 
@@ -47,4 +52,4 @@ Plus besoin d'« afficher par-dessus les autres applis », de l'accès aux donn�
 ./gradlew testReleaseUnitTest    # tests du guidage sur un vrai itinéraire moto
 ```
 
-Carte © OpenStreetMap, OpenFreeMap · Itinéraires : Valhalla · Recherche : Photon / Nominatim
+Carte © OpenStreetMap, OpenFreeMap · Itinéraires : Valhalla · Recherche : Photon / Nominatim · Radars : OpenStreetMap via Overpass

@@ -25,6 +25,8 @@ data class NavState(
     val remainingS: Double = 0.0,
     val rerouting: Boolean = false,
     val error: String? = null,
+    val cameras: List<RouteCamera> = emptyList(),
+    val alert: CameraAlert? = null,
 )
 
 /**
@@ -75,7 +77,9 @@ class Navigator(ctx: Context, private val prefs: Prefs, private val scope: Corou
                     Valhalla.route(LatLon(from.latitude, from.longitude), LatLon(dest.lat, dest.lon), prefs.avoidHighways, prefs.avoidTolls, heading)
                 }
                 segIdx = 0; offCount = 0; announcedFar = -1; announcedNear = -1
+                announcedCam = -1L; lastSpeeding = 0L
                 _state.value = NavState(Status.NAVIGATING, dest, r)
+                loadCameras(r)
                 if (prefs.voice) {
                     val first = r.maneuvers.firstOrNull()
                     voice.say(if (reroute) "Nouvel itinéraire." else "C'est parti. " + (first?.pre ?: first?.instruction ?: ""))
@@ -126,8 +130,50 @@ class Navigator(ctx: Context, private val prefs: Prefs, private val scope: Corou
         val next = r.maneuvers[idx]
         val dist = pr.distToNext
         val remS = if (r.lengthM > 0) r.timeS * remaining / r.lengthM else 0.0
-        _state.update { it.copy(next = next, distToNext = dist, remainingM = remaining, remainingS = remS, rerouting = false) }
-        announce(idx, next, dist, loc.speed)
+        val alert = if (prefs.radars) Cameras.alertAt(s.cameras, pr.along, prefs.alertsFrance) else null
+        _state.update { it.copy(next = next, distToNext = dist, remainingM = remaining, remainingS = remS, rerouting = false, alert = alert) }
+        if (!announceCamera(alert, loc.speed)) announce(idx, next, dist, loc.speed)
+    }
+
+    // ───────────── Radars (Belgique) et zones de danger (France) ─────────────
+
+    private var announcedCam = -1L
+    private var lastSpeeding = 0L
+
+    private fun loadCameras(r: Route) {
+        if (!prefs.radars) return
+        scope.launch {
+            val cams = runCatching { withContext(Dispatchers.IO) { Cameras.alongRoute(r, Cameras.fetch(r)) } }.getOrNull() ?: return@launch
+            if (_state.value.route === r) _state.update { it.copy(cameras = cams) }
+        }
+    }
+
+    /** Annonce vocale d'un radar ou d'une zone de danger. Renvoie true si une annonce a été faite. */
+    private fun announceCamera(alert: CameraAlert?, speed: Float): Boolean {
+        if (!prefs.voice || alert == null) return false
+        val kmh = speed * 3.6f
+        return when (alert) {
+            is CameraAlert.Radar -> {
+                val over = alert.limit != null && kmh > alert.limit + 3
+                if (announcedCam != alert.id) {
+                    announcedCam = alert.id
+                    val limit = alert.limit?.let { ", limité à $it" } ?: ""
+                    voice.say("Radar dans ${spokenDistance(alert.distance)}$limit." + if (over) " Attention à la vitesse." else "")
+                    true
+                } else if (over && System.currentTimeMillis() - lastSpeeding > 15_000) {
+                    lastSpeeding = System.currentTimeMillis()
+                    voice.say("Attention à la vitesse.")
+                    true
+                } else false
+            }
+            is CameraAlert.DangerZone -> {
+                if (announcedCam != alert.id) {
+                    announcedCam = alert.id
+                    voice.say("Zone de danger.")
+                    true
+                } else false
+            }
+        }
     }
 
     private fun announce(idx: Int, m: Maneuver, dist: Double, speed: Float) {
