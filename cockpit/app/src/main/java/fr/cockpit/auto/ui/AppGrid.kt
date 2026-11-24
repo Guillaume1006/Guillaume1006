@@ -48,17 +48,17 @@ private class AppEntry(
 )
 
 @Composable
-fun AppGrid(claudeIcon: ImageBitmap?, playingPackage: String?) {
+fun AppGrid(claudeIcon: ImageBitmap?, onOpenMusic: () -> Unit, onOpenSettings: () -> Unit) {
     val ctx = LocalContext.current
     val apps = listOf(
-        AppEntry("Navigation", Tile.nav, Icons.Rounded.Navigation) { Launchers.openNavigation(ctx) },
-        AppEntry("Musique", Tile.music, Icons.Rounded.MusicNote) { Launchers.openMusic(ctx, playingPackage) },
+        AppEntry("Waze", Tile.nav, Icons.Rounded.Navigation) { Launchers.openNavigation(ctx) },
+        AppEntry("Musique", Tile.music, Icons.Rounded.MusicNote, onClick = onOpenMusic),
         AppEntry("Téléphone", Tile.phone, Icons.Rounded.Phone) { Launchers.openDialer(ctx) },
         AppEntry("Messages", Tile.msg, Icons.AutoMirrored.Rounded.Chat) { Launchers.openMessages(ctx) },
         AppEntry("Claude", Tile.claude, Icons.Rounded.AutoAwesome, image = claudeIcon) { Launchers.openClaude(ctx) },
         AppEntry("Commandes", Tile.voice, Icons.Rounded.Mic, soon = true),
         AppEntry("Véhicule", Tile.car, Icons.Rounded.DirectionsCar, soon = true),
-        AppEntry("Réglages", Tile.settings, Icons.Rounded.Settings) { Launchers.openAppSettings(ctx) },
+        AppEntry("Réglages", Tile.settings, Icons.Rounded.Settings, onClick = onOpenSettings),
     )
 
     Column(

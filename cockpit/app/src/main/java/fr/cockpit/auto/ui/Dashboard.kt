@@ -84,20 +84,22 @@ private const val MAP_STYLE = "https://tiles.openfreemap.org/styles/dark"
 private val PARIS = LatLng(48.8566, 2.3522)
 
 @Composable
-fun Dashboard(nowPlaying: NowPlaying, refresh: Int) {
+fun Dashboard(nowPlaying: NowPlaying, refresh: Int, onOpenMusic: () -> Unit) {
     val context = LocalContext.current
     val located = remember(refresh) { context.hasLocation() }
+    val overlayOk = remember(refresh) { android.provider.Settings.canDrawOverlays(context) }
 
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         key(located) {
             MapCard(
                 located = located,
+                overlayOk = overlayOk,
                 onOpen = { Launchers.openNavigation(context) },
                 modifier = Modifier.weight(1.6f).fillMaxHeight(),
             )
         }
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            NowPlayingCard(nowPlaying, Modifier.weight(1.15f).fillMaxWidth())
+            NowPlayingCard(nowPlaying, onOpenMusic, Modifier.weight(1.15f).fillMaxWidth())
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AgendaTile(refresh, Modifier.weight(1f).fillMaxHeight())
                 WeatherTile(refresh, Modifier.weight(1f).fillMaxHeight())
@@ -113,7 +115,7 @@ private val IS_ROBOLECTRIC = android.os.Build.FINGERPRINT == "robolectric"
 
 @SuppressLint("MissingPermission")
 @Composable
-private fun MapCard(located: Boolean, onOpen: () -> Unit, modifier: Modifier) {
+private fun MapCard(located: Boolean, overlayOk: Boolean, onOpen: () -> Unit, modifier: Modifier) {
     val context = LocalContext.current
     val mapView = remember {
         if (IS_ROBOLECTRIC) return@remember null
@@ -170,7 +172,7 @@ private fun MapCard(located: Boolean, onOpen: () -> Unit, modifier: Modifier) {
             },
             modifier = Modifier.fillMaxSize(),
         )
-        // Le guidage est confié à Google Maps / Waze pour l'instant.
+        // Le guidage est confié à Waze ; la barre flottante reste visible par-dessus.
         Row(
             Modifier
                 .align(Alignment.TopStart)
@@ -183,34 +185,43 @@ private fun MapCard(located: Boolean, onOpen: () -> Unit, modifier: Modifier) {
         ) {
             Icon(Icons.Rounded.Navigation, null, tint = K.accentInk, modifier = Modifier.size(24.dp))
             Spacer(Modifier.size(10.dp))
-            Text("Où va-t-on ?", color = K.accentInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Ouvrir Waze", color = K.accentInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
-        if (!located) {
-            Text(
-                "Position non autorisée",
-                color = K.dim,
-                fontSize = 13.sp,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(12.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(K.bg.copy(alpha = 0.85f))
-                    .clickable { Launchers.openAppSettings(context) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            )
+        Column(
+            Modifier.align(Alignment.BottomStart).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (!overlayOk) Chip("Garder la barre visible dans Waze : autoriser") {
+                Launchers.openOverlayPermission(context)
+            }
+            if (!located) Chip("Position non autorisée") { Launchers.openAppSettings(context) }
         }
     }
+}
+
+@Composable
+private fun Chip(text: String, onClick: () -> Unit) {
+    Text(
+        text,
+        color = K.text,
+        fontSize = 13.sp,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(K.bg.copy(alpha = 0.88f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+    )
 }
 
 /* ---------- Lecture en cours ---------- */
 
 @Composable
-private fun NowPlayingCard(nowPlaying: NowPlaying, modifier: Modifier) {
+private fun NowPlayingCard(nowPlaying: NowPlaying, onOpenMusic: () -> Unit, modifier: Modifier) {
     val context = LocalContext.current
     val access by nowPlaying.hasAccess.collectAsState()
     val track by nowPlaying.track.collectAsState()
 
-    KCard(modifier, onClick = { Launchers.openMusic(context, track?.packageName) }) {
+    KCard(modifier, onClick = onOpenMusic) {
         Column(Modifier.fillMaxSize().padding(14.dp)) {
             val t = track
             when {
@@ -224,7 +235,7 @@ private fun NowPlayingCard(nowPlaying: NowPlaying, modifier: Modifier) {
                     title = "Musique",
                     text = "Rien en lecture.",
                     action = "Ouvrir la musique",
-                    onAction = { Launchers.openMusic(context, null) },
+                    onAction = onOpenMusic,
                 )
                 else -> PlayingContent(t, nowPlaying)
             }

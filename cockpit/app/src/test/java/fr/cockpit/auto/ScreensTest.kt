@@ -13,6 +13,7 @@ import org.robolectric.annotation.GraphicsMode
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithText
 
 /** Dessine les écrans au format d'un téléphone 20:9 en paysage. */
 @RunWith(RobolectricTestRunner::class)
@@ -29,5 +30,8 @@ class ScreensTest {
         compose.onNodeWithContentDescription("Toutes les apps").performClick()
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screens/2-apps.png")
+        compose.onNodeWithText("Réglages").performClick()
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/screens/3-reglages.png")
     }
 }
