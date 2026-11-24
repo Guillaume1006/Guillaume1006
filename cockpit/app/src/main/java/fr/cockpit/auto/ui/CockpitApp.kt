@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
@@ -49,7 +51,7 @@ import fr.cockpit.auto.data.Prefs
 import fr.cockpit.auto.data.RailSide
 import fr.cockpit.auto.media.NowPlaying
 
-enum class Screen { Dashboard, Apps, Settings }
+enum class Screen { Dashboard, Apps, Music, Messages, Phone, Settings }
 
 @Composable
 fun CockpitApp() {
@@ -80,6 +82,9 @@ fun CockpitApp() {
         screen = when (r) {
             "settings" -> Screen.Settings
             "apps" -> Screen.Apps
+            "music" -> Screen.Music
+            "messages" -> Screen.Messages
+            "phone" -> Screen.Phone
             else -> Screen.Dashboard
         }
         CockpitState.requestedScreen.value = null
@@ -93,49 +98,52 @@ fun CockpitApp() {
     val claudeIcon = remember(refresh) { Launchers.claudeIcon(context) }
     val side by Prefs.railSide.collectAsState()
 
-    // Musique : l'app choisie, sinon on propose de la choisir.
-    val openMusic = {
-        if (!Launchers.openMusic(context)) {
-            Launchers.toast(context, "Choisis ton app de musique")
-            screen = Screen.Settings
-        }
-    }
+    // Musique : lecteur intégré à Cockpit
+    val openMusic = { screen = Screen.Music }
 
     BackHandler(enabled = screen != Screen.Dashboard) { screen = Screen.Dashboard }
 
     val rail = @Composable {
         Rail(
             claudeIcon = claudeIcon,
+            selected = when (screen) {
+                Screen.Music -> RailItem.Music
+                Screen.Messages -> RailItem.Messages
+                else -> null
+            },
             bottomIcon = if (screen == Screen.Dashboard) Icons.Rounded.Apps else Icons.Rounded.Home,
             bottomLabel = if (screen == Screen.Dashboard) "Toutes les apps" else "Tableau de bord",
             onNavigation = { Launchers.openNavigation(context) },
             onMusic = openMusic,
-            onMessages = { Launchers.openMessages(context) },
+            onMessages = { screen = Screen.Messages },
             onClaude = { Launchers.openClaude(context) },
             onBottom = { screen = if (screen == Screen.Dashboard) Screen.Apps else Screen.Dashboard },
         )
     }
 
+    // La barre est collée au bord, même côté caméra ; seul le contenu évite la caméra de l'autre côté.
+    val contentInsets = WindowInsets.displayCutout.only(
+        if (side == RailSide.Left) WindowInsetsSides.End else WindowInsetsSides.Start
+    )
     Row(
         Modifier
             .fillMaxSize()
             .background(K.bg)
-            .windowInsetsPadding(WindowInsets.displayCutout)
     ) {
         if (side == RailSide.Left) rail()
         Box(
             Modifier
                 .weight(1f)
                 .fillMaxHeight()
+                .windowInsetsPadding(contentInsets)
                 .padding(12.dp)
         ) {
             when (screen) {
                 Screen.Dashboard -> Dashboard(nowPlaying = nowPlaying, refresh = refresh, onOpenMusic = openMusic)
-                Screen.Apps -> AppGrid(
-                    claudeIcon = claudeIcon,
-                    onOpenMusic = openMusic,
-                    onOpenSettings = { screen = Screen.Settings },
-                )
+                Screen.Apps -> AppGrid(claudeIcon = claudeIcon, onOpen = { screen = it })
+                Screen.Music -> MusicScreen(nowPlaying = nowPlaying, refresh = refresh)
+                Screen.Messages -> MessagesScreen(refresh = refresh)
+                Screen.Phone -> PhoneScreen(refresh = refresh)
                 Screen.Settings -> SettingsScreen(refresh = refresh)
             }
         }

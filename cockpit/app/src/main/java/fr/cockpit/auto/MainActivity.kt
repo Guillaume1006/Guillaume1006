@@ -1,6 +1,7 @@
 package fr.cockpit.auto
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -21,6 +22,11 @@ class MainActivity : ComponentActivity() {
         // Écran toujours allumé et plein écran : le téléphone est sur son support.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemBars()
+        // Aucune animation à l'ouverture et au retour : on ne voit pas de changement d'app.
+        if (Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0)
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        }
         handleIntent(intent)
         setContent {
             CockpitTheme {
@@ -32,6 +38,17 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
+        noTransition()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        noTransition()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun noTransition() {
+        if (Build.VERSION.SDK_INT < 34) overridePendingTransition(0, 0)
     }
 
     override fun onStart() {

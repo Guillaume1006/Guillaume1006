@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.cockpit.auto.apps.AppInfo
 import fr.cockpit.auto.apps.Launchers
+import fr.cockpit.auto.data.ForegroundApp
 import fr.cockpit.auto.data.Prefs
 import fr.cockpit.auto.data.RailSide
 import fr.cockpit.auto.media.NowPlaying
@@ -48,28 +49,19 @@ import fr.cockpit.auto.overlay.RailOverlayService
 @Composable
 fun SettingsScreen(refresh: Int) {
     val ctx = LocalContext.current
-    val musicApps = remember(refresh) { Launchers.musicApps(ctx) }
-    val chosen by Prefs.musicPackage.collectAsState()
     val side by Prefs.railSide.collectAsState()
     val overlayOk = remember(refresh) { Settings.canDrawOverlays(ctx) }
     val notificationsOk = remember(refresh) { NowPlaying.hasAccess(ctx) }
+    val usageOk = remember(refresh) { ForegroundApp.detector.hasAccess(ctx) }
 
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Choix de l'app de musique
         KCard(Modifier.weight(1.1f).fillMaxHeight()) {
             Column(Modifier.fillMaxSize().padding(14.dp)) {
-                KLabel("App de musique")
-                Text("Celle qu'ouvre le bouton Musique", color = K.dim, fontSize = 13.sp)
+                MusicAppPicker(refresh = refresh, title = "App de musique", modifier = Modifier.weight(1f))
                 VSpace(10)
-                if (musicApps.isEmpty()) {
-                    Text("Aucune app de musique trouvée sur ce téléphone.", color = K.text, fontSize = 15.sp)
-                }
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(musicApps, key = { it.packageName }) { app ->
-                        MusicAppRow(app, selected = app.packageName == chosen) {
-                            Prefs.setMusicPackage(app.packageName)
-                        }
-                    }
+                KButton("Quitter le mode voiture", filled = false) {
+                    RailOverlayService.stop(ctx)
+                    (ctx as? Activity)?.finishAndRemoveTask()
                 }
             }
         }
@@ -82,31 +74,29 @@ fun SettingsScreen(refresh: Int) {
                         Choice("À gauche", side == RailSide.Left) { Prefs.setRailSide(RailSide.Left) }
                         Choice("À droite", side == RailSide.Right) { Prefs.setRailSide(RailSide.Right) }
                     }
-                    StatusRow("Visible par-dessus Waze et les autres apps", overlayOk) {
+                    StatusRow("Rester visible dans Waze et Claude", overlayOk) {
                         Launchers.openOverlayPermission(ctx)
+                    }
+                    StatusRow("Disparaître dans les menus du téléphone", usageOk) {
+                        Launchers.openUsageAccess(ctx)
                     }
                 }
             }
             KCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     KLabel("Autorisations")
-                    StatusRow("Commandes musique (accès aux notifications)", notificationsOk) {
+                    StatusRow("Musique et messages (accès aux notifications)", notificationsOk) {
                         Launchers.openNotificationAccess(ctx)
                     }
-                    StatusRow("Position, agenda, notifications", null) { Launchers.openAppSettings(ctx) }
+                    StatusRow("Position, agenda, contacts", null) { Launchers.openAppSettings(ctx) }
                 }
-            }
-            Spacer(Modifier.weight(1f))
-            KButton("Quitter le mode voiture", filled = false) {
-                RailOverlayService.stop(ctx)
-                (ctx as? Activity)?.finishAndRemoveTask()
             }
         }
     }
 }
 
 @Composable
-private fun MusicAppRow(app: AppInfo, selected: Boolean, onClick: () -> Unit) {
+internal fun MusicAppRow(app: AppInfo, selected: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()

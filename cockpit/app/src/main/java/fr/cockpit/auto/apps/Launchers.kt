@@ -1,24 +1,29 @@
 package fr.cockpit.auto.apps
 
+import android.app.ActivityOptions
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.telecom.TelecomManager
 import android.widget.Toast
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import fr.cockpit.auto.MainActivity
+import fr.cockpit.auto.data.CockpitState
 import fr.cockpit.auto.data.Prefs
 
 data class AppInfo(val packageName: String, val label: String, val icon: ImageBitmap?)
 
-/** Ouverture des autres apps du téléphone. */
+/**
+ * Ouverture des autres apps. Tout s'ouvre sans animation et la barre flottante
+ * est affichée avant, au même endroit : on ne voit pas de changement d'app.
+ */
 object Launchers {
     const val CLAUDE = "com.anthropic.claude"
-    private const val WAZE = "com.waze"
+    const val WAZE = "com.waze"
     private const val GOOGLE_MAPS = "com.google.android.apps.maps"
 
     fun isInstalled(ctx: Context, pkg: String): Boolean =
@@ -29,7 +34,7 @@ object Launchers {
     /** Ouvre l'app Claude. Si l'identifiant a changé, la retrouve par son nom ; sinon, Play Store. */
     fun openClaude(ctx: Context) {
         val intent = ctx.packageManager.getLaunchIntentForPackage(CLAUDE) ?: findByLabel(ctx, "Claude")
-        if (intent != null && start(ctx, intent)) return
+        if (intent != null && openApp(ctx, intent)) return
         toast(ctx, "App Claude introuvable, ouverture du Play Store")
         if (!start(ctx, Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$CLAUDE")))) {
             start(ctx, Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$CLAUDE")))
@@ -49,20 +54,20 @@ object Launchers {
     fun openNavigation(ctx: Context) {
         for (pkg in listOf(WAZE, GOOGLE_MAPS)) {
             val i = ctx.packageManager.getLaunchIntentForPackage(pkg)
-            if (i != null && start(ctx, i)) return
+            if (i != null && openApp(ctx, i)) return
         }
-        startSelector(ctx, Intent.CATEGORY_APP_MAPS, "Waze n'est pas installé")
+        if (!start(ctx, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MAPS))) {
+            toast(ctx, "Waze n'est pas installé")
+        }
     }
 
-    fun hasWaze(ctx: Context) = isInstalled(ctx, WAZE)
+    /* ---------- Musique ---------- */
 
-    /* ---------- Musique : l'app choisie dans les réglages ---------- */
-
-    /** Ouvre l'app de musique choisie. Renvoie false si aucune n'est choisie (ou plus installée). */
-    fun openMusic(ctx: Context): Boolean {
+    /** Ouvre l'app de musique choisie (pour parcourir ses playlists). */
+    fun openMusicApp(ctx: Context): Boolean {
         val pkg = Prefs.musicPackage.value ?: return false
         val i = ctx.packageManager.getLaunchIntentForPackage(pkg) ?: return false
-        return start(ctx, i)
+        return openApp(ctx, i)
     }
 
     /** Apps capables de jouer de la musique : celles compatibles Android Auto, plus les lecteurs déclarés. */
@@ -75,23 +80,39 @@ object Launchers {
             .mapTo(pkgs) { it.activityInfo.packageName }
         return pkgs
             .filter { it != ctx.packageName && pm.getLaunchIntentForPackage(it) != null }
-            .map { AppInfo(it, label(pm, it), appIcon(ctx, it)) }
+            .map { AppInfo(it, label(ctx, it), appIcon(ctx, it)) }
             .sortedBy { it.label.lowercase() }
     }
 
-    /* ---------- Autres apps ---------- */
+    /* ---------- Téléphone ---------- */
 
-    fun openMessages(ctx: Context) = startSelector(ctx, Intent.CATEGORY_APP_MESSAGING, "Aucune app de messages trouvée")
-
-    fun openCalendar(ctx: Context) = startSelector(ctx, Intent.CATEGORY_APP_CALENDAR, "Aucun agenda trouvé")
+    fun call(ctx: Context, number: String) {
+        markDialer(ctx)
+        if (!start(ctx, Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number))))) {
+            start(ctx, Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))))
+        }
+    }
 
     fun openDialer(ctx: Context) {
+        markDialer(ctx)
         if (!start(ctx, Intent(Intent.ACTION_DIAL))) toast(ctx, "Aucune app téléphone trouvée")
     }
 
-    /** Ramène Cockpit au premier plan, sur l'écran demandé. */
+    /** L'écran d'appel garde la barre flottante. */
+    private fun markDialer(ctx: Context) {
+        ctx.getSystemService(TelecomManager::class.java)?.defaultDialerPackage?.let { CockpitState.markLaunched(it) }
+    }
+
+    /* ---------- Cockpit ---------- */
+
+    /** Ramène Cockpit au premier plan, sur l'écran demandé, sans animation. */
     fun openCockpit(ctx: Context, screen: String = "dashboard") {
         start(ctx, Intent(ctx, MainActivity::class.java).putExtra(MainActivity.EXTRA_SCREEN, screen))
+    }
+
+    fun openCalendar(ctx: Context) {
+        val i = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
+        if (!start(ctx, i)) toast(ctx, "Aucun agenda trouvé")
     }
 
     /* ---------- Réglages Android ---------- */
@@ -108,18 +129,28 @@ object Launchers {
         start(ctx, Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
     }
 
+    fun openUsageAccess(ctx: Context) {
+        if (!start(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, Uri.parse("package:${ctx.packageName}")))) {
+            start(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+    }
+
     /* ---------- Outils ---------- */
 
     fun appIcon(ctx: Context, pkg: String): ImageBitmap? = runCatching {
         ctx.packageManager.getApplicationIcon(pkg).toBitmap(144, 144).asImageBitmap()
     }.getOrNull()
 
-    private fun label(pm: PackageManager, pkg: String): String = runCatching {
+    fun label(ctx: Context, pkg: String): String = runCatching {
+        val pm = ctx.packageManager
         pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
     }.getOrDefault(pkg)
 
-    private fun startSelector(ctx: Context, category: String, error: String) {
-        if (!start(ctx, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, category))) toast(ctx, error)
+    /** Ouvre une app externe : barre flottante affichée d'abord, puis l'app sans animation. */
+    private fun openApp(ctx: Context, intent: Intent): Boolean {
+        val pkg = intent.component?.packageName ?: intent.`package`
+        if (pkg != null) CockpitState.markLaunched(pkg)
+        return start(ctx, intent)
     }
 
     private fun findByLabel(ctx: Context, label: String): Intent? {
@@ -131,7 +162,8 @@ object Launchers {
     }
 
     private fun start(ctx: Context, intent: Intent): Boolean = try {
-        ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+        ctx.startActivity(intent, ActivityOptions.makeCustomAnimation(ctx, 0, 0).toBundle())
         true
     } catch (e: ActivityNotFoundException) {
         false

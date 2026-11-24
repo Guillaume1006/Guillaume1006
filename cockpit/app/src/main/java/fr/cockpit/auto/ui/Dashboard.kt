@@ -152,6 +152,12 @@ private fun MapCard(located: Boolean, overlayOk: Boolean, onOpen: () -> Unit, mo
                     map.uiSettings.isCompassEnabled = false
                     map.addOnMapClickListener { onOpen(); true }
                     map.setStyle(Style.Builder().fromUri(MAP_STYLE)) { style ->
+                        // Centré tout de suite sur la dernière position connue (pas sur le monde entier)
+                        val last = context.lastLocation()
+                        map.cameraPosition = CameraPosition.Builder()
+                            .target(last?.let { LatLng(it.latitude, it.longitude) } ?: PARIS)
+                            .zoom(if (last != null) 15.5 else 11.0)
+                            .build()
                         if (located) {
                             val lc = map.locationComponent
                             lc.activateLocationComponent(
@@ -163,8 +169,6 @@ private fun MapCard(located: Boolean, overlayOk: Boolean, onOpen: () -> Unit, mo
                             lc.renderMode = RenderMode.GPS
                             lc.cameraMode = CameraMode.TRACKING_GPS
                             lc.zoomWhileTracking(15.5)
-                        } else {
-                            map.cameraPosition = CameraPosition.Builder().target(PARIS).zoom(11.0).build()
                         }
                     }
                 }
@@ -172,20 +176,20 @@ private fun MapCard(located: Boolean, overlayOk: Boolean, onOpen: () -> Unit, mo
             },
             modifier = Modifier.fillMaxSize(),
         )
-        // Le guidage est confié à Waze ; la barre flottante reste visible par-dessus.
+        // Toute la carte ouvre Waze ; la barre reste en place par-dessus.
         Row(
             Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(K.accent)
+                .clip(RoundedCornerShape(12.dp))
+                .background(K.bg.copy(alpha = 0.85f))
                 .clickable(onClick = onOpen)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Rounded.Navigation, null, tint = K.accentInk, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.size(10.dp))
-            Text("Ouvrir Waze", color = K.accentInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Icon(Icons.Rounded.Navigation, null, tint = K.accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(8.dp))
+            Text("Waze", color = K.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
         Column(
             Modifier.align(Alignment.BottomStart).padding(12.dp),
@@ -220,6 +224,7 @@ private fun NowPlayingCard(nowPlaying: NowPlaying, onOpenMusic: () -> Unit, modi
     val context = LocalContext.current
     val access by nowPlaying.hasAccess.collectAsState()
     val track by nowPlaying.track.collectAsState()
+    val chosenMusic by fr.cockpit.auto.data.Prefs.musicPackage.collectAsState()
 
     KCard(modifier, onClick = onOpenMusic) {
         Column(Modifier.fillMaxSize().padding(14.dp)) {
@@ -233,8 +238,8 @@ private fun NowPlayingCard(nowPlaying: NowPlaying, onOpenMusic: () -> Unit, modi
                 )
                 t == null -> Prompt(
                     title = "Musique",
-                    text = "Rien en lecture.",
-                    action = "Ouvrir la musique",
+                    text = if (chosenMusic == null) "Choisis ton app de musique." else "Rien en lecture.",
+                    action = if (chosenMusic == null) "Choisir" else "Ouvrir le lecteur",
                     onAction = onOpenMusic,
                 )
                 else -> PlayingContent(t, nowPlaying)

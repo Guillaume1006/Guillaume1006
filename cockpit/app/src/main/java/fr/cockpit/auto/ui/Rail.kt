@@ -51,6 +51,9 @@ import java.time.format.DateTimeFormatter
 /** Largeur de la barre, dans l'app comme en barre flottante. */
 val RAIL_WIDTH = 78.dp
 
+/** Bouton de la barre correspondant à l'écran affiché (petit trait d'accent à côté). */
+enum class RailItem { Navigation, Music, Messages }
+
 /**
  * Barre latérale : heure, batterie, Waze, musique, messages, Claude, et un bouton du bas
  * (grille d'apps dans Cockpit, retour à Cockpit dans la barre flottante).
@@ -59,6 +62,7 @@ val RAIL_WIDTH = 78.dp
 @Composable
 fun Rail(
     claudeIcon: ImageBitmap?,
+    selected: RailItem?,
     bottomIcon: ImageVector,
     bottomLabel: String,
     onNavigation: () -> Unit,
@@ -90,9 +94,9 @@ fun Rail(
                 Text("${battery.first} %", color = K.dim, fontSize = 11.sp, maxLines = 1)
             }
         }
-        RailButton(Tile.nav, Icons.Rounded.Navigation, "Waze", onNavigation)
-        RailButton(Tile.music, Icons.Rounded.MusicNote, "Musique", onMusic)
-        RailButton(Tile.msg, Icons.AutoMirrored.Rounded.Chat, "Messages", onMessages)
+        RailButton(Tile.nav, Icons.Rounded.Navigation, "Waze", selected == RailItem.Navigation, onNavigation)
+        RailButton(Tile.music, Icons.Rounded.MusicNote, "Musique", selected == RailItem.Music, onMusic)
+        RailButton(Tile.msg, Icons.AutoMirrored.Rounded.Chat, "Messages", selected == RailItem.Messages, onMessages)
         Spacer(Modifier.weight(1f))
         // Claude toujours à un tap, sur tous les écrans
         Box(
@@ -120,16 +124,28 @@ fun Rail(
 }
 
 @Composable
-private fun RailButton(brush: Brush, icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(50.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(brush)
-            .clickable(onClickLabel = label, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
+private fun RailButton(brush: Brush, icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(Modifier.width(RAIL_WIDTH), contentAlignment = Alignment.Center) {
+        if (selected) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 3.dp)
+                    .size(width = 4.dp, height = 26.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(K.accent)
+            )
+        }
+        Box(
+            Modifier
+                .size(50.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(brush)
+                .clickable(onClickLabel = label, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
+        }
     }
 }
 

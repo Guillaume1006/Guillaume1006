@@ -10,17 +10,31 @@ import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.content.Intent
 import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
+import android.view.KeyEvent
+import fr.cockpit.auto.apps.Launchers
+import fr.cockpit.auto.data.Prefs
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Service vide : sa seule présence, une fois autorisée dans
- * Réglages > Accès aux notifications, ouvre l'accès aux sessions média des autres apps.
+ * Une fois autorisé dans Réglages > Accès aux notifications, ce service ouvre l'accès
+ * aux sessions média des autres apps et reçoit les messages (SMS, WhatsApp…) pour l'écran Messages.
+ * (Nom conservé : le renommer ferait perdre l'autorisation déjà donnée.)
  */
-class MediaListenerService : NotificationListenerService()
+class MediaListenerService : NotificationListenerService() {
+    override fun onListenerConnected() {
+        runCatching { activeNotifications }.getOrNull()?.sortedBy { it.postTime }?.forEach { onNotificationPosted(it) }
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        Messages.parse(this, sbn)?.let { Messages.add(it) }
+    }
+}
 
 data class Track(
     val title: String,
@@ -77,7 +91,7 @@ class NowPlaying(private val ctx: Context) {
         try {
             manager.addOnActiveSessionsChangedListener(sessionsChanged, listener, handler)
             pick(manager.getActiveSessions(listener))
-        } catch (e: SecurityException) {
+        } catch (e: Exception) {
             _hasAccess.value = false
         }
     }
@@ -94,6 +108,24 @@ class NowPlaying(private val ctx: Context) {
         else c.transportControls.play()
     }
 
+    /** Lance la lecture sur l'app choisie, sans l'ouvrir. */
+    fun playChosen() {
+        val pkg = Prefs.musicPackage.value ?: return
+        val c = controller
+        if (c != null && c.packageName == pkg) {
+            c.transportControls.play()
+            return
+        }
+        // L'app n'a pas de session ouverte : touche « lecture » envoyée directement à l'app
+        for (action in listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
+            ctx.sendBroadcast(
+                Intent(Intent.ACTION_MEDIA_BUTTON)
+                    .setPackage(pkg)
+                    .putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(action, KeyEvent.KEYCODE_MEDIA_PLAY))
+            )
+        }
+    }
+
     fun next() {
         controller?.transportControls?.skipToNext()
     }
@@ -102,17 +134,20 @@ class NowPlaying(private val ctx: Context) {
         controller?.transportControls?.skipToPrevious()
     }
 
-    private fun refresh() {
+    /** Relit les sessions (par exemple après un changement d'app de musique). */
+    fun refresh() {
         try {
             pick(manager.getActiveSessions(listener))
-        } catch (e: SecurityException) {
+        } catch (e: Exception) {
             _hasAccess.value = false
         }
     }
 
     private fun pick(sessions: List<MediaController>) {
-        val best = sessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
-            ?: sessions.firstOrNull()
+        // L'app choisie d'abord ; une autre app seulement si elle joue vraiment.
+        val chosen = Prefs.musicPackage.value
+        val best = sessions.firstOrNull { it.packageName == chosen }
+            ?: sessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
         if (best?.sessionToken != controller?.sessionToken) {
             controller?.unregisterCallback(callback)
             controller = best
@@ -135,7 +170,7 @@ class NowPlaying(private val ctx: Context) {
             artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)
                 ?: meta.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
                 ?: meta.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE) ?: "",
-            appLabel = appLabel(c.packageName),
+            appLabel = Launchers.label(ctx, c.packageName),
             packageName = c.packageName,
             art = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)
@@ -147,11 +182,6 @@ class NowPlaying(private val ctx: Context) {
             speed = state?.playbackSpeed?.takeIf { it > 0f } ?: 1f,
         )
     }
-
-    private fun appLabel(pkg: String): String = runCatching {
-        val pm = ctx.packageManager
-        pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-    }.getOrDefault(pkg)
 
     companion object {
         fun hasAccess(ctx: Context): Boolean =

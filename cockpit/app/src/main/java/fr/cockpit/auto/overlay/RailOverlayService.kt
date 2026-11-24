@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -34,6 +35,7 @@ import fr.cockpit.auto.MainActivity
 import fr.cockpit.auto.R
 import fr.cockpit.auto.apps.Launchers
 import fr.cockpit.auto.data.CockpitState
+import fr.cockpit.auto.data.ForegroundApp
 import fr.cockpit.auto.data.Prefs
 import fr.cockpit.auto.data.RailSide
 import fr.cockpit.auto.ui.CockpitTheme
@@ -41,14 +43,16 @@ import fr.cockpit.auto.ui.RAIL_WIDTH
 import fr.cockpit.auto.ui.Rail
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * Barre flottante : quand une autre app est à l'écran (Waze, musique, Claude…),
- * la barre de Cockpit reste affichée par-dessus, sur le même côté.
- * Elle se cache dès que Cockpit revient au premier plan.
+ * Barre flottante : quand Waze, Claude ou une autre app est ouverte depuis Cockpit,
+ * la barre de Cockpit reste affichée par-dessus, exactement au même endroit.
+ * Elle se cache dès qu'on revient dans Cockpit, ou qu'on part dans les menus du téléphone.
  */
 class RailOverlayService : Service() {
     private val scope = MainScope()
@@ -56,14 +60,26 @@ class RailOverlayService : Service() {
     private var view: ComposeView? = null
     private var owner: OverlayOwner? = null
 
+    /** Dernière app vue au premier plan, et jusqu'à quand on a déjà lu l'historique. */
+    private var foreground: String? = null
+    private var readUntil = System.currentTimeMillis() - 10 * 60_000L
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         startAsForeground()
+        // Réaction immédiate : retour dans Cockpit, ouverture d'une app, changement de côté
         scope.launch {
-            combine(CockpitState.activityVisible, Prefs.railSide) { visible, side -> visible to side }
-                .collect { (visible, side) -> render(show = !visible, side = side) }
+            combine(CockpitState.activityVisible, CockpitState.launchTick, Prefs.railSide) { _, _, _ -> }
+                .collect { refresh() }
+        }
+        // Suivi de l'app au premier plan (sortie vers les menus du téléphone)
+        scope.launch {
+            while (isActive) {
+                delay(400)
+                refresh()
+            }
         }
     }
 
@@ -85,8 +101,29 @@ class RailOverlayService : Service() {
         super.onDestroy()
     }
 
+    private fun refresh() {
+        render(shouldShow(), Prefs.railSide.value)
+    }
+
+    /** La barre flottante n'apparaît qu'au-dessus des apps ouvertes depuis Cockpit. */
+    internal fun shouldShow(): Boolean {
+        if (!Settings.canDrawOverlays(this)) return false
+        // Juste après une ouverture : on affiche tout de suite, avant même que l'app ne s'affiche.
+        // La barre flottante recouvre exactement celle de Cockpit : aucun saut visible.
+        if (SystemClock.elapsedRealtime() - CockpitState.lastLaunchAt < LAUNCH_GRACE_MS) return true
+        if (CockpitState.activityVisible.value) return false
+        val detector = ForegroundApp.detector
+        // Sans l'accès aux données d'utilisation, on ne sait pas où on est : on garde la barre.
+        if (!detector.hasAccess(this)) return true
+        val now = System.currentTimeMillis()
+        detector.lastResumed(this, readUntil - 2_000)?.let { foreground = it }
+        readUntil = now
+        val fg = foreground ?: return true
+        return fg in CockpitState.carApps || fg == packageName
+    }
+
     private fun render(show: Boolean, side: RailSide) {
-        if (!show || !Settings.canDrawOverlays(this)) {
+        if (!show) {
             view?.visibility = View.GONE
             return
         }
@@ -118,8 +155,9 @@ class RailOverlayService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            // Garde le téléphone à l'horizontale dans Waze et les autres apps,
-            // même si la rotation automatique est coupée.
+            // Collée au bord de l'écran, même du côté de la caméra
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            // Garde le téléphone à l'horizontale, même rotation automatique coupée
             screenOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
         windowManager.addView(v, params)
@@ -132,11 +170,12 @@ class RailOverlayService : Service() {
         val claudeIcon = remember { Launchers.claudeIcon(ctx) }
         Rail(
             claudeIcon = claudeIcon,
+            selected = null,
             bottomIcon = Icons.Rounded.Home,
             bottomLabel = "Retour à Cockpit (appui long : quitter le mode voiture)",
             onNavigation = { Launchers.openNavigation(ctx) },
-            onMusic = { if (!Launchers.openMusic(ctx)) Launchers.openCockpit(ctx, "settings") },
-            onMessages = { Launchers.openMessages(ctx) },
+            onMusic = { Launchers.openCockpit(ctx, "music") },
+            onMessages = { Launchers.openCockpit(ctx, "messages") },
             onClaude = { Launchers.openClaude(ctx) },
             onBottom = { Launchers.openCockpit(ctx) },
             onBottomLongClick = {
@@ -161,7 +200,7 @@ class RailOverlayService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Mode voiture actif")
-            .setContentText("La barre Cockpit reste visible au-dessus des apps.")
+            .setContentText("La barre Cockpit reste visible dans Waze et Claude.")
             .setOngoing(true)
             .setContentIntent(open)
             .addAction(0, "Quitter", stop)
@@ -174,6 +213,7 @@ class RailOverlayService : Service() {
         private const val CHANNEL = "car_mode"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_STOP = "fr.cockpit.auto.STOP"
+        private const val LAUNCH_GRACE_MS = 2_500L
 
         /** À appeler quand Cockpit est à l'écran (démarrage autorisé au premier plan). */
         fun startIfAllowed(ctx: Context) {
