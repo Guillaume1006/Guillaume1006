@@ -57,6 +57,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import fr.cockpit.auto.apps.Launchers
+import fr.cockpit.auto.data.CockpitState
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import fr.cockpit.auto.data.NextEvent
 import fr.cockpit.auto.data.Weather
 import fr.cockpit.auto.data.fetchWeather
@@ -86,6 +89,7 @@ private val PARIS = LatLng(48.8566, 2.3522)
 @Composable
 fun Dashboard(nowPlaying: NowPlaying, refresh: Int, onOpenMusic: () -> Unit) {
     val context = LocalContext.current
+    val view = androidx.compose.ui.platform.LocalView.current
     val located = remember(refresh) { context.hasLocation() }
     val overlayOk = remember(refresh) { android.provider.Settings.canDrawOverlays(context) }
 
@@ -95,7 +99,19 @@ fun Dashboard(nowPlaying: NowPlaying, refresh: Int, onOpenMusic: () -> Unit) {
                 located = located,
                 overlayOk = overlayOk,
                 onOpen = { Launchers.openNavigation(context) },
-                modifier = Modifier.weight(MAP_WEIGHT).fillMaxHeight(),
+                modifier = Modifier
+                    .weight(MAP_WEIGHT)
+                    .fillMaxHeight()
+                    // Retient la place exacte du cadre : Waze s'y ouvrira en fenêtre
+                    .onGloballyPositioned { c ->
+                        val b = c.boundsInWindow()
+                        val loc = IntArray(2)
+                        view.getLocationOnScreen(loc)
+                        CockpitState.mapBounds = android.graphics.Rect(
+                            loc[0] + b.left.toInt(), loc[1] + b.top.toInt(),
+                            loc[0] + b.right.toInt(), loc[1] + b.bottom.toInt(),
+                        )
+                    },
             )
         }
         DashboardSide(nowPlaying, refresh, onOpenMusic, Modifier.weight(1f).fillMaxHeight())

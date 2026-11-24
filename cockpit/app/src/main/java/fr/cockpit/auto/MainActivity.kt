@@ -43,7 +43,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        CockpitState.activityVisible.value = true
         noTransition()
+    }
+
+    /** Une autre app passe devant (même en fenêtre, Cockpit restant visible derrière). */
+    override fun onPause() {
+        CockpitState.activityVisible.value = false
+        super.onPause()
     }
 
     @Suppress("DEPRECATION")
@@ -53,15 +60,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        CockpitState.activityVisible.value = true
         // La barre flottante prendra le relais quand une autre app passera devant.
         RailOverlayService.startIfAllowed(this)
     }
 
-    override fun onStop() {
-        CockpitState.activityVisible.value = false
-        super.onStop()
-    }
 
     /** Au retour d'une autre app, Android réaffiche parfois les barres système : on les recache. */
     override fun onWindowFocusChanged(hasFocus: Boolean) {

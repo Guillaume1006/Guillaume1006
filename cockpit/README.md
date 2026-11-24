@@ -2,11 +2,11 @@
 
 App plein écran pour un téléphone posé à l'horizontale sur un support de voiture (pensée pour le Nothing Phone, format 20:9).
 
-## Ce que fait la version 0.5
+## Ce que fait la version 0.6
 
 - **Barre latérale** collée au bord de l'écran (par-dessus la zone de la caméra) : heure, batterie, Waze, Musique, Messages, **Claude**, Accueil / Toutes les apps. À gauche ou à droite, au choix.
 - **Tout s'ouvre dans Cockpit** : lecteur musique, messages et téléphone sont des écrans de Cockpit, la barre ne bouge pas.
-- **Waze à la place de la carte** : Waze ne peut pas s'afficher à l'intérieur d'une autre app, alors c'est l'inverse : Waze s'ouvre derrière (sans animation) et Cockpit garde par-dessus sa barre à gauche et sa colonne musique / agenda / météo à droite. Waze n'est visible qu'au milieu, à la place de la carte. Option dans Réglages.
+- **Waze à la place de la carte** : Waze s'ouvre en fenêtre, à la taille exacte du cadre de la carte, entre la barre et la colonne musique / agenda / météo. Il faut activer « Fenêtres de forme libre » dans les options pour les développeurs du téléphone. Sans cette option, Waze s'ouvre en plein écran derrière Cockpit, qui garde par-dessus sa barre et sa colonne (Waze visible au milieu, ses bords cachés). Les deux sont réglables dans Réglages.
 - **Claude** s'ouvre sans animation, la barre reste en place. Le téléphone reste à l'horizontale, et tout disparaît quand tu pars dans les menus du téléphone.
 - **Lecteur musique** : l'app choisie (Spotify, Deezer…) se pilote depuis Cockpit : titre, pochette, progression, lecture/pause, précédent/suivant. Playlists affichées quand l'app les partage (Spotify les réserve à Android Auto).
 - **Messages** : SMS, WhatsApp, Messenger… reçus pendant la conduite, lus à voix haute, réponse dictée.
@@ -23,6 +23,7 @@ App plein écran pour un téléphone posé à l'horizontale sur un support de vo
 5. Sur la carte, touche **Garder la barre visible dans Waze** et active « Afficher par-dessus les autres applis ».
 6. Dans Réglages, touche **Disparaître dans les menus du téléphone** et active Cockpit dans « Accès aux données d'utilisation ».
 7. Touche **Musique** et choisis ton app de musique.
+8. Pour Waze à la taille de la carte : Paramètres → À propos du téléphone → touche 7 fois « Numéro de build », puis Options pour les développeurs → active **Fenêtres de forme libre** (et **Forcer le redimensionnement des activités** si Waze reste en plein écran), redémarre le téléphone.
 
 L'APK est signé avec une clé de debug générée sur la machine de build. Si une future version est construite sur une autre machine, Android refusera la mise à jour : désinstalle d'abord l'ancienne.
 
@@ -34,7 +35,7 @@ Prérequis : JDK 17+ et le SDK Android (plateforme 35).
 cd cockpit
 echo "sdk.dir=/chemin/vers/android-sdk" > local.properties
 ./gradlew assembleRelease          # app/build/outputs/apk/release/app-release.apk
-./gradlew testDebugUnitTest        # 17 tests : chaque bouton, lecteur, messages, mode Waze
+./gradlew testDebugUnitTest        # 20 tests : chaque bouton, lecteur, messages, mode Waze
 ./gradlew recordRoborazziDebug     # captures des écrans dans app/build/screens/
 ```
 

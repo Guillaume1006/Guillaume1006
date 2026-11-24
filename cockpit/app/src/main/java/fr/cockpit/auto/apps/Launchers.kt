@@ -14,6 +14,9 @@ import androidx.core.graphics.drawable.toBitmap
 import fr.cockpit.auto.MainActivity
 import fr.cockpit.auto.data.CockpitState
 import fr.cockpit.auto.data.Prefs
+import fr.cockpit.auto.data.RailSide
+import android.graphics.Rect
+import kotlin.math.roundToInt
 
 data class AppInfo(val packageName: String, val label: String, val icon: ImageBitmap?)
 
@@ -55,9 +58,10 @@ object Launchers {
 
     /** Waze, sinon Google Maps, sinon la première app de cartes. */
     fun openNavigation(ctx: Context) {
+        val window = if (Prefs.wazeWindow.value) mapWindow(ctx) else null
         for (pkg in listOf(WAZE, GOOGLE_MAPS)) {
             val i = ctx.packageManager.getLaunchIntentForPackage(pkg)
-            if (i != null && openApp(ctx, i)) return
+            if (i != null && openApp(ctx, i, window)) return
         }
         if (!start(ctx, Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MAPS))) {
             toast(ctx, "Waze n'est pas installé")
@@ -132,6 +136,12 @@ object Launchers {
         start(ctx, Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
     }
 
+    fun openDeveloperOptions(ctx: Context) {
+        if (!start(ctx, Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))) {
+            toast(ctx, "Active d'abord les options pour les développeurs (7 taps sur « Numéro de build »)")
+        }
+    }
+
     fun openUsageAccess(ctx: Context) {
         if (!start(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, Uri.parse("package:${ctx.packageName}")))) {
             start(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
@@ -150,10 +160,27 @@ object Launchers {
     }.getOrDefault(pkg)
 
     /** Ouvre une app externe : barre flottante affichée d'abord, puis l'app sans animation. */
-    private fun openApp(ctx: Context, intent: Intent): Boolean {
+    private fun openApp(ctx: Context, intent: Intent, window: Rect? = null): Boolean {
         val pkg = intent.component?.packageName ?: intent.`package`
         if (pkg != null) CockpitState.markLaunched(pkg)
-        return start(ctx, intent)
+        return start(ctx, intent, window)
+    }
+
+    /**
+     * Cadre de la carte à l'écran : mesuré sur le tableau de bord, sinon recalculé
+     * avec les mêmes proportions (barre, marges, carte 1,6 pour 1 colonne).
+     */
+    fun mapWindow(ctx: Context): Rect {
+        CockpitState.mapBounds?.let { return Rect(it) }
+        val dm = ctx.resources.displayMetrics
+        val d = dm.density
+        val w = maxOf(dm.widthPixels, dm.heightPixels)
+        val h = minOf(dm.widthPixels, dm.heightPixels)
+        val rail = (78 * d).roundToInt()
+        val pad = (12 * d).roundToInt()
+        val mapWidth = ((w - rail - 3 * pad) * 1.6f / 2.6f).roundToInt()
+        val left = if (Prefs.railSide.value == RailSide.Left) rail + pad else w - rail - pad - mapWidth
+        return Rect(left, pad, left + mapWidth, h - pad)
     }
 
     private fun findByLabel(ctx: Context, label: String): Intent? {
@@ -164,9 +191,14 @@ object Launchers {
         return Intent(main).setClassName(app.activityInfo.packageName, app.activityInfo.name)
     }
 
-    private fun start(ctx: Context, intent: Intent): Boolean = try {
+    private fun start(ctx: Context, intent: Intent, window: Rect? = null): Boolean = try {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
-        ctx.startActivity(intent, ActivityOptions.makeCustomAnimation(ctx, 0, 0).toBundle())
+        val options = ActivityOptions.makeCustomAnimation(ctx, 0, 0)
+        if (window != null) {
+            options.setLaunchBounds(window)
+            FreeformWindow.request(options)
+        }
+        ctx.startActivity(intent, options.toBundle())
         true
     } catch (e: ActivityNotFoundException) {
         false

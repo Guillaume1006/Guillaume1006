@@ -26,6 +26,10 @@ object Prefs {
     private val _railSide = MutableStateFlow(RailSide.Left)
     val railSide: StateFlow<RailSide> = _railSide.asStateFlow()
 
+    private val _wazeWindow = MutableStateFlow(true)
+    /** Ouvrir Waze en fenêtre, à la taille du cadre de la carte (si le téléphone l'accepte). */
+    val wazeWindow: StateFlow<Boolean> = _wazeWindow.asStateFlow()
+
     private val _wazePanel = MutableStateFlow(true)
     /** Dans Waze, la colonne musique / agenda / météo de Cockpit reste affichée à droite. */
     val wazePanel: StateFlow<Boolean> = _wazePanel.asStateFlow()
@@ -38,6 +42,12 @@ object Prefs {
         _musicPackage.value = prefs.getString(KEY_MUSIC, null)
         _railSide.value = if (prefs.getString(KEY_SIDE, null) == "right") RailSide.Right else RailSide.Left
         _wazePanel.value = prefs.getBoolean(KEY_WAZE_PANEL, true)
+        _wazeWindow.value = prefs.getBoolean(KEY_WAZE_WINDOW, true)
+    }
+
+    fun setWazeWindow(on: Boolean) {
+        _wazeWindow.value = on
+        sp?.edit()?.putBoolean(KEY_WAZE_WINDOW, on)?.apply()
     }
 
     fun setWazePanel(on: Boolean) {
@@ -58,12 +68,16 @@ object Prefs {
     private const val KEY_MUSIC = "music_package"
     private const val KEY_SIDE = "rail_side"
     private const val KEY_WAZE_PANEL = "waze_panel"
+    private const val KEY_WAZE_WINDOW = "waze_window"
 }
 
 /** État partagé entre l'écran principal et la barre flottante. */
 object CockpitState {
-    /** Vrai quand Cockpit est à l'écran : la barre flottante se cache alors. */
+    /** Vrai quand Cockpit est au premier plan : la barre flottante se cache alors. */
     val activityVisible = MutableStateFlow(false)
+
+    /** Position à l'écran du cadre de la carte (en pixels), mesurée sur le tableau de bord. */
+    @Volatile var mapBounds: android.graphics.Rect? = null
 
     /** Écran demandé depuis la barre flottante ("dashboard", "music", "messages", "settings"…). */
     val requestedScreen = MutableStateFlow<String?>(null)

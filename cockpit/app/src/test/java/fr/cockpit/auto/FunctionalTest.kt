@@ -84,7 +84,9 @@ class FunctionalTest {
         realDetector = ForegroundApp.detector
         Prefs.init(app)
         Prefs.setWazePanel(true)
+        Prefs.setWazeWindow(true)
         Prefs.setRailSide(RailSide.Left)
+        CockpitState.mapBounds = null
         // Accès aux notifications retiré (chaîne vide, comme sur un téléphone où il est désactivé)
         Settings.Secure.putString(app.contentResolver, "enabled_notification_listeners", "")
     }
@@ -107,6 +109,33 @@ class FunctionalTest {
         assertEquals(WAZE, intent?.component?.packageName)
         assertTrue("sans animation", intent!!.flags and Intent.FLAG_ACTIVITY_NO_ANIMATION != 0)
         assertTrue("barre flottante prévue au-dessus de Waze", WAZE in CockpitState.carApps)
+    }
+
+    @Test
+    fun waze_opens_in_a_window_the_size_of_the_map_card() {
+        installApp(WAZE, "Waze")
+        launch()
+        val map = CockpitState.mapBounds
+        assertNotNull("cadre de la carte mesuré", map)
+        assertTrue("carte plus large que haute", map!!.width() > map.height())
+        railButton("Waze").performClick()
+        val started = shadowOf(app).nextStartedActivityForResult
+        assertEquals(WAZE, started.intent.component?.packageName)
+        @Suppress("DEPRECATION")
+        val bounds = started.options?.getParcelable<android.graphics.Rect>("android:activity.launchBounds")
+        assertEquals("Waze demandé à la taille exacte du cadre", map, bounds)
+    }
+
+    @Test
+    fun waze_window_can_be_turned_off() {
+        installApp(WAZE, "Waze")
+        Prefs.setWazeWindow(false)
+        launch()
+        railButton("Waze").performClick()
+        val started = shadowOf(app).nextStartedActivityForResult
+        assertEquals(WAZE, started.intent.component?.packageName)
+        @Suppress("DEPRECATION")
+        assertNull(started.options?.getParcelable<android.graphics.Rect>("android:activity.launchBounds"))
     }
 
     @Test

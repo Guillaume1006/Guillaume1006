@@ -54,6 +54,7 @@ fun SettingsScreen(refresh: Int) {
     val notificationsOk = remember(refresh) { NowPlaying.hasAccess(ctx) }
     val usageOk = remember(refresh) { ForegroundApp.detector.hasAccess(ctx) }
     val wazePanel by Prefs.wazePanel.collectAsState()
+    val wazeWindow by Prefs.wazeWindow.collectAsState()
 
     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         KCard(Modifier.weight(1.1f).fillMaxHeight()) {
@@ -61,7 +62,7 @@ fun SettingsScreen(refresh: Int) {
                 MusicAppPicker(refresh = refresh, title = "App de musique", modifier = Modifier.weight(1f))
                 VSpace(10)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    KButton("Autorisations Android", filled = false) { Launchers.openAppSettings(ctx) }
+                    KButton("Autorisations", filled = false) { Launchers.openAppSettings(ctx) }
                     KButton("Quitter le mode voiture", filled = false) {
                         RailOverlayService.stop(ctx)
                         (ctx as? Activity)?.finishAndRemoveTask()
@@ -73,8 +74,8 @@ fun SettingsScreen(refresh: Int) {
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             KCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    KLabel("Barre latérale")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        KLabel("Barre latérale", Modifier.weight(1f))
                         Choice("À gauche", side == RailSide.Left) { Prefs.setRailSide(RailSide.Left) }
                         Choice("À droite", side == RailSide.Right) { Prefs.setRailSide(RailSide.Right) }
                     }
@@ -84,16 +85,24 @@ fun SettingsScreen(refresh: Int) {
                     StatusRow("Disparaître dans les menus du téléphone", usageOk) {
                         Launchers.openUsageAccess(ctx)
                     }
-                    ToggleRow("Dans Waze, garder musique, agenda et météo à droite", wazePanel) {
-                        Prefs.setWazePanel(!wazePanel)
+                    StatusRow("Lire la musique et les messages", notificationsOk) {
+                        Launchers.openNotificationAccess(ctx)
                     }
                 }
             }
             KCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    KLabel("Autorisations")
-                    StatusRow("Musique et messages (accès aux notifications)", notificationsOk) {
-                        Launchers.openNotificationAccess(ctx)
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KLabel("Waze")
+                    ToggleRow("Waze en fenêtre, à la taille de la carte", wazeWindow) {
+                        Prefs.setWazeWindow(!wazeWindow)
+                    }
+                    Text(
+                        "« Fenêtres de forme libre » dans les options développeurs ›",
+                        color = K.accent, fontSize = 12.sp, maxLines = 1,
+                        modifier = Modifier.clickable { Launchers.openDeveloperOptions(ctx) },
+                    )
+                    ToggleRow("Garder musique, agenda et météo à droite", wazePanel) {
+                        Prefs.setWazePanel(!wazePanel)
                     }
                 }
             }
@@ -107,7 +116,7 @@ private fun ToggleRow(text: String, on: Boolean, onToggle: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(text, color = K.text, fontSize = 14.sp, lineHeight = 18.sp, modifier = Modifier.weight(1f))
         Spacer(Modifier.size(10.dp))
-        Choice(if (on) "Oui" else "Non", on, onToggle)
+        Choice(if (on) "Oui" else "Non", on, compact = true, onClick = onToggle)
     }
 }
 
@@ -142,7 +151,7 @@ internal fun MusicAppRow(app: AppInfo, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun Choice(label: String, selected: Boolean, compact: Boolean = false, onClick: () -> Unit) {
     Text(
         label,
         color = if (selected) K.accentInk else K.text,
@@ -152,7 +161,7 @@ private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
             .clip(RoundedCornerShape(12.dp))
             .background(if (selected) K.accent else K.panel2)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 9.dp),
+            .padding(horizontal = 16.dp, vertical = if (compact) 6.dp else 9.dp),
     )
 }
 

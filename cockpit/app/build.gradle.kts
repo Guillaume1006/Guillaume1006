@@ -13,8 +13,8 @@ android {
         applicationId = "fr.cockpit.auto"
         minSdk = 29
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.5"
+        versionCode = 6
+        versionName = "0.6"
         // Le Nothing Phone (comme presque tous les téléphones récents) est en ARM 64 bits.
         ndk { abiFilters += "arm64-v8a" }
     }
@@ -54,6 +54,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("org.maplibre.gl:android-sdk:11.5.2")
+    // Demander à Android d'ouvrir Waze en fenêtre (fonction cachée du système)
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
 
     // Captures d'écran sans téléphone (Robolectric + Roborazzi)
     testImplementation("junit:junit:4.13.2")
